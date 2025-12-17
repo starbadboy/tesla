@@ -167,28 +167,30 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
     }, [overlayImage]);
 
     // Layout state
-    const [stageSize, setStageSize] = useState({ width: window.innerWidth - 320, height: window.innerHeight });
+    const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
+    const containerRef = useRef<HTMLDivElement>(null);
 
-    // Handle responsive scaling and sizing
+    // Handle responsive scaling and sizing using ResizeObserver
     useEffect(() => {
-        const handleResize = () => {
-            // Available space in the container (subtract 320px for sidebar)
-            const w = window.innerWidth - 320;
-            const h = window.innerHeight;
-            setStageSize({ width: w, height: h });
+        if (!containerRef.current) return;
 
-            // Calculate scale to fit "contain"
-            // We want to fit the 2048x2048 (dimensions) into w x h
-            const scaleX = w / dimensions.width;
-            const scaleY = h / dimensions.height;
-            const fitScale = Math.min(scaleX, scaleY) * 0.9; // 90% to leave some margin
+        const resizeObserver = new ResizeObserver((entries) => {
+            for (const entry of entries) {
+                const { width, height } = entry.contentRect;
+                setStageSize({ width, height });
 
-            setScale(fitScale);
-        };
+                // Calculate scale to fit "contain"
+                // We want to fit the 2048x2048 (dimensions) into w x h
+                const scaleX = width / dimensions.width;
+                const scaleY = height / dimensions.height;
+                const fitScale = Math.min(scaleX, scaleY) * 0.9; // 90% to leave some margin
 
-        handleResize();
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
+                setScale(fitScale);
+            }
+        });
+
+        resizeObserver.observe(containerRef.current);
+        return () => resizeObserver.disconnect();
     }, [dimensions]);
 
     const checkDeselect = (e: any) => {
@@ -200,7 +202,7 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
     };
 
     return (
-        <div className="w-full h-full bg-[#2b2b2b] overflow-hidden flex items-center justify-center">
+        <div ref={containerRef} className="w-full h-full bg-transparent overflow-hidden flex items-center justify-center">
             {/* 
                 We center the Stage using flexbox. 
                 The Stage itself is sized to the window (viewport).

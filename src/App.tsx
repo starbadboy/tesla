@@ -2,8 +2,13 @@
 import { useRef, useState } from 'react';
 import { DesignCanvas, type DesignCanvasHandle } from './components/DesignCanvas';
 import { CAR_MODELS } from './constants';
-import { Upload, Download, Trash2, Layers, RotateCw, Spline, Menu, Info, Globe } from 'lucide-react';
+import { Upload, Download, Trash2, Layers, RotateCw, Globe, Menu } from 'lucide-react';
 import { TRANSLATIONS } from './translations';
+import { Sidebar, SidebarSection } from './components/Layout/Sidebar';
+import { Button } from './components/ui/Button';
+import { Select } from './components/ui/Select';
+
+import { cn } from './utils/cn';
 
 function App() {
   const [currentModelName, setCurrentModelName] = useState(Object.keys(CAR_MODELS)[0]);
@@ -73,185 +78,148 @@ function App() {
     : multiLayers;
 
   return (
-    <div className="flex h-screen w-screen bg-background text-white overflow-hidden font-sans">
+    <div className="flex h-screen w-screen overflow-hidden bg-background font-serif">
       {/* Main Canvas Area */}
-      <div className="flex-1 relative bg-[#2b2b2b] flex items-center justify-center">
-        <DesignCanvas
-          ref={canvasRef}
-          modelPath={currentModelPath}
-          layers={activeLayers}
-          onExport={() => { }}
-        />
+      {/* Framed by whitespace as per design spec "Dramatic Negative Space" */}
+      <div className="flex-1 relative flex items-center justify-center bg-gray-50 p-6 md:p-12">
+        <div className="w-full h-full border border-foreground relative bg-white">
+          <DesignCanvas
+            ref={canvasRef}
+            modelPath={currentModelPath}
+            layers={activeLayers}
+            onExport={() => { }}
+          />
 
 
+        </div>
       </div>
 
-      {/* Right Control Panel */}
-      <div className="w-80 bg-control border-l border-gray-700 flex flex-col shadow-2xl z-10">
-
-        {/* Header */}
-        <div className="p-6 border-b border-gray-700 flex items-center justify-between">
-          <h2 className="text-lg font-bold flex items-center gap-2">
-            <Spline size={20} className="text-primary" />
-            {t.configurator}
-          </h2>
-          <button
-            onClick={toggleLanguage}
-            className="p-2 hover:bg-gray-700 rounded-full transition text-gray-400 hover:text-white"
-            title="Switch Language"
+      {/* Right Control Panel (Sidebar) */}
+      <Sidebar
+        title="Design Studio"
+        icon={
+          <img src="https://upload.wikimedia.org/wikipedia/commons/b/bd/Tesla_Motors.svg" alt="Tesla" className="h-4 w-auto invert dark:invert-0" />
+        }
+        actions={
+          <Button variant="ghost" size="sm" onClick={toggleLanguage} className="px-2" title="Switch Language">
+            <Globe size={18} strokeWidth={1} />
+          </Button>
+        }
+      >
+        {/* Section 1: Model Selection */}
+        <SidebarSection title={t.modelSelection} icon={<Menu />}>
+          <Select
+            value={currentModelName}
+            onChange={(e) => setCurrentModelName(e.target.value)}
           >
-            <Globe size={18} />
-          </button>
-        </div>
+            {Object.keys(CAR_MODELS).map(model => (
+              <option key={model} value={model}>{model}</option>
+            ))}
+          </Select>
+        </SidebarSection>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-8">
+        {/* Section 2: Layers */}
+        <SidebarSection title={t.textureLayers} icon={<Layers />}>
+          {/* Mode Toggle */}
+          <div className="flex border border-foreground divide-x divide-foreground">
+            <button
+              onClick={() => setUploadMode('single')}
+              className={cn(
+                "flex-1 py-3 text-xs font-bold uppercase tracking-widest transition-colors",
+                uploadMode === 'single' ? "bg-foreground text-background" : "bg-transparent text-foreground hover:bg-gray-100"
+              )}
+            >
+              {t.standard}
+            </button>
+            <button
+              onClick={() => setUploadMode('multi')}
+              className={cn(
+                "flex-1 py-3 text-xs font-bold uppercase tracking-widest transition-colors",
+                uploadMode === 'multi' ? "bg-foreground text-background" : "bg-transparent text-foreground hover:bg-gray-100"
+              )}
+            >
+              {t.pro}
+            </button>
+          </div>
 
-          {/* Section 1: Model Selection */}
-          <div className="space-y-3">
-            <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-              {t.modelSelection}
-            </label>
-            <div className="relative">
-              <select
-                value={currentModelName}
-                onChange={(e) => setCurrentModelName(e.target.value)}
-                className="w-full bg-[#444] text-white border border-gray-600 rounded-md p-3 appearance-none focus:outline-none focus:border-primary transition"
-              >
-                {Object.keys(CAR_MODELS).map(model => (
-                  <option key={model} value={model}>{model}</option>
-                ))}
-              </select>
-              <div className="absolute right-3 top-3.5 pointer-events-none text-gray-400">
-                <Menu size={16} />
-              </div>
+          {uploadMode === 'single' ? (
+            // Single Mode UI
+            <div className="space-y-4">
+              {singleLayer ? (
+                <div className="relative group border border-foreground">
+                  <img src={singleLayer} className="w-full h-32 object-cover grayscale group-hover:grayscale-0 transition-all duration-300" />
+                  <button
+                    onClick={handleDeleteSingle}
+                    className="absolute inset-0 bg-white/90 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-200"
+                  >
+                    <Trash2 size={24} strokeWidth={1} className="text-black" />
+                  </button>
+                </div>
+              ) : (
+                <label className="cursor-pointer flex flex-col items-center justify-center gap-2 p-12 border-2 border-dashed border-gray-300 hover:border-foreground transition-all duration-300 group">
+                  <Upload size={24} strokeWidth={1} className="text-gray-400 group-hover:text-foreground transition-colors" />
+                  <span className="text-xs font-bold uppercase tracking-widest text-gray-400 group-hover:text-foreground transition-colors">{t.importWrap}</span>
+                  <input type="file" className="hidden" accept="image/*" onChange={handleSingleUpload} />
+                </label>
+              )}
             </div>
-          </div>
-
-          <hr className="border-gray-700" />
-
-          {/* Section 2: Layers */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                <Layers size={14} /> {t.textureLayers}
-              </label>
-
-              {/* Mode Toggle */}
-              <div className="flex bg-black/30 rounded-lg p-1">
-                <button
-                  onClick={() => setUploadMode('single')}
-                  className={`px-3 py-1 text-xs font-medium rounded-md transition ${uploadMode === 'single' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white'}`}
-                >
-                  {t.standard}
-                </button>
-                <button
-                  onClick={() => setUploadMode('multi')}
-                  className={`px-3 py-1 text-xs font-medium rounded-md transition ${uploadMode === 'multi' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white'}`}
-                >
-                  {t.pro}
-                </button>
-              </div>
+          ) : (
+            // Multi Mode Grid UI
+            <div className="grid grid-cols-2 gap-4">
+              {Object.keys(multiLayers).map(part => (
+                <div key={part} className="space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{part}</span>
+                  {multiLayers[part] ? (
+                    <div className="relative group border border-foreground aspect-square">
+                      <img src={multiLayers[part]!} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-300" />
+                      <button
+                        onClick={() => handleDeleteMulti(part)}
+                        className="absolute inset-0 bg-white/90 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-200"
+                      >
+                        <Trash2 size={20} strokeWidth={1} className="text-black" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="cursor-pointer flex flex-col items-center justify-center aspect-square border-2 border-dashed border-gray-300 hover:border-foreground transition-all duration-300 group">
+                      <Upload size={16} strokeWidth={1} className="mb-1 text-gray-400 group-hover:text-foreground" />
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={(e) => handleMultiUpload(part, e)}
+                      />
+                    </label>
+                  )}
+                </div>
+              ))}
             </div>
+          )}
+        </SidebarSection>
 
-            {uploadMode === 'single' ? (
-              // Single Mode UI
-              <div className="grid grid-cols-1 gap-3">
-                {singleLayer ? (
-                  <div className="relative group">
-                    <img src={singleLayer} className="w-full h-32 object-cover rounded-md border border-gray-600" />
-                    <button
-                      onClick={handleDeleteSingle}
-                      className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition rounded-md"
-                    >
-                      <Trash2 size={24} className="text-white" />
-                    </button>
-                  </div>
-                ) : (
-                  <label className="cursor-pointer flex items-center justify-center gap-2 p-8 bg-primary hover:bg-primary-hover transition rounded-md font-medium text-sm border-2 border-transparent hover:border-white/20">
-                    <Upload size={18} />
-                    {t.importWrap}
-                    <input type="file" className="hidden" accept="image/*" onChange={handleSingleUpload} />
-                  </label>
-                )}
-              </div>
-            ) : (
-              // Multi Mode Grid UI
-              <div className="grid grid-cols-2 gap-3">
-                {Object.keys(multiLayers).map(part => (
-                  <div key={part} className="space-y-1">
-                    <span className="text-xs text-gray-400 uppercase font-bold">{part}</span>
-                    {multiLayers[part] ? (
-                      <div className="relative group">
-                        <img src={multiLayers[part]!} className="w-full h-24 object-cover rounded-md border border-gray-600" />
-                        <button
-                          onClick={() => handleDeleteMulti(part)}
-                          className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition rounded-md"
-                        >
-                          <Trash2 size={20} className="text-white" />
-                        </button>
-                      </div>
-                    ) : (
-                      <label className="cursor-pointer flex flex-col items-center justify-center h-24 bg-[#3a3a3a] hover:bg-[#444] border-2 border-dashed border-gray-600 hover:border-gray-500 transition rounded-md font-medium text-sm text-gray-500">
-                        <Upload size={20} className="mb-1" />
-                        <span className="text-xs">{t.upload}</span>
-                        <input
-                          type="file"
-                          className="hidden"
-                          accept="image/*"
-                          onChange={(e) => handleMultiUpload(part, e)}
-                        />
-                      </label>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <hr className="border-gray-700" />
-
-          {/* Section 3: Instructions */}
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-              <RotateCw size={14} /> {t.controls}
-            </label>
-            <p className="text-sm text-gray-400 leading-relaxed">
-              {t.controlSteps.map((step, i) => (
-                <span key={i} className="block">• {step}</span>
-              ))}
-            </p>
-          </div>
-
-          <hr className="border-gray-700" />
-
-          {/* Section 4: Installation */}
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-              <Info size={14} /> {t.installation}
-            </label>
-            <ul className="text-xs text-gray-400 leading-relaxed space-y-2 pl-1">
-              {t.installSteps.map((step, i) => (
-                <li key={i} className="flex gap-2">
-                  <span className="text-primary">•</span>
-                  <span>{step}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-        </div>
+        {/* Section 3: Instructions */}
+        <SidebarSection title={t.controls} icon={<RotateCw />}>
+          <ul className="space-y-2">
+            {t.controlSteps.map((step, i) => (
+              <li key={i} className="text-sm font-serif text-gray-600 pl-4 border-l border-foreground/20">
+                {step}
+              </li>
+            ))}
+          </ul>
+        </SidebarSection>
 
         {/* Footer actions */}
-        <div className="p-6 border-t border-gray-700 bg-[#252525]">
-          <button
+        <div className="pt-6 mt-auto">
+          <Button
             onClick={handleExport}
-            className="w-full flex items-center justify-center gap-2 p-4 bg-white text-black hover:bg-gray-200 font-bold rounded-md transition shadow-lg"
+            fullWidth
+            size="lg"
+            className="group"
           >
-            <Download size={20} />
+            <Download size={20} strokeWidth={1.5} className="mr-2 group-hover:scale-110 transition-transform" />
             {t.export}
-          </button>
+          </Button>
         </div>
-      </div>
+      </Sidebar>
     </div>
   )
 }
