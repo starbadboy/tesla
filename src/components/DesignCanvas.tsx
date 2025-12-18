@@ -64,6 +64,9 @@ const TextureImage = ({ imgPath, isSelected, onSelect, onChange }: any) => {
             {isSelected && (
                 <Transformer
                     ref={trRef}
+                    anchorSize={25}
+                    rotateAnchorOffset={40}
+                    padding={10}
                     boundBoxFunc={(oldBox, newBox) => {
                         // limit resize
                         if (newBox.width < 5 || newBox.height < 5) {
