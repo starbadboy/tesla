@@ -15,7 +15,8 @@ export async function generateImage(prompt: string, inputImageBase64?: string, m
 
     try {
         // Enhance prompt for car wrap context
-        const enhancedPrompt = `A detailed flat 2D vehicle wrap texture map for a ${modelName}. The design is ${prompt}. Follow the exact top-down layout and orientation of the input template. High resolution, sharp details, schematic view, no background shadows.`;
+        const enhancedPrompt = `A top-view (plan view) 2D flat model pattern of a Tesla ${modelName} vehicle,  The layout separates key exterior components—roof panel, hood, doors, side mirrors, fenders, and bumpers. 
+        The design is ${prompt}. Follow the exact top-down layout and orientation of the input template. High resolution, sharp details, schematic view, no background shadows. Example: strictly apply the design pattern inside the outlines of the car parts provided in the template, leaving the surrounding area empty. It should only fill in the template.`;
 
         const options: any = {
             model: 'gemini-2.5-flash-image-preview'
