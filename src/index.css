@@ -10,7 +10,7 @@
   }
 
   body {
-    @apply bg-background text-foreground antialiased overflow-hidden font-serif;
+    @apply bg-background text-foreground antialiased font-serif;
     background-color: rgb(var(--background));
     color: rgb(var(--foreground));
   }

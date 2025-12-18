@@ -15,7 +15,7 @@ export const Sidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
                 ref={ref}
                 variant="standard"
                 className={cn(
-                    "h-full w-full w-[600px] border-l-4 border-foreground overflow-y-auto bg-background flex flex-col p-0",
+                    "flex-none md:flex-none w-full md:w-[450px] lg:w-[600px] md:border-l-4 border-foreground md:overflow-y-auto bg-background flex flex-col p-0",
                     className
                 )}
                 {...props}

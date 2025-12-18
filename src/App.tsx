@@ -2,7 +2,7 @@
 import { useRef, useState } from 'react';
 import { DesignCanvas, type DesignCanvasHandle } from './components/DesignCanvas';
 import { CAR_MODELS } from './constants';
-import { Upload, Download, Trash2, Layers, RotateCw, Globe, Menu } from 'lucide-react';
+import { Upload, Download, Trash2, Layers, RotateCw, Globe, Menu, HelpCircle } from 'lucide-react';
 import { TRANSLATIONS } from './translations';
 import { Sidebar, SidebarSection } from './components/Layout/Sidebar';
 import { Button } from './components/ui/Button';
@@ -78,10 +78,10 @@ function App() {
     : multiLayers;
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-background font-serif">
+    <div className="flex flex-col md:flex-row min-h-screen md:h-screen w-full md:w-screen bg-background font-serif md:overflow-hidden">
       {/* Main Canvas Area */}
       {/* Framed by whitespace as per design spec "Dramatic Negative Space" */}
-      <div className="flex-1 relative flex items-center justify-center bg-gray-50 p-6 md:p-12">
+      <div className="flex-none h-[50vh] w-full md:h-full md:w-auto md:flex-1 relative flex items-center justify-center bg-gray-50 p-6 md:p-12 border-b-4 md:border-b-0 border-foreground">
         <div className="w-full h-full border border-foreground relative bg-white">
           <DesignCanvas
             ref={canvasRef}
@@ -207,6 +207,17 @@ function App() {
           </ul>
         </SidebarSection>
 
+        {/* Section 4: Installation */}
+        <SidebarSection title={t.installation} icon={<HelpCircle />}>
+          <ul className="space-y-2">
+            {t.installSteps.map((step, i) => (
+              <li key={i} className="text-sm font-serif text-gray-600 pl-4 border-l border-foreground/20">
+                {step}
+              </li>
+            ))}
+          </ul>
+        </SidebarSection>
+
         {/* Footer actions */}
         <div className="pt-6 mt-auto">
           <Button
@@ -220,7 +231,7 @@ function App() {
           </Button>
         </div>
       </Sidebar>
-    </div>
+    </div >
   )
 }
 
