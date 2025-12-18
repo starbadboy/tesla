@@ -15,9 +15,9 @@ export async function generateImage(prompt: string, inputImageBase64?: string, m
 
     try {
         // Enhance prompt for car wrap context
-        const enhancedPrompt = `A top-view 2D flat model pattern of a Tesla ${modelName} car wrap Components. Components are described from front to rear: front bumper and hood, windshield and A-pillars,  side doors and mirrors, and rear bumper assembly.
-        The design is ${prompt}. Follow the exact orientation of the input template. High resolution, sharp details, schematic view, no background shadows. Example: strictly apply the design pattern inside the outlines of the car parts provided in the template, leaving the surrounding area empty. It should only fill in the template for the white areas.not a overall car design. only fill in the white areas of the car parts.
-        Do take notes the top is the front of the car.dont reverse the orientation of the car.`;
+        const enhancedPrompt = `Follow the exact orientation of the input template(png image of the car parts). High resolution, sharp details, schematic view, no background shadows. Example: strictly apply the design pattern inside the outlines of the car parts provided in the template, leaving the surrounding area empty. It should only fill in the template for the white areas. not a overall car design.
+        only fill in the white areas of the car parts.dont reverse the orientation of the car. A top-view 2D flat model pattern of a Tesla ${modelName} car wrap Components. Components are front bumper and hood, windshield and A-pillars,  side doors and mirrors, and rear bumper assembly.
+        The design is ${prompt}. `;
 
         const options: any = {
             model: 'gemini-2.5-flash-image-preview'

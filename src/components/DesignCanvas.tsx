@@ -98,6 +98,7 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
                 setSelectedId(null);
 
                 // Allow state update to clear selection (next tick)
+                // Allow state update to clear selection (next tick)
                 setTimeout(() => {
                     const TARGET_SIZE = 1024;
 
@@ -131,12 +132,31 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
                         mimeType: 'image/png'
                     });
 
-                    const link = document.createElement('a');
-                    link.download = `design-tesla-1024.png`;
-                    link.href = uri;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
+                    // Rotate the image 90 degrees clockwise
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        // Swap dimensions for 90 degree rotation
+                        canvas.width = img.height;
+                        canvas.height = img.width;
+
+                        const ctx = canvas.getContext('2d');
+                        if (ctx) {
+                            ctx.translate(canvas.width, 0);
+                            ctx.rotate(90 * Math.PI / 180);
+                            ctx.drawImage(img, 0, 0);
+
+                            const rotatedUri = canvas.toDataURL('image/png');
+
+                            const link = document.createElement('a');
+                            link.download = `design-tesla-1024.png`;
+                            link.href = rotatedUri;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                        }
+                    };
+                    img.src = uri;
                 }, 100);
             }
         }
