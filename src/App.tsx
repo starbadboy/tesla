@@ -1,12 +1,13 @@
 
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { DesignCanvas, type DesignCanvasHandle } from './components/DesignCanvas';
 import { CAR_MODELS } from './constants';
-import { Upload, Download, Trash2, Layers, RotateCw, Globe, Menu, HelpCircle } from 'lucide-react';
+import { Upload, Download, Trash2, Layers, RotateCw, Globe, Menu, HelpCircle, Sparkles } from 'lucide-react';
 import { TRANSLATIONS } from './translations';
 import { Sidebar, SidebarSection } from './components/Layout/Sidebar';
 import { Button } from './components/ui/Button';
 import { Select } from './components/ui/Select';
+import { generateImage } from './utils/gemini';
 
 import { cn } from './utils/cn';
 
@@ -16,7 +17,26 @@ function App() {
   const [singleLayer, setSingleLayer] = useState<string | null>(null);
   const [language, setLanguage] = useState<'en' | 'zh'>('en');
 
+  // AI State
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isPuterLoaded, setIsPuterLoaded] = useState(false);
+
   const t = TRANSLATIONS[language];
+
+  useEffect(() => {
+    // Check for Puter.js availability
+    const checkPuter = () => {
+      // @ts-ignore
+      if (window.puter && window.puter.ai) {
+        setIsPuterLoaded(true);
+      }
+    };
+
+    checkPuter();
+    const interval = setInterval(checkPuter, 500);
+    return () => clearInterval(interval);
+  }, []);
 
   const canvasRef = useRef<DesignCanvasHandle>(null);
 
@@ -29,6 +49,17 @@ function App() {
   });
 
   const currentModelPath = CAR_MODELS[currentModelName];
+
+  const urlToBase64 = async (url: string): Promise<string> => {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  };
 
   const handleSingleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -50,6 +81,32 @@ function App() {
       }));
 
       e.target.value = '';
+    }
+  };
+
+  const handleGenerateImage = async () => {
+    if (!aiPrompt) {
+      alert("Please enter a prompt");
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      // Fetch current model image for img2img context
+      const modelBase64 = await urlToBase64(currentModelPath);
+
+      const imageUrl = await generateImage(aiPrompt, modelBase64, currentModelName);
+
+      if (uploadMode === 'single') {
+        setSingleLayer(imageUrl);
+      } else {
+        setUploadMode('single');
+        setSingleLayer(imageUrl);
+      }
+    } catch (error) {
+      alert(t.error + ": " + (error as Error).message);
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -194,6 +251,30 @@ function App() {
               ))}
             </div>
           )}
+        </SidebarSection>
+
+        {/* Section: AI Generation */}
+        <SidebarSection title={t.aiGeneration} icon={<Sparkles />}>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{t.prompt}</label>
+              <input
+                type="text"
+                value={aiPrompt}
+                onChange={(e) => setAiPrompt(e.target.value)}
+                className="w-full text-sm border-b border-gray-300 focus:border-black outline-none py-1 bg-transparent placeholder:text-gray-300 transition-colors"
+                placeholder={t.prompt}
+              />
+            </div>
+            <Button
+              onClick={handleGenerateImage}
+              disabled={isGenerating || !aiPrompt || !isPuterLoaded}
+              fullWidth
+              size="sm"
+            >
+              {isGenerating ? t.generating : (isPuterLoaded ? t.generate : "Connecting to AI Service...")}
+            </Button>
+          </div>
         </SidebarSection>
 
         {/* Section 3: Instructions */}

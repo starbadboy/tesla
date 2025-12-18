@@ -22,7 +22,12 @@ export const TRANSLATIONS = {
             "Save the .png file into the Wraps folder.",
             "Plug USB into your Tesla.",
             "Go to Toybox > Colorizer > Customize Wrap."
-        ]
+        ],
+        aiGeneration: "AI Pattern Generation",
+        prompt: "Prompt (e.g. Fire, Cyberpunk)",
+        generate: "Generate Pattern",
+        generating: "Generating...",
+        error: "Error generating image"
     },
     zh: {
         configurator: "配置器",
@@ -47,6 +52,11 @@ export const TRANSLATIONS = {
             "将 .png 文件存入 Wraps 文件夹。",
             "将 U盘 插入 Tesla 车机。",
             "前往 玩具盒 > 喷漆中心 > 自定义车衣。"
-        ]
+        ],
+        aiGeneration: "AI 图案生成",
+        prompt: "提示词 (例如火焰, 赛博朋克)",
+        generate: "生成图案",
+        generating: "生成中...",
+        error: "生成失败"
     }
 };

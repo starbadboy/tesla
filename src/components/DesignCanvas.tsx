@@ -14,7 +14,7 @@ interface DesignCanvasProps {
     onExport: (stage: Konva.Stage) => void;
 }
 
-const TextureImage = ({ imgPath, isSelected, onSelect, onChange }: any) => {
+const TextureImage = ({ imgPath, isSelected, onSelect, onChange, initialX = 100, initialY = 100, initialWidth, initialHeight }: any) => {
     const [image] = useImage(imgPath);
     const shapeRef = useRef<Konva.Image>(null);
     const trRef = useRef<Konva.Transformer>(null);
@@ -34,8 +34,10 @@ const TextureImage = ({ imgPath, isSelected, onSelect, onChange }: any) => {
                 ref={shapeRef}
                 image={image}
                 draggable
-                x={100}
-                y={100}
+                x={initialX}
+                y={initialY}
+                width={initialWidth}
+                height={initialHeight}
                 onDragEnd={(e) => {
                     onChange({
                         x: e.target.x(),
@@ -43,15 +45,12 @@ const TextureImage = ({ imgPath, isSelected, onSelect, onChange }: any) => {
                     });
                 }}
                 onTransformEnd={() => {
-                    // transformer is changing scale and rotation and abs pos,
-                    // so we will reset scale to 100% and update width and height
                     const node = shapeRef.current;
                     if (!node) return;
 
                     const scaleX = node.scaleX();
                     const scaleY = node.scaleY();
 
-                    // generally better to store scale, but for simplicity here just keeping node state
                     onChange({
                         x: node.x(),
                         y: node.y(),
@@ -68,7 +67,6 @@ const TextureImage = ({ imgPath, isSelected, onSelect, onChange }: any) => {
                     rotateAnchorOffset={40}
                     padding={10}
                     boundBoxFunc={(oldBox, newBox) => {
-                        // limit resize
                         if (newBox.width < 5 || newBox.height < 5) {
                             return oldBox;
                         }
@@ -227,17 +225,22 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
                     <Rect width={dimensions.width} height={dimensions.height} fill="#ffffff" />
 
                     {/* Render all active layers */}
-                    {Object.entries(layers).map(([part, path]) => (
-                        path && (
+                    {Object.entries(layers).map(([part, path]) => {
+                        const isFullWrap = part === 'Full Wrap';
+                        return path && (
                             <TextureImage
                                 key={part}
                                 imgPath={path}
                                 isSelected={selectedId === part}
                                 onSelect={() => setSelectedId(part)}
                                 onChange={() => { }}
+                                initialX={isFullWrap ? 0 : 100}
+                                initialY={isFullWrap ? 0 : 100}
+                                initialWidth={isFullWrap ? dimensions.width : undefined}
+                                initialHeight={isFullWrap ? dimensions.height : undefined}
                             />
-                        )
-                    ))}
+                        );
+                    })}
                 </Layer>
 
                 {/* Overlay Layer - Top */}
