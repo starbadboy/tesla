@@ -1,73 +1,66 @@
-# React + TypeScript + Vite
+# Tesla Wrap Studio
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A premium web-based application for designing and visualizing custom car wraps for Tesla vehicles.
 
-Currently, two official plugins are available:
+![Tesla Wrap Studio Preview](./public/assets/model3-2024-performance.png)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Features
 
-## React Compiler
+-   **Interactive Design Canvas**: specialized 2D editor for precise wrap placement and customization.
+-   **AI Generation**: Generate unique wrap designs using AI prompts.
+-   **Multi-Part Support**: Upload separate designs for different car parts (Front, Rear, Sides).
+-   **Real-time 3D Preview** (Coming Soon): Visualize designs on high-fidelity 3D models.
+    -   Optimized with **Draco compression** for fast loading.
+    -   Includes error handling and fallback states.
+-   **Internationalization**: Full support for English and Traditional Chinese.
+-   **Export**: High-quality export of your wrap designs.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Tech Stack
 
-## Expanding the ESLint configuration
+-   **Frontend**: React 19, TypeScript
+-   **Build Tool**: Vite
+-   **Styling**: TailwindCSS 4
+-   **3D Rendering**: Three.js, React Three Fiber, Draco Compression
+-   **Canvas**: Konva.js, React Konva
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Getting Started
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+1.  **Install dependencies**
+    ```bash
+    npm install
+    ```
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+2.  **Start the development server**
+    ```bash
+    npm run dev
+    ```
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+3.  **Build for production**
+    ```bash
+    npm run build
+    ```
+
+## 3D Models Optimization
+
+The project uses **Draco compression** for all `.glb` assets to minimize file size (~90% reduction).
+If you need to add new models, ensure they are compressed first:
+
+```bash
+npx gltf-pipeline -i original.glb -o compressed-draco.glb -d
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+**CDN Hosting**:
+Models are currently hosted via **jsDelivr** (GitHub CDN) to ensure fast global delivery and reduce server bandwidth.
+Base URL: `https://cdn.jsdelivr.net/gh/starbadboy/tesla@main/public/models/`
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Contributing
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+1.  Fork the repository.
+2.  Create your feature branch.
+3.  Commit your changes.
+4.  Push to the branch.
+5.  Open a Pull Request.
+
+## License
+
+[MIT](LICENSE)
