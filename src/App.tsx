@@ -2,7 +2,7 @@
 import { useRef, useState, useEffect } from 'react';
 import { DesignCanvas, type DesignCanvasHandle, type LayerTransform } from './components/DesignCanvas';
 import { CAR_MODELS } from './constants';
-import { Upload, Download, Trash2, Layers, RotateCw, Globe, Menu, HelpCircle, Sparkles, Settings, Eye, Maximize, Lock, Unlock } from 'lucide-react';
+import { Upload, Download, Trash2, Layers, RotateCw, Globe, Menu, HelpCircle, Sparkles, Settings, Eye, Maximize, Lock, Unlock, PenTool, Eraser } from 'lucide-react';
 import { TRANSLATIONS } from './translations';
 import { Sidebar, SidebarSection } from './components/Layout/Sidebar';
 import { Button } from './components/ui/Button';
@@ -26,6 +26,11 @@ function App() {
   const [layerTransforms, setLayerTransforms] = useState<Record<string, LayerTransform>>({});
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
   const [uniformScale, setUniformScale] = useState(true);
+
+  // Drawing State
+  const [interactionMode, setInteractionMode] = useState<'select' | 'draw'>('select');
+  const [brushColor, setBrushColor] = useState('#000000');
+  const [brushSize, setBrushSize] = useState(5);
 
   const t = TRANSLATIONS[language];
 
@@ -165,6 +170,10 @@ function App() {
     });
   };
 
+  const handleClearDrawing = () => {
+    canvasRef.current?.clearLines();
+  };
+
   // Determine what to pass to canvas
   const activeLayers = uploadMode === 'single'
     ? (singleLayer ? { 'Full Wrap': singleLayer } : {})
@@ -185,6 +194,9 @@ function App() {
             selectedId={selectedLayerId}
             onSelect={setSelectedLayerId}
             onExport={() => { }}
+            mode={interactionMode}
+            brushColor={brushColor}
+            brushSize={brushSize}
           />
 
 
@@ -291,6 +303,88 @@ function App() {
               ))}
             </div>
           )}
+        </SidebarSection>
+
+        <SidebarSection title={t.drawing} icon={<PenTool />}>
+          <div className="space-y-4">
+            {/* Mode Toggle */}
+            <div className="flex border border-foreground divide-x divide-foreground">
+              <button
+                onClick={() => setInteractionMode('select')}
+                className={cn(
+                  "flex-1 py-3 text-xs font-bold uppercase tracking-widest transition-colors",
+                  interactionMode === 'select' ? "bg-foreground text-background" : "bg-transparent text-foreground hover:bg-gray-100"
+                )}
+              >
+                {t.selectMode}
+              </button>
+              <button
+                onClick={() => setInteractionMode('draw')}
+                className={cn(
+                  "flex-1 py-3 text-xs font-bold uppercase tracking-widest transition-colors",
+                  interactionMode === 'draw' ? "bg-foreground text-background" : "bg-transparent text-foreground hover:bg-gray-100"
+                )}
+              >
+                {t.drawMode}
+              </button>
+            </div>
+
+            {interactionMode === 'draw' && (
+              <>
+                {/* Brush Color */}
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-xs font-bold uppercase tracking-widest text-gray-500">
+                    <span>{t.brushColor}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    {['#000000', '#FFFFFF', '#FF0000', '#00FF00', '#0000FF', '#FFFF00'].map(color => (
+                      <button
+                        key={color}
+                        onClick={() => setBrushColor(color)}
+                        className={cn(
+                          "w-6 h-6 rounded-full border border-gray-300",
+                          brushColor === color ? "ring-2 ring-offset-2 ring-foreground" : ""
+                        )}
+                        style={{ backgroundColor: color }}
+                      />
+                    ))}
+                    <input
+                      type="color"
+                      value={brushColor}
+                      onChange={(e) => setBrushColor(e.target.value)}
+                      className="w-6 h-6 rounded-full overflow-hidden border-0 p-0"
+                    />
+                  </div>
+                </div>
+
+                {/* Brush Size */}
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-xs font-bold uppercase tracking-widest text-gray-500">
+                    <span>{t.brushSize}</span>
+                    <span>{brushSize}px</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1"
+                    max="50"
+                    value={brushSize}
+                    onChange={(e) => setBrushSize(parseInt(e.target.value))}
+                    className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-foreground"
+                  />
+                </div>
+              </>
+            )}
+
+            <Button
+              onClick={handleClearDrawing}
+              variant="outline"
+              fullWidth
+              size="sm"
+            >
+              <Eraser size={16} className="mr-2" />
+              {t.clearDrawing}
+            </Button>
+          </div>
         </SidebarSection>
 
         {/* Section: Properties */}

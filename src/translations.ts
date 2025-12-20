@@ -32,7 +32,13 @@ export const TRANSLATIONS = {
         opacity: "Opacity",
         rotation: "Rotation",
         scale: "Scale",
-        uniformScale: "Uniform Scale"
+        uniformScale: "Uniform Scale",
+        drawing: "Free Drawing",
+        brushSize: "Brush Size",
+        brushColor: "Brush Color",
+        clearDrawing: "Clear Drawings",
+        selectMode: "Select Mode",
+        drawMode: "Draw Mode"
     },
     zh: {
         configurator: "配置器",
@@ -67,6 +73,12 @@ export const TRANSLATIONS = {
         opacity: "不透明度",
         rotation: "旋转",
         scale: "缩放",
-        uniformScale: "保持比例"
+        uniformScale: "保持比例",
+        drawing: "自由绘制",
+        brushSize: "画笔大小",
+        brushColor: "画笔颜色",
+        clearDrawing: "清除绘制",
+        selectMode: "选择模式",
+        drawMode: "绘制模式"
     }
 };

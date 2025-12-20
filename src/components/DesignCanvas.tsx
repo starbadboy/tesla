@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
-import { Stage, Layer, Image as KonvaImage, Transformer, Rect } from 'react-konva';
+import { Stage, Layer, Image as KonvaImage, Transformer, Rect, Line } from 'react-konva';
 import useImage from 'use-image';
 import { processTemplateMask } from '../utils/imageProcessor';
 import Konva from 'konva';
 
 export interface DesignCanvasHandle {
     exportImage: () => void;
+    clearLines: () => void;
 }
 
 export interface LayerTransform {
@@ -25,6 +26,9 @@ interface DesignCanvasProps {
     selectedId: string | null;
     onSelect: (id: string | null) => void;
     onExport: (stage: Konva.Stage) => void;
+    mode: 'select' | 'draw';
+    brushColor: string;
+    brushSize: number;
 }
 
 const TextureImage = ({
@@ -113,10 +117,17 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
     transforms,
     onTransformChange,
     selectedId,
-    onSelect
+    onSelect,
+    mode,
+    brushColor,
+    brushSize
 }, ref) => {
     const [processedOverlay, setProcessedOverlay] = useState<string | null>(null);
     const [overlayImage] = useImage(processedOverlay || '');
+
+    // Drawing state
+    const [lines, setLines] = useState<any[]>([]);
+    const isDrawing = useRef(false);
 
     // Internal ref to the Stage
     const stageRef = useRef<Konva.Stage>(null);
@@ -126,6 +137,9 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
     const [dimensions, setDimensions] = useState({ width: 2048, height: 2048 }); // Default high-res
 
     useImperativeHandle(ref, () => ({
+        clearLines: () => {
+            setLines([]);
+        },
         exportImage: () => {
             const stage = stageRef.current;
             if (stage) {
@@ -230,11 +244,46 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
         return () => resizeObserver.disconnect();
     }, [dimensions]);
 
-    const checkDeselect = (e: any) => {
-        const clickedOnEmpty = e.target === e.target.getStage();
-        if (clickedOnEmpty) {
-            onSelect(null);
+    const handleMouseDown = (e: any) => {
+        if (mode === 'draw') {
+            isDrawing.current = true;
+            const pos = e.target.getStage().getPointerPosition();
+            // Transform pointer position to local stage coordinates (accounting for scale/centering)
+            // But wait, the Line is inside the Stage -> Layer. 
+            // The Layer has no transform. The Stage has scale and offset.
+            // We need to inverse form the stage transform.
+            const stage = e.target.getStage();
+            const transform = stage.getAbsoluteTransform().copy();
+            transform.invert();
+            const point = transform.point(pos);
+
+            setLines([...lines, { tool: 'pen', points: [point.x, point.y], color: brushColor, size: brushSize }]);
+        } else {
+            // Check deselect
+            const clickedOnEmpty = e.target === e.target.getStage();
+            if (clickedOnEmpty) {
+                onSelect(null);
+            }
         }
+    };
+
+    const handleMouseMove = (e: any) => {
+        if (mode === 'draw' && isDrawing.current) {
+            const stage = e.target.getStage();
+            const point = stage.getRelativePointerPosition();
+
+            let lastLine = lines[lines.length - 1];
+            // add point
+            lastLine.points = lastLine.points.concat([point.x, point.y]);
+
+            // replace last
+            lines.splice(lines.length - 1, 1, lastLine);
+            setLines(lines.concat());
+        }
+    };
+
+    const handleMouseUp = () => {
+        isDrawing.current = false;
     };
 
     return (
@@ -245,8 +294,12 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
                 scale={{ x: scale, y: scale }}
                 x={(stageSize.width - dimensions.width * scale) / 2}
                 y={(stageSize.height - dimensions.height * scale) / 2}
-                onMouseDown={checkDeselect}
-                onTouchStart={checkDeselect}
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                onTouchStart={handleMouseDown}
+                onTouchMove={handleMouseMove}
+                onTouchEnd={handleMouseUp}
                 ref={stageRef}
             >
                 <Layer>
@@ -265,6 +318,24 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
                             />
                         );
                     })}
+                </Layer>
+
+                {/* Drawing Layer */}
+                <Layer>
+                    {lines.map((line, i) => (
+                        <Line
+                            key={i}
+                            points={line.points}
+                            stroke={line.color}
+                            strokeWidth={line.size}
+                            tension={0.5}
+                            lineCap="round"
+                            lineJoin="round"
+                            globalCompositeOperation={
+                                line.tool === 'eraser' ? 'destination-out' : 'source-over'
+                            }
+                        />
+                    ))}
                 </Layer>
 
                 <Layer listening={false}>
