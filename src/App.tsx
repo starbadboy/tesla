@@ -1,7 +1,7 @@
 
 import { useRef, useState, useEffect } from 'react';
 import { DesignCanvas, type DesignCanvasHandle, type LayerTransform } from './components/DesignCanvas';
-import { CAR_MODELS } from './constants';
+import { CAR_MODELS, CAR_3D_MODELS } from './constants';
 import { Upload, Download, Trash2, Layers, RotateCw, Globe, Menu, HelpCircle, Sparkles, Settings, Eye, Maximize, Lock, Unlock, PenTool, Eraser } from 'lucide-react';
 import { TRANSLATIONS } from './translations';
 import { Sidebar, SidebarSection } from './components/Layout/Sidebar';
@@ -10,6 +10,8 @@ import { Select } from './components/ui/Select';
 import { generateImage } from './utils/gemini';
 
 import { cn } from './utils/cn';
+import { ThreeDView } from './components/ThreeDView';
+import { Box } from 'lucide-react';
 
 function App() {
   const [currentModelName, setCurrentModelName] = useState(Object.keys(CAR_MODELS)[0]);
@@ -31,6 +33,9 @@ function App() {
   const [interactionMode, setInteractionMode] = useState<'select' | 'draw'>('select');
   const [brushColor, setBrushColor] = useState('#000000');
   const [brushSize, setBrushSize] = useState(5);
+
+  const [is3DView, setIs3DView] = useState(false);
+  const [showWrap] = useState(false);
 
   const t = TRANSLATIONS[language];
 
@@ -184,22 +189,25 @@ function App() {
       {/* Main Canvas Area */}
       {/* Framed by whitespace as per design spec "Dramatic Negative Space" */}
       <div className="flex-none h-[50vh] w-full md:h-full md:w-auto md:flex-1 relative flex items-center justify-center bg-gray-50 p-6 md:p-12 border-b-4 md:border-b-0 border-foreground">
-        <div className="w-full h-full border border-foreground relative bg-white">
-          <DesignCanvas
-            ref={canvasRef}
-            modelPath={currentModelPath}
-            layers={activeLayers}
-            transforms={layerTransforms}
-            onTransformChange={handleTransformChange}
-            selectedId={selectedLayerId}
-            onSelect={setSelectedLayerId}
-            onExport={() => { }}
-            mode={interactionMode}
-            brushColor={brushColor}
-            brushSize={brushSize}
-          />
-
-
+        <div className="w-full h-full border border-foreground relative bg-white overflow-hidden">
+          <div className={cn("w-full h-full transition-opacity duration-300", is3DView ? "absolute top-0 left-0 opacity-0 pointer-events-none z-0" : "relative z-10")}>
+            <DesignCanvas
+              ref={canvasRef}
+              modelPath={currentModelPath}
+              layers={activeLayers}
+              transforms={layerTransforms}
+              onTransformChange={handleTransformChange}
+              selectedId={selectedLayerId}
+              onSelect={setSelectedLayerId}
+              onExport={() => { }}
+              mode={interactionMode}
+              brushColor={brushColor}
+              brushSize={brushSize}
+            />
+          </div>
+          <div className={cn("w-full h-full absolute top-0 left-0 transition-opacity duration-300", is3DView ? "opacity-100 z-10" : "opacity-0 pointer-events-none z-0")}>
+            <ThreeDView stageRef={canvasRef} modelPath={CAR_3D_MODELS[currentModelName] || '/models/car.glb'} showTexture={showWrap} />
+          </div>
         </div>
       </div>
 
@@ -217,6 +225,29 @@ function App() {
       >
         {/* Section 1: Model Selection */}
         <SidebarSection title={t.modelSelection} icon={<Menu />}>
+          <div className="mb-4 flex border border-foreground divide-x divide-foreground">
+            <button
+              onClick={() => setIs3DView(false)}
+              className={cn(
+                "flex-1 py-2 text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center gap-2",
+                !is3DView ? "bg-foreground text-background" : "bg-transparent text-foreground hover:bg-gray-100"
+              )}
+            >
+              2D Design
+            </button>
+            <button
+              onClick={() => setIs3DView(true)}
+              className={cn(
+                "flex-1 py-2 text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center gap-2",
+                is3DView ? "bg-foreground text-background" : "bg-transparent text-foreground hover:bg-gray-100"
+              )}
+            >
+              <Box size={14} /> 3D Preview <span className="ml-1 text-[8px] bg-orange-500 text-white px-1 rounded">COMING SOON</span>
+            </button>
+          </div>
+
+          {/* Toggle removed as per request, default off for now */}
+
           <Select
             value={currentModelName}
             onChange={(e) => setCurrentModelName(e.target.value)}

@@ -7,6 +7,7 @@ import Konva from 'konva';
 export interface DesignCanvasHandle {
     exportImage: () => void;
     clearLines: () => void;
+    getStage: () => Konva.Stage | null;
 }
 
 export interface LayerTransform {
@@ -140,6 +141,7 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
         clearLines: () => {
             setLines([]);
         },
+        getStage: () => stageRef.current,
         exportImage: () => {
             const stage = stageRef.current;
             if (stage) {
@@ -165,30 +167,12 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
                         mimeType: 'image/png'
                     });
 
-                    // Rotate the image 90 degrees clockwise
-                    const img = new Image();
-                    img.onload = () => {
-                        const canvas = document.createElement('canvas');
-                        canvas.width = img.height;
-                        canvas.height = img.width;
-
-                        const ctx = canvas.getContext('2d');
-                        if (ctx) {
-                            ctx.translate(canvas.width, 0);
-                            ctx.rotate(90 * Math.PI / 180);
-                            ctx.drawImage(img, 0, 0);
-
-                            const rotatedUri = canvas.toDataURL('image/png');
-
-                            const link = document.createElement('a');
-                            link.download = `design-tesla-1024.png`;
-                            link.href = rotatedUri;
-                            document.body.appendChild(link);
-                            link.click();
-                            document.body.removeChild(link);
-                        }
-                    };
-                    img.src = uri;
+                    const link = document.createElement('a');
+                    link.download = `design-tesla-1024.png`;
+                    link.href = uri;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
                 }, 100);
             }
         }
@@ -338,7 +322,7 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
                     ))}
                 </Layer>
 
-                <Layer listening={false}>
+                <Layer name="overlayLayer" listening={false}>
                     {processedOverlay && (
                         <KonvaImage
                             image={overlayImage}
