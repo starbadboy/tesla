@@ -1,8 +1,8 @@
 
 import { useRef, useState, useEffect } from 'react';
-import { DesignCanvas, type DesignCanvasHandle } from './components/DesignCanvas';
+import { DesignCanvas, type DesignCanvasHandle, type LayerTransform } from './components/DesignCanvas';
 import { CAR_MODELS } from './constants';
-import { Upload, Download, Trash2, Layers, RotateCw, Globe, Menu, HelpCircle, Sparkles } from 'lucide-react';
+import { Upload, Download, Trash2, Layers, RotateCw, Globe, Menu, HelpCircle, Sparkles, Settings, Eye, Maximize, Lock, Unlock } from 'lucide-react';
 import { TRANSLATIONS } from './translations';
 import { Sidebar, SidebarSection } from './components/Layout/Sidebar';
 import { Button } from './components/ui/Button';
@@ -21,6 +21,11 @@ function App() {
   const [aiPrompt, setAiPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPuterLoaded, setIsPuterLoaded] = useState(false);
+
+  // Transform State
+  const [layerTransforms, setLayerTransforms] = useState<Record<string, LayerTransform>>({});
+  const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
+  const [uniformScale, setUniformScale] = useState(true);
 
   const t = TRANSLATIONS[language];
 
@@ -66,6 +71,11 @@ function App() {
       const file = e.target.files[0];
       const url = URL.createObjectURL(file);
       setSingleLayer(url);
+      setLayerTransforms(prev => ({
+        ...prev,
+        'Full Wrap': { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1 }
+      }));
+      setSelectedLayerId('Full Wrap');
       e.target.value = '';
     }
   };
@@ -79,6 +89,11 @@ function App() {
         ...prev,
         [part]: url
       }));
+      setLayerTransforms(prev => ({
+        ...prev,
+        [part]: { x: 100, y: 100, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1 }
+      }));
+      setSelectedLayerId(part);
 
       e.target.value = '';
     }
@@ -116,6 +131,7 @@ function App() {
 
   const handleDeleteSingle = () => {
     setSingleLayer(null);
+    setSelectedLayerId(null);
   };
 
   const handleDeleteMulti = (part: string) => {
@@ -127,6 +143,26 @@ function App() {
 
   const toggleLanguage = () => {
     setLanguage(prev => prev === 'en' ? 'zh' : 'en');
+  };
+
+  const handleTransformChange = (id: string, newTransform: LayerTransform) => {
+    setLayerTransforms(prev => ({
+      ...prev,
+      [id]: newTransform
+    }));
+  };
+
+  const selectedTransform = selectedLayerId ? (layerTransforms[selectedLayerId] || { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1 }) : null;
+
+  const updateSelectedProperty = (changes: Partial<LayerTransform>) => {
+    if (!selectedLayerId) return;
+    setLayerTransforms(prev => {
+      const current = prev[selectedLayerId] || { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1 };
+      return {
+        ...prev,
+        [selectedLayerId]: { ...current, ...changes }
+      };
+    });
   };
 
   // Determine what to pass to canvas
@@ -144,6 +180,10 @@ function App() {
             ref={canvasRef}
             modelPath={currentModelPath}
             layers={activeLayers}
+            transforms={layerTransforms}
+            onTransformChange={handleTransformChange}
+            selectedId={selectedLayerId}
+            onSelect={setSelectedLayerId}
             onExport={() => { }}
           />
 
@@ -252,6 +292,79 @@ function App() {
             </div>
           )}
         </SidebarSection>
+
+        {/* Section: Properties */}
+        {selectedLayerId && selectedTransform && (
+          <SidebarSection title={t.properties} icon={<Settings />}>
+            <div className="space-y-6">
+              {/* Opacity */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center text-xs font-bold uppercase tracking-widest text-gray-500">
+                  <span className="flex items-center gap-1"><Eye size={12} /> {t.opacity}</span>
+                  <span>{Math.round(selectedTransform.opacity * 100)}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={selectedTransform.opacity}
+                  onChange={(e) => updateSelectedProperty({ opacity: parseFloat(e.target.value) })}
+                  className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-foreground"
+                />
+              </div>
+
+              {/* Rotation */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center text-xs font-bold uppercase tracking-widest text-gray-500">
+                  <span className="flex items-center gap-1"><RotateCw size={12} /> {t.rotation}</span>
+                  <span>{Math.round(selectedTransform.rotation)}°</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="360"
+                  value={(selectedTransform.rotation % 360 + 360) % 360}
+                  onChange={(e) => updateSelectedProperty({ rotation: parseFloat(e.target.value) })}
+                  className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-foreground"
+                />
+              </div>
+
+              {/* Scale */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center text-xs font-bold uppercase tracking-widest text-gray-500">
+                  <span className="flex items-center gap-1"><Maximize size={12} /> {t.scale}</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setUniformScale(!uniformScale)}
+                      className="p-1 hover:bg-gray-100 rounded text-foreground transition-colors"
+                      title={t.uniformScale}
+                    >
+                      {uniformScale ? <Lock size={12} /> : <Unlock size={12} />}
+                    </button>
+                    <span>{Math.round(selectedTransform.scaleX * 100)}%</span>
+                  </div>
+                </div>
+                <input
+                  type="range"
+                  min="0.1"
+                  max="3"
+                  step="0.01"
+                  value={selectedTransform.scaleX}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    if (uniformScale) {
+                      updateSelectedProperty({ scaleX: val, scaleY: val });
+                    } else {
+                      updateSelectedProperty({ scaleX: val });
+                    }
+                  }}
+                  className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-foreground"
+                />
+              </div>
+            </div>
+          </SidebarSection>
+        )}
 
         {/* Section: AI Generation */}
         <SidebarSection title={t.aiGeneration} icon={<Sparkles />}>

@@ -27,7 +27,12 @@ export const TRANSLATIONS = {
         prompt: "Prompt (e.g. Fire, Cyberpunk)",
         generate: "Generate Pattern",
         generating: "Generating...",
-        error: "Error generating image"
+        error: "Error generating image",
+        properties: "Properties",
+        opacity: "Opacity",
+        rotation: "Rotation",
+        scale: "Scale",
+        uniformScale: "Uniform Scale"
     },
     zh: {
         configurator: "配置器",
@@ -57,6 +62,11 @@ export const TRANSLATIONS = {
         prompt: "提示词 (例如火焰, 赛博朋克)",
         generate: "生成图案",
         generating: "生成中...",
-        error: "生成失败"
+        error: "生成失败",
+        properties: "属性",
+        opacity: "不透明度",
+        rotation: "旋转",
+        scale: "缩放",
+        uniformScale: "保持比例"
     }
 };
