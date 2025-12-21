@@ -2,7 +2,7 @@
 
 A premium web-based application for designing and visualizing custom car wraps for Tesla vehicles.
 
-![Tesla Wrap Studio Preview](./public/assets/model3-2024-performance.png)
+![Tesla Wrap Studio Preview](public/preview.png)
 
 ## Features
 
@@ -39,6 +39,14 @@ A premium web-based application for designing and visualizing custom car wraps f
     ```bash
     npm run build
     ```
+
+## Code Quality
+
+Run the linter to ensure code standards:
+
+```bash
+npm run lint
+```
 
 ## 3D Models Optimization
 

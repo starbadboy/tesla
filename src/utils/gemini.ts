@@ -15,7 +15,29 @@ export async function generateImage(prompt: string, inputImageBase64?: string, m
 
     try {
         // Enhance prompt for car wrap context
-        const enhancedPrompt = `Follow the input tesla Tesla ${modelName} car wrap Components format. Create a High resolution, sharp details, The design concept is ${prompt}. make sure cover all the components. `;
+        const enhancedPrompt = `You are a professional automotive graphic designer specializing in vehicle wraps.
+
+Design a high-resolution car wrap for a Tesla ${modelName} using the provided official wrap template.
+
+Concept & Requirements:
+
+Core concept/theme: [${prompt}]
+
+Technical Requirements:
+
+
+Strictly follow the exact dimensions, guides, bleed areas, and panel separations of the provided Tesla ${modelName} wrap template.
+Maintain panel alignment continuity across doors, bumpers, hood, trunk, mirrors, and side skirts.
+Output design must be print-ready, high resolution (minimum 300 DPI), and suitable for large-format wrap printing.
+Avoid distortion, stretching, or misalignment outside designated design zones.
+
+Detail Level:
+Include fine details that enhance realism and visual impact when viewed both up close and from a distance.
+Ensure the concept is clearly expressed and consistently applied across all vehicle panels.
+
+Deliverable:
+
+A complete wrap design that fully adheres to the template format and accurately reflects the specified concept and requirements.`;
 
         const options: any = {
             model: 'gemini-2.5-flash-image-preview'
