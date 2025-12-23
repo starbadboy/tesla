@@ -27,7 +27,40 @@ export const processTemplateMask = async (imageUrl: string, bgColor: string = '#
                 return;
             }
 
-            // Draw original image to read data
+            // 1. Get Raw Image Data (to check Alpha)
+            const rawCanvas = document.createElement('canvas');
+            rawCanvas.width = width;
+            rawCanvas.height = height;
+            const rawCtx = rawCanvas.getContext('2d');
+            if (!rawCtx) {
+                reject(new Error("Could not get raw canvas context"));
+                return;
+            }
+            rawCtx.drawImage(img, 0, 0);
+            const rawImageData = rawCtx.getImageData(0, 0, width, height);
+            const rawData = rawImageData.data;
+
+            // Check if image has significant transparency
+            let hasTransparency = false;
+            let transparentPixelCount = 0;
+            const totalPixels = width * height;
+
+            for (let i = 0; i < rawData.length; i += 4) {
+                if (rawData[i + 3] < 250) { // Check Alpha
+                    transparentPixelCount++;
+                }
+            }
+            // If more than 5% is transparent, assume it's a transparency-based asset
+            if (transparentPixelCount / totalPixels > 0.05) {
+                hasTransparency = true;
+            }
+
+            // 2. Process Data
+            // We need a separate pass for "Lines" which might benefit from the white-bg flattened version
+            // for consistency, OR we just use the raw data if opaque.
+
+            // Let's create the "Flattened" version for Line detection (consistent with old behavior)
+            // and for Floodfill fallback.
             const tempCanvas = document.createElement('canvas');
             tempCanvas.width = width;
             tempCanvas.height = height;
@@ -36,14 +69,13 @@ export const processTemplateMask = async (imageUrl: string, bgColor: string = '#
                 reject(new Error("Could not get temp canvas context"));
                 return;
             }
-            // Fill with white first to handle transparency
+            // Fill with white first to handle transparency for brightness calc
             tempCtx.fillStyle = '#FFFFFF';
             tempCtx.fillRect(0, 0, width, height);
             tempCtx.drawImage(img, 0, 0);
 
-            // Get pixel data
-            const imageData = tempCtx.getImageData(0, 0, width, height);
-            const data = imageData.data;
+            const flattenedImageData = tempCtx.getImageData(0, 0, width, height);
+            const data = flattenedImageData.data;
 
             // Prepare output buffers
             const maskImageData = ctxMask.createImageData(width, height);
@@ -51,8 +83,10 @@ export const processTemplateMask = async (imageUrl: string, bgColor: string = '#
             const maskData = maskImageData.data;
             const linesData = linesImageData.data;
 
-            // 1. Create binary mask (Brightness > 200 = White/Background, else Line)
-            const binary = new Uint8Array(width * height);
+            const exterior = new Uint8Array(width * height);
+            const binary = new Uint8Array(width * height); // 1 = White/BG, 0 = Line
+
+            // Calculate Brightness / Binary (for Lines)
             for (let i = 0; i < data.length; i += 4) {
                 const r = data[i];
                 const g = data[i + 1];
@@ -61,24 +95,34 @@ export const processTemplateMask = async (imageUrl: string, bgColor: string = '#
                 binary[i / 4] = brightness > 200 ? 1 : 0;
             }
 
-            // 2. Floodfill from (0,0) to identify "Exterior"
-            const exterior = new Uint8Array(width * height);
-            const stack = [0];
+            if (hasTransparency) {
+                // STRATEGY A: Use Alpha Channel for Mask
+                for (let i = 0; i < width * height; i++) {
+                    const alpha = rawData[i * 4 + 3];
+                    if (alpha < 50) {
+                        exterior[i] = 1; // It is Exterior
+                    } else {
+                        exterior[i] = 0; // It is Interior
+                    }
+                }
+            } else {
+                // STRATEGY B: Floodfill (Old Behavior)
+                const stack = [0];
+                while (stack.length > 0) {
+                    const idx = stack.pop()!;
+                    if (exterior[idx] === 1) continue;
+                    if (binary[idx] === 0) continue; // Boundary (Line) blocks floodfill
 
-            while (stack.length > 0) {
-                const idx = stack.pop()!;
-                if (exterior[idx] === 1) continue;
-                if (binary[idx] === 0) continue; // Boundary
+                    exterior[idx] = 1;
 
-                exterior[idx] = 1;
+                    const x = idx % width;
+                    const y = Math.floor(idx / width);
 
-                const x = idx % width;
-                const y = Math.floor(idx / width);
-
-                if (x > 0) stack.push(idx - 1);
-                if (x < width - 1) stack.push(idx + 1);
-                if (y > 0) stack.push(idx - width);
-                if (y < height - 1) stack.push(idx + width);
+                    if (x > 0) stack.push(idx - 1);
+                    if (x < width - 1) stack.push(idx + 1);
+                    if (y > 0) stack.push(idx - width);
+                    if (y < height - 1) stack.push(idx + width);
+                }
             }
 
             // 3. Reconstruct Images
@@ -90,24 +134,23 @@ export const processTemplateMask = async (imageUrl: string, bgColor: string = '#
             for (let i = 0; i < len; i++) {
                 const pixelIdx = i * 4;
 
-                if (binary[i] === 0) {
-                    // It's a LINE
-                    // Add to Lines Image
+                // LINE DETECTION
+                // If it is NOT exterior, check for line
+                if (exterior[i] === 0 && binary[i] === 0) {
+                    // It's a LINE (Dark pixel inside the car)
                     linesData[pixelIdx] = 220;
                     linesData[pixelIdx + 1] = 220;
                     linesData[pixelIdx + 2] = 220;
                     linesData[pixelIdx + 3] = 255;
-                    // Transparent in Mask
-                } else if (exterior[i] === 1) {
+                }
+
+                // MASK GENERATION
+                if (exterior[i] === 1) {
                     // It's EXTERIOR
-                    // Add to Mask Image
                     maskData[pixelIdx] = bgR;
                     maskData[pixelIdx + 1] = bgG;
                     maskData[pixelIdx + 2] = bgB;
                     maskData[pixelIdx + 3] = 255;
-                    // Transparent in Lines
-                } else {
-                    // It's INTERIOR (Transparent in both)
                 }
             }
 
