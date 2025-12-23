@@ -45,13 +45,15 @@ const TextureImage = ({
     isSelected,
     onSelect,
     onChange,
-    transform
+    transform,
+    isInteractable = true
 }: {
     imgPath: string;
     isSelected: boolean;
     onSelect: () => void;
     onChange: (t: LayerTransform) => void;
     transform: LayerTransform;
+    isInteractable?: boolean;
 }) => {
     const [image] = useImage(imgPath);
     const shapeRef = useRef<Konva.Image>(null);
@@ -67,11 +69,11 @@ const TextureImage = ({
     return (
         <>
             <KonvaImage
-                onClick={onSelect}
-                onTap={onSelect}
+                onClick={isInteractable ? onSelect : undefined}
+                onTap={isInteractable ? onSelect : undefined}
                 ref={shapeRef}
                 image={image}
-                draggable
+                draggable={isInteractable}
                 x={transform.x}
                 y={transform.y}
                 rotation={transform.rotation}
@@ -102,7 +104,7 @@ const TextureImage = ({
                     });
                 }}
             />
-            {isSelected && (
+            {isSelected && isInteractable && (
                 <Transformer
                     ref={trRef}
                     anchorSize={25}
@@ -410,6 +412,7 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
                                 onSelect={() => onSelect(part)}
                                 onChange={(newTransform) => onTransformChange(part, newTransform)}
                                 transform={transform}
+                                isInteractable={mode === 'select'}
                             />
                         );
                     })}

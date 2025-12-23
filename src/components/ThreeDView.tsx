@@ -11,10 +11,11 @@ interface ThreeDViewProps {
     stageRef: React.RefObject<DesignCanvasHandle | null>;
     modelPath: string;
     showTexture?: boolean;
+    isActive?: boolean;
 }
 
 // Simplified Car that applies texture to specific material
-const TexturedCar = ({ stageRef, modelPath, showTexture = true }: { stageRef: React.RefObject<DesignCanvasHandle | null>, modelPath: string, showTexture?: boolean }) => {
+const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true }: { stageRef: React.RefObject<DesignCanvasHandle | null>, modelPath: string, showTexture?: boolean, isActive?: boolean }) => {
     const { scene } = useGLTF(modelPath);
 
     // Create the texture instance once and keep it consistent
@@ -30,6 +31,23 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true }: { stageRef: Re
         setTextureActive(showTexture);
     }, [showTexture]);
 
+    // Force update when becoming active
+    useEffect(() => {
+        if (isActive && stageRef.current && textureActive) {
+            console.log("3D View became active, forcing texture update");
+            try {
+                const newCanvas = stageRef.current.getTextureCanvas();
+                if (newCanvas && newCanvas.width > 0 && newCanvas.height > 0) {
+                    texture.image = newCanvas;
+                    texture.needsUpdate = true;
+                }
+            } catch (e) {
+                console.error("Failed to force update texture", e);
+            }
+        }
+    }, [isActive, textureActive, stageRef, texture]);
+
+
     // Setup initial material properties for realism (this useEffect remains for base material setup)
     useEffect(() => {
         scene.traverse((child) => {
@@ -42,7 +60,7 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true }: { stageRef: Re
                 // DEBUG: Log mesh names and material names to find glass
                 if (!(window as any)['logged_meshes_' + name]) {
                     const matName = (mesh.material as THREE.Material)?.name || 'unknown';
-                    console.log('Found mesh:', name, 'Material:', matName);
+                    // console.log('Found mesh:', name, 'Material:', matName);
                     (window as any)['logged_meshes_' + name] = true;
                 }
                 const isGlass = name.includes('glass') || name.includes('window') || name.includes('windshield');
@@ -50,6 +68,12 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true }: { stageRef: Re
                 const isWheel = name.includes('wheel') || name.includes('tire') || name.includes('rim') || name.includes('kolo');
                 const isInterior = name.includes('interior') || name.includes('seat');
                 const isTrim = name.includes('trim') || name.includes('chrome');
+
+                // Hide studio floor/environment if present
+                if (name.includes('ground') || name.includes('plane') || name.includes('studio') || name.includes('backdrop')) {
+                    mesh.visible = false;
+                    return;
+                }
 
                 if (isGlass) {
                     // High quality physical glass
@@ -217,32 +241,13 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true }: { stageRef: Re
                 }
             }
         });
-        console.log("Wrapped parts:", wrappedParts);
+        // console.log("Wrapped parts:", wrappedParts);
     }, [scene, textureActive, texture]);
 
-    // Manual update function
-    const handleUpdateTexture = () => {
-        // Always enable texture on manual update
-        setTextureActive(true);
-
-        if (stageRef.current) {
-            console.log("Manual texture update triggered");
-
-            try {
-                const newCanvas = stageRef.current.getTextureCanvas();
-                if (newCanvas && newCanvas.width > 0 && newCanvas.height > 0) {
-                    // eslint-disable-next-line react-hooks/immutability
-                    texture.image = newCanvas;
-                    texture.needsUpdate = true;
-                    console.log("Texture updated manually", { w: newCanvas.width, h: newCanvas.height });
-                }
-            } catch (e) {
-                console.error("Failed to manual update texture", e);
-            }
-        }
-    };
-
     useFrame((state) => {
+        // Only update loop when active to save perf
+        if (!isActive) return;
+
         // Throttling: Update every 3 frames (~20fps)
         if (state.clock.getElapsedTime() % 0.05 < 0.016 && stageRef.current && textureActive) {
             try {
@@ -265,15 +270,6 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true }: { stageRef: Re
     return (
         <group>
             <primitive object={scene} scale={2} position={[0, -1, 0]} />
-            <Html position={[0, 1.5, 0]} center>
-                <div
-                    onClick={(e) => { e.stopPropagation(); handleUpdateTexture(); }}
-                    className="cursor-pointer px-4 py-2 bg-blue-600/90 hover:bg-blue-700 text-white rounded shadow-lg backdrop-blur-sm transition-all font-bold text-sm pointer-events-auto select-none"
-                    style={{ pointerEvents: 'auto' }}
-                >
-                    Update Wrap
-                </div>
-            </Html>
         </group>
     );
 };
@@ -287,7 +283,7 @@ const ErrorFallback = ({ error }: { error?: Error }) => (
     </Html>
 );
 
-export const ThreeDView = ({ stageRef, modelPath, showTexture = true }: ThreeDViewProps) => {
+export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive = true }: ThreeDViewProps) => {
     // Determine if we have a valid model path
     const hasModel = modelPath && modelPath.length > 0;
 
@@ -311,7 +307,7 @@ export const ThreeDView = ({ stageRef, modelPath, showTexture = true }: ThreeDVi
                         <ErrorBoundary key={modelPath} fallback={<ErrorFallback />}>
                             {/* Removed Stage to use custom Environment and lighting control */}
                             <group position={[0, 0, 0]}>
-                                <TexturedCar stageRef={stageRef} modelPath={modelPath} showTexture={showTexture} />
+                                <TexturedCar stageRef={stageRef} modelPath={modelPath} showTexture={showTexture} isActive={isActive} />
                             </group>
                         </ErrorBoundary>
                     ) : (

@@ -35,7 +35,6 @@ function App() {
   const [brushSize, setBrushSize] = useState(5);
 
   const [is3DView, setIs3DView] = useState(false);
-  const [showWrap] = useState(false);
 
   const t = TRANSLATIONS[language];
 
@@ -205,7 +204,7 @@ function App() {
             />
           </div>
           <div className={cn("w-full h-full absolute top-0 left-0 transition-opacity duration-300", is3DView ? "opacity-100 z-10" : "opacity-0 pointer-events-none z-0")}>
-            <ThreeDView stageRef={canvasRef} modelPath={CAR_3D_MODELS[currentModelName]} showTexture={showWrap} />
+            <ThreeDView stageRef={canvasRef} modelPath={CAR_3D_MODELS[currentModelName]} isActive={is3DView} />
           </div>
         </div>
       </div>
@@ -241,7 +240,7 @@ function App() {
                 is3DView ? "bg-foreground text-background" : "bg-transparent text-foreground hover:bg-gray-100"
               )}
             >
-              <Box size={14} /> 3D Preview <span className="ml-1 text-[8px] bg-orange-500 text-white px-1 rounded">COMING SOON</span>
+              <Box size={14} /> 3D Preview
             </button>
           </div>
 
