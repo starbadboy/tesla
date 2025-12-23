@@ -31,19 +31,44 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true 
         setTextureActive(showTexture);
     }, [showTexture]);
 
-    // Force update when becoming active
-    useEffect(() => {
-        if (isActive && stageRef.current && textureActive) {
-            console.log("3D View became active, forcing texture update");
+    const updateTexture = () => {
+        if (stageRef.current && textureActive) {
             try {
                 const newCanvas = stageRef.current.getTextureCanvas();
                 if (newCanvas && newCanvas.width > 0 && newCanvas.height > 0) {
+                    // eslint-disable-next-line react-hooks/immutability
                     texture.image = newCanvas;
                     texture.needsUpdate = true;
                 }
             } catch (e) {
-                console.error("Failed to force update texture", e);
+                // console.error("Failed to update texture", e);
             }
+        }
+    };
+
+    // Force update when becoming active
+    useEffect(() => {
+        if (isActive && textureActive) {
+            console.log("3D View became active, forcing texture update");
+
+            // Immediate attempt
+            updateTexture();
+
+            // Delayed attempt to allow for layout/rendering to settle
+            const timer = setTimeout(() => {
+                console.log("3D View delayed texture update");
+                updateTexture();
+            }, 100);
+
+            // Second delay for safety
+            const timer2 = setTimeout(() => {
+                updateTexture();
+            }, 500);
+
+            return () => {
+                clearTimeout(timer);
+                clearTimeout(timer2);
+            };
         }
     }, [isActive, textureActive, stageRef, texture]);
 
@@ -59,7 +84,7 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true 
                 // DEBUG: Log mesh names to find glass
                 // DEBUG: Log mesh names and material names to find glass
                 if (!(window as any)['logged_meshes_' + name]) {
-                    const matName = (mesh.material as THREE.Material)?.name || 'unknown';
+                    // const matName = (mesh.material as THREE.Material)?.name || 'unknown';
                     // console.log('Found mesh:', name, 'Material:', matName);
                     (window as any)['logged_meshes_' + name] = true;
                 }
@@ -249,21 +274,8 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true 
         if (!isActive) return;
 
         // Throttling: Update every 3 frames (~20fps)
-        if (state.clock.getElapsedTime() % 0.05 < 0.016 && stageRef.current && textureActive) {
-            try {
-                // If the user isn't interacting, we might want to skip updates to save perf?
-                // For now, keep it simple.
-                // Note: getTextureCanvas is slightly expensive as it hides/shows nodes.
-                // We might want to optimize this later if it causes stutter.
-                const newCanvas = stageRef.current.getTextureCanvas();
-                if (newCanvas && newCanvas.width > 0 && newCanvas.height > 0) {
-                    // eslint-disable-next-line react-hooks/immutability
-                    texture.image = newCanvas;
-                    texture.needsUpdate = true;
-                }
-            } catch (e) {
-                // console.error("Failed to update texture", e);
-            }
+        if (state.clock.getElapsedTime() % 0.05 < 0.016) {
+            updateTexture();
         }
     });
 
