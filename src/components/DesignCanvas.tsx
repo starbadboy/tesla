@@ -8,6 +8,7 @@ export interface DesignCanvasHandle {
     exportImage: () => void;
     clearLines: () => void;
     getStage: () => Konva.Stage | null;
+    getTextureCanvas: () => HTMLCanvasElement | null;
 }
 
 export interface LayerTransform {
@@ -17,6 +18,13 @@ export interface LayerTransform {
     scaleX: number;
     scaleY: number;
     opacity: number;
+}
+
+interface DrawnLine {
+    tool: string;
+    points: number[];
+    color: string;
+    size: number;
 }
 
 interface DesignCanvasProps {
@@ -123,11 +131,12 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
     brushColor,
     brushSize
 }, ref) => {
-    const [processedOverlay, setProcessedOverlay] = useState<string | null>(null);
-    const [overlayImage] = useImage(processedOverlay || '');
+    const [overlays, setOverlays] = useState<{ mask: string | null, lines: string | null }>({ mask: null, lines: null });
+    const [maskImage] = useImage(overlays.mask || '');
+    const [linesImage] = useImage(overlays.lines || '');
 
     // Drawing state
-    const [lines, setLines] = useState<any[]>([]);
+    const [lines, setLines] = useState<DrawnLine[]>([]);
     const isDrawing = useRef(false);
 
     // Internal ref to the Stage
@@ -142,23 +151,81 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
             setLines([]);
         },
         getStage: () => stageRef.current,
+        getTextureCanvas: () => {
+            const stage = stageRef.current;
+            if (!stage) return null;
+
+            // 1. Hide Overlays and UI
+            const maskNode = stage.findOne('.maskImage');
+            const linesNode = stage.findOne('.linesImage');
+            const transformers = stage.find('Transformer');
+
+            if (maskNode) maskNode.hide();
+            if (linesNode) linesNode.hide();
+            transformers.forEach(t => t.hide());
+
+            try {
+                // Calculate crop based on dimensions and scale
+                // We want to capture exactly the dimensions.width x dimensions.height area
+                // taking into account the current stage scale and position
+                const contentX = (stage.width() - dimensions.width * scale) / 2;
+                const contentY = (stage.height() - dimensions.height * scale) / 2;
+                const contentW = dimensions.width * scale;
+                const contentH = dimensions.height * scale;
+
+                // We want the output to be the original dimension size (or limited to 2048 for texture perf)
+                // If contentW is the "screen size" of the content, and we want "dimensions.width" pixels
+                // Then pixelRatio = dimensions.width / contentW = 1 / scale
+                const pixelRatio = 1 / scale;
+
+                const canvas = stage.toCanvas({
+                    x: contentX,
+                    y: contentY,
+                    width: contentW,
+                    height: contentH,
+                    pixelRatio: pixelRatio
+                });
+
+                // Restore visibility
+                if (maskNode) maskNode.show();
+                if (linesNode) linesNode.show();
+                transformers.forEach(t => t.show());
+
+                return canvas;
+            } catch (e) {
+                console.error("Error generating texture canvas:", e);
+                // Restore visibility in case of error
+                if (maskNode) maskNode.show();
+                if (linesNode) linesNode.show();
+                transformers.forEach(t => t.show());
+                return null;
+            }
+        },
         exportImage: () => {
             const stage = stageRef.current;
             if (stage) {
                 // Clear selection before exporting
                 onSelect(null);
 
-                // Allow state update to clear selection (next tick)
+                // Allow state update to clear selection
                 setTimeout(() => {
-                    const TARGET_SIZE = 1024;
-                    const pixelRatio = TARGET_SIZE / (dimensions.width * scale);
+                    // 1. Hide Overlays (Mask & Lines) so we capture only the user's design
+                    const maskNode = stage.findOne('.maskImage');
+                    const linesNode = stage.findOne('.linesImage');
+                    if (maskNode) maskNode.hide();
+                    if (linesNode) linesNode.hide();
 
+                    const TARGET_SIZE = 1024;
+                    // Calculate crop based on dimensions and scale, same as before
                     const contentX = (stage.width() - dimensions.width * scale) / 2;
                     const contentY = (stage.height() - dimensions.height * scale) / 2;
                     const contentW = dimensions.width * scale;
                     const contentH = dimensions.height * scale;
+                    // Scale to target size
+                    const pixelRatio = TARGET_SIZE / contentW;
 
-                    const uri = stage.toDataURL({
+                    // Get Base Image (User Design + White Rect, NO Overlays)
+                    const baseUri = stage.toDataURL({
                         x: contentX,
                         y: contentY,
                         width: contentW,
@@ -167,12 +234,51 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
                         mimeType: 'image/png'
                     });
 
-                    const link = document.createElement('a');
-                    link.download = `design-tesla-1024.png`;
-                    link.href = uri;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
+                    // Restore Overlays
+                    if (maskNode) maskNode.show();
+                    if (linesNode) linesNode.show();
+
+                    // 2. Post-Process: Apply Mask to make exterior transparent
+                    const img = new Image();
+                    img.onload = () => {
+                        const cvs = document.createElement('canvas');
+                        cvs.width = img.width;
+                        cvs.height = img.height;
+                        const ctx = cvs.getContext('2d');
+                        if (!ctx) return;
+
+                        // Draw Base Design
+                        ctx.drawImage(img, 0, 0);
+
+                        // Draw Mask with Destination-Out (Cut hole for exterior)
+                        if (overlays.mask) {
+                            const maskImg = new Image();
+                            maskImg.crossOrigin = "Anonymous";
+                            maskImg.onload = () => {
+                                ctx.globalCompositeOperation = 'destination-out';
+                                // Draw mask stretch to fit
+                                ctx.drawImage(maskImg, 0, 0, cvs.width, cvs.height);
+
+                                // Export Final
+                                const link = document.createElement('a');
+                                link.download = `design-tesla-1024.png`;
+                                link.href = cvs.toDataURL('image/png');
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                            };
+                            maskImg.src = overlays.mask;
+                        } else {
+                            // Fallback if no mask
+                            const link = document.createElement('a');
+                            link.download = `design-tesla-1024.png`;
+                            link.href = cvs.toDataURL('image/png');
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                        }
+                    };
+                    img.src = baseUri;
                 }, 100);
             }
         }
@@ -183,8 +289,9 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
         let isMounted = true;
         const loadAndProcess = async () => {
             try {
+                // @ts-ignore
                 const result = await processTemplateMask(modelPath);
-                if (isMounted) setProcessedOverlay(result);
+                if (isMounted) setOverlays(result);
             } catch (e) {
                 console.error("Failed to process mask", e);
             }
@@ -195,13 +302,13 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
 
     // Update dimensions when overlay loads
     useEffect(() => {
-        if (overlayImage) {
+        if (maskImage) {
             setDimensions({
-                width: overlayImage.width,
-                height: overlayImage.height
+                width: maskImage.width,
+                height: maskImage.height
             });
         }
-    }, [overlayImage]);
+    }, [maskImage]);
 
     // Layout state
     const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
@@ -228,15 +335,14 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
         return () => resizeObserver.disconnect();
     }, [dimensions]);
 
-    const handleMouseDown = (e: any) => {
+    const handleMouseDown = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
         if (mode === 'draw') {
-            isDrawing.current = true;
-            const pos = e.target.getStage().getPointerPosition();
-            // Transform pointer position to local stage coordinates (accounting for scale/centering)
-            // But wait, the Line is inside the Stage -> Layer. 
-            // The Layer has no transform. The Stage has scale and offset.
-            // We need to inverse form the stage transform.
             const stage = e.target.getStage();
+            const pos = stage?.getPointerPosition();
+
+            if (!stage || !pos) return;
+
+            isDrawing.current = true;
             const transform = stage.getAbsoluteTransform().copy();
             transform.invert();
             const point = transform.point(pos);
@@ -251,18 +357,23 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
         }
     };
 
-    const handleMouseMove = (e: any) => {
+    const handleMouseMove = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
         if (mode === 'draw' && isDrawing.current) {
             const stage = e.target.getStage();
-            const point = stage.getRelativePointerPosition();
+            if (!stage) return;
 
-            let lastLine = lines[lines.length - 1];
+            const point = stage.getRelativePointerPosition();
+            if (!point) return;
+
+            const newLines = [...lines];
+            const lastLine = { ...newLines[newLines.length - 1] };
+
             // add point
             lastLine.points = lastLine.points.concat([point.x, point.y]);
 
             // replace last
-            lines.splice(lines.length - 1, 1, lastLine);
-            setLines(lines.concat());
+            newLines[newLines.length - 1] = lastLine;
+            setLines(newLines);
         }
     };
 
@@ -323,9 +434,18 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
                 </Layer>
 
                 <Layer name="overlayLayer" listening={false}>
-                    {processedOverlay && (
+                    {overlays.mask && maskImage && (
                         <KonvaImage
-                            image={overlayImage}
+                            name="maskImage"
+                            image={maskImage}
+                            width={dimensions.width}
+                            height={dimensions.height}
+                        />
+                    )}
+                    {overlays.lines && linesImage && (
+                        <KonvaImage
+                            name="linesImage"
+                            image={linesImage}
                             width={dimensions.width}
                             height={dimensions.height}
                         />

@@ -8,7 +8,7 @@
  */
 export async function generateImage(prompt: string, inputImageBase64?: string, modelName: string = "Car"): Promise<string> {
     // Puter.js is loaded globally via script tag in index.html
-    // @ts-ignore
+    // Puter.js is loaded globally via script tag in index.html
     if (!window.puter || !window.puter.ai || !window.puter.ai.txt2img) {
         throw new Error("Puter.js not loaded or API unavailable");
     }
@@ -39,7 +39,7 @@ Deliverable:
 
 A complete wrap design that fully adheres to the template format and accurately reflects the specified concept and requirements.`;
 
-        const options: any = {
+        const options: Record<string, unknown> = {
             model: 'gemini-2.5-flash-image-preview'
         };
 
@@ -53,7 +53,6 @@ A complete wrap design that fully adheres to the template format and accurately 
             options.input_image_mime_type = "image/png"; // Assuming PNG for now from convert
         }
 
-        // @ts-ignore
         const imageElement = await window.puter.ai.txt2img(enhancedPrompt, options);
         return imageElement.src;
     } catch (error) {

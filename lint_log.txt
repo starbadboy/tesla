@@ -1,0 +1,54 @@
+
+> web-car-designer@0.0.0 lint
+> eslint .
+
+
+/Users/tao.song51/Desktop/teslawrap/src/components/DesignCanvas.tsx
+  292:17  error  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    @typescript-eslint/ban-ts-comment
+  368:17  error  'lastLine' is never reassigned. Use 'const' instead                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    prefer-const
+  370:13  error  Error: This value cannot be modified
+
+Modifying a value returned from 'useState()', which should not be modified directly. Use the setter function to update instead.
+
+/Users/tao.song51/Desktop/teslawrap/src/components/DesignCanvas.tsx:370:13
+  368 |             let lastLine = lines[lines.length - 1];
+  369 |             // add point
+> 370 |             lastLine.points = lastLine.points.concat([point.x, point.y]);
+      |             ^^^^^^^^ `lines` cannot be modified
+  371 |
+  372 |             // replace last
+  373 |             lines.splice(lines.length - 1, 1, lastLine);  react-hooks/immutability
+
+/Users/tao.song51/Desktop/teslawrap/src/components/Layout/Sidebar.tsx
+  55:68  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/tao.song51/Desktop/teslawrap/src/components/ThreeDView.tsx
+  137:21  error  Error: This value cannot be modified
+
+Modifying a value previously passed as an argument to a hook is not allowed. Consider moving the modification before calling the hook.
+
+/Users/tao.song51/Desktop/teslawrap/src/components/ThreeDView.tsx:137:21
+  135 |                 const newCanvas = stageRef.current.getTextureCanvas();
+  136 |                 if (newCanvas && newCanvas.width > 0 && newCanvas.height > 0) {
+> 137 |                     texture.image = newCanvas;
+      |                     ^^^^^^^ `texture` cannot be modified
+  138 |                     texture.needsUpdate = true;
+  139 |                     console.log("Texture updated manually", { w: newCanvas.width, h: newCanvas.height });
+  140 |                 }  react-hooks/immutability
+  157:21  error  Error: This value cannot be modified
+
+Modifying a value previously passed as an argument to a hook is not allowed. Consider moving the modification before calling the hook.
+
+/Users/tao.song51/Desktop/teslawrap/src/components/ThreeDView.tsx:157:21
+  155 |                 const newCanvas = stageRef.current.getTextureCanvas();
+  156 |                 if (newCanvas && newCanvas.width > 0 && newCanvas.height > 0) {
+> 157 |                     texture.image = newCanvas;
+      |                     ^^^^^^^ `texture` cannot be modified
+  158 |                     texture.needsUpdate = true;
+  159 |                 }
+  160 |             } catch (e) {                                                                                  react-hooks/immutability
+  160:22  error  'e' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              @typescript-eslint/no-unused-vars
+
+✖ 7 problems (7 errors, 0 warnings)
+  1 error and 0 warnings potentially fixable with the `--fix` option.
+
