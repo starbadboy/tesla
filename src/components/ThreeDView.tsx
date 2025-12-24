@@ -223,7 +223,7 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true 
                     const m = new THREE.MeshPhysicalMaterial({
                         color: 0xffffff,
                         transmission: 0.9,
-                        roughness: 0.2,
+                        roughness: 0.1,
                         metalness: 0.1,
                         clearcoat: 1.0,
                     });
@@ -236,7 +236,7 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true 
                     const newMat = new THREE.MeshPhysicalMaterial({
                         color: new THREE.Color(0x000000), // Black base car color
                         metalness: 0.1,
-                        roughness: 0.2, // Smooth finish
+                        roughness: 0.1, // Smooth finish
                         clearcoat: 1.0, // High clearcoat for car paint look
                         clearcoatRoughness: 0.03, // Very polished clearcoat
                         envMapIntensity: 1.0,
@@ -333,15 +333,10 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true 
                                 `
                                 vec4 wrapColor = texture2D(uTex, vWrapUv);
                                 
-                                // Tesla Gallery Logic: "Transparency" for White areas (R>0.95, G>0.95, B>0.95)
-                                // If the wrap pixel is white, we show the base material color (diffuseColor)
-                                
-                                float isWhite = step(0.95, wrapColor.r) * step(0.95, wrapColor.g) * step(0.95, wrapColor.b);
-                                
-                                // If isWhite is 1.0, we use diffuseColor (Base Paint). 
-                                // If isWhite is 0.0, we use wrapColor.
-                                
-                                diffuseColor.rgb = mix(wrapColor.rgb, diffuseColor.rgb, isWhite);
+                                // Use alpha channel to blend between wrap and base paint
+                                // Transparent areas (alpha=0) show base paint color (diffuseColor)
+                                // Opaque areas (alpha=1) show wrap color
+                                diffuseColor.rgb = mix(diffuseColor.rgb, wrapColor.rgb, wrapColor.a);
                                 `
                             );
                         };
@@ -480,7 +475,7 @@ export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive =
                     </mesh>
 
                     {hasModel ? (
-                        <ErrorBoundary key={modelPath} fallback={<ErrorFallback />}>
+                        <ErrorBoundary key={`${modelPath}-${isWrapApplied}`} fallback={<ErrorFallback />}>
                             {/* Removed Stage to use custom Environment and lighting control */}
                             <group position={[0, 0, 0]}>
                                 <TexturedCar stageRef={stageRef} modelPath={modelPath} showTexture={isWrapApplied} isActive={isActive} />

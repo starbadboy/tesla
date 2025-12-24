@@ -168,19 +168,14 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
 
             try {
                 // Calculate crop based on dimensions and scale
-                // We want to capture exactly the dimensions.width x dimensions.height area
-                // taking into account the current stage scale and position
                 const contentX = (stage.width() - dimensions.width * scale) / 2;
                 const contentY = (stage.height() - dimensions.height * scale) / 2;
                 const contentW = dimensions.width * scale;
                 const contentH = dimensions.height * scale;
 
-                // We want the output to be the original dimension size (or limited to 2048 for texture perf)
-                // If contentW is the "screen size" of the content, and we want "dimensions.width" pixels
-                // Then pixelRatio = dimensions.width / contentW = 1 / scale
                 const pixelRatio = 1 / scale;
 
-                const canvas = stage.toCanvas({
+                const baseCanvas = stage.toCanvas({
                     x: contentX,
                     y: contentY,
                     width: contentW,
@@ -193,7 +188,31 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
                 if (linesNode) linesNode.show();
                 transformers.forEach(t => t.show());
 
-                return canvas;
+                // 2. Apply mask to create transparency for areas outside the template
+                if (overlays.mask) {
+                    const resultCanvas = document.createElement('canvas');
+                    resultCanvas.width = baseCanvas.width;
+                    resultCanvas.height = baseCanvas.height;
+                    const ctx = resultCanvas.getContext('2d');
+                    if (!ctx) return baseCanvas;
+
+                    // Draw the base design
+                    ctx.drawImage(baseCanvas, 0, 0);
+
+                    // Create a temporary canvas to load the mask
+                    const maskImg = new Image();
+                    maskImg.crossOrigin = "Anonymous";
+
+                    // Check if mask is already loaded (from maskImage state)
+                    if (maskImage) {
+                        // Apply mask with destination-out to cut holes for exterior
+                        ctx.globalCompositeOperation = 'destination-out';
+                        ctx.drawImage(maskImage, 0, 0, resultCanvas.width, resultCanvas.height);
+                        return resultCanvas;
+                    }
+                }
+
+                return baseCanvas;
             } catch (e) {
                 console.error("Error generating texture canvas:", e);
                 // Restore visibility in case of error
