@@ -9,7 +9,10 @@ A premium web-based application for designing and visualizing custom car wraps f
 -   **Interactive Design Canvas**: specialized 2D editor for precise wrap placement and customization.
 -   **AI Generation**: Generate unique wrap designs using AI prompts.
 -   **Multi-Part Support**: Upload separate designs for different car parts (Front, Rear, Sides).
--   **Real-time 3D Preview** (Coming Soon): Visualize designs on high-fidelity 3D models.
+-   **Real-time 3D Preview**: Visualize designs on high-fidelity 3D models with:
+    -   **Tesla Gallery Studio Lighting**: professional 5-point lighting setup.
+    -   **Physically Based Rendering (PBR)**: Realistic car paint materials with custom roughness/clearcoat.
+    -   **Custom Shader Integration**: Seamless blending of wrap designs with the base car model using UV mapping and alpha blending.
     -   Optimized with **Draco compression** for fast loading.
     -   Includes error handling and fallback states.
 -   **Internationalization**: Full support for English and Traditional Chinese.
