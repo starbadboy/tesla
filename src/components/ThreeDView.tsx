@@ -505,45 +505,49 @@ export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive =
                 >
                     <button
                         onClick={toggleWrap}
+                        className="group"
                         style={{
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '10px',
-                            padding: '14px 28px',
+                            gap: '8px',
+                            padding: '8px 16px',
                             backgroundColor: isWrapApplied
-                                ? 'rgba(239, 68, 68, 0.9)'
-                                : 'rgba(34, 197, 94, 0.9)',
-                            backdropFilter: 'blur(12px)',
-                            border: '1px solid rgba(255, 255, 255, 0.2)',
-                            borderRadius: '50px',
-                            color: 'white',
-                            fontSize: '14px',
-                            fontWeight: '600',
+                                ? 'rgba(20, 20, 20, 0.8)'
+                                : 'rgba(255, 255, 255, 0.9)',
+                            backdropFilter: 'blur(8px)',
+                            border: `1px solid ${isWrapApplied ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+                            borderRadius: '30px',
+                            color: isWrapApplied ? 'white' : 'black',
+                            fontSize: '12px',
+                            fontWeight: '500',
                             cursor: 'pointer',
-                            boxShadow: isWrapApplied
-                                ? '0 8px 32px rgba(239, 68, 68, 0.4), 0 4px 12px rgba(0, 0, 0, 0.2)'
-                                : '0 8px 32px rgba(34, 197, 94, 0.4), 0 4px 12px rgba(0, 0, 0, 0.2)',
-                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.5px',
+                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                            transition: 'all 0.2s ease',
                         }}
                         onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = 'scale(1.05)';
-                            e.currentTarget.style.boxShadow = isWrapApplied
-                                ? '0 12px 40px rgba(239, 68, 68, 0.5), 0 6px 16px rgba(0, 0, 0, 0.25)'
-                                : '0 12px 40px rgba(34, 197, 94, 0.5), 0 6px 16px rgba(0, 0, 0, 0.25)';
+                            e.currentTarget.style.transform = 'translateY(-2px)';
+                            e.currentTarget.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.15)';
                         }}
                         onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = 'scale(1)';
-                            e.currentTarget.style.boxShadow = isWrapApplied
-                                ? '0 8px 32px rgba(239, 68, 68, 0.4), 0 4px 12px rgba(0, 0, 0, 0.2)'
-                                : '0 8px 32px rgba(34, 197, 94, 0.4), 0 4px 12px rgba(0, 0, 0, 0.2)';
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
                         }}
                     >
                         {/* Icon */}
-                        <span style={{ fontSize: '18px' }}>
-                            {isWrapApplied ? '✕' : '✓'}
-                        </span>
+                        <div style={{
+                            width: '16px',
+                            height: '16px',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            backgroundColor: isWrapApplied ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)',
+                        }}>
+                            <span style={{ fontSize: '10px' }}>
+                                {isWrapApplied ? '✕' : '✓'}
+                            </span>
+                        </div>
+
                         {/* Label */}
                         <span>
                             {isWrapApplied
