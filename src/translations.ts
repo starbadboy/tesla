@@ -38,7 +38,9 @@ export const TRANSLATIONS = {
         brushColor: "Brush Color",
         clearDrawing: "Clear Drawings",
         selectMode: "Select Mode",
-        drawMode: "Draw Mode"
+        drawMode: "Draw Mode",
+        applyWrap: "Apply Wrap",
+        removeWrap: "Remove Wrap"
     },
     zh: {
         configurator: "配置器",
@@ -79,6 +81,8 @@ export const TRANSLATIONS = {
         brushColor: "画笔颜色",
         clearDrawing: "清除绘制",
         selectMode: "选择模式",
-        drawMode: "绘制模式"
+        drawMode: "绘制模式",
+        applyWrap: "应用车衣",
+        removeWrap: "移除车衣"
     }
 };

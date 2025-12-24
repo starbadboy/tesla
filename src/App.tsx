@@ -204,7 +204,12 @@ function App() {
             />
           </div>
           <div className={cn("w-full h-full absolute top-0 left-0 transition-opacity duration-300", is3DView ? "opacity-100 z-10" : "opacity-0 pointer-events-none z-0")}>
-            <ThreeDView stageRef={canvasRef} modelPath={CAR_3D_MODELS[currentModelName]} isActive={is3DView} />
+            <ThreeDView
+              stageRef={canvasRef}
+              modelPath={CAR_3D_MODELS[currentModelName]}
+              isActive={is3DView}
+              translations={{ applyWrap: t.applyWrap, removeWrap: t.removeWrap }}
+            />
           </div>
         </div>
       </div>
