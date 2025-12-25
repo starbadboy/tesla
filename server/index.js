@@ -11,7 +11,14 @@ const Wrap = require('./models/Wrap');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://admin:password@localhost:27017/teslawrap?authSource=admin&authMechanism=SCRAM-SHA-256';
+const MONGODB_URI = process.env.MONGODB_URI;
+
+if (!MONGODB_URI) {
+    console.warn("⚠️  WARNING: MONGODB_URI environment variable is not set!");
+    console.warn("   Falling back to localhost (this will likely fail in production).");
+}
+
+const mongoUrl = MONGODB_URI || 'mongodb://admin:password@localhost:27017/teslawrap?authSource=admin&authMechanism=SCRAM-SHA-256';
 
 // Middleware
 app.use(cors());
@@ -37,7 +44,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 // MongoDB Connection
-mongoose.connect(MONGODB_URI)
+mongoose.connect(mongoUrl)
     .then(() => console.log('MongoDB Connected'))
     .catch(err => console.log('MongoDB Connection Error:', err));
 
