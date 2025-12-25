@@ -6,6 +6,7 @@ import Konva from 'konva';
 
 export interface DesignCanvasHandle {
     exportImage: () => void;
+    getExportBlob: () => Promise<Blob | null>;
     clearLines: () => void;
     getStage: () => Konva.Stage | null;
     getTextureCanvas: () => HTMLCanvasElement | null;
@@ -302,6 +303,74 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
                     img.src = baseUri;
                 }, 100);
             }
+        },
+        getExportBlob: () => {
+            return new Promise((resolve) => {
+                const stage = stageRef.current;
+                if (!stage) {
+                    resolve(null);
+                    return;
+                }
+
+                // Clear selection before exporting
+                onSelect(null);
+
+                // Allow state update to clear selection
+                setTimeout(() => {
+                    const maskNode = stage.findOne('.maskImage');
+                    const linesNode = stage.findOne('.linesImage');
+                    if (maskNode) maskNode.hide();
+                    if (linesNode) linesNode.hide();
+
+                    const TARGET_SIZE = 1024;
+                    const contentX = (stage.width() - dimensions.width * scale) / 2;
+                    const contentY = (stage.height() - dimensions.height * scale) / 2;
+                    const contentW = dimensions.width * scale;
+                    const contentH = dimensions.height * scale;
+                    const pixelRatio = TARGET_SIZE / contentW;
+
+                    const baseUri = stage.toDataURL({
+                        x: contentX,
+                        y: contentY,
+                        width: contentW,
+                        height: contentH,
+                        pixelRatio: pixelRatio,
+                        mimeType: 'image/png'
+                    });
+
+                    if (maskNode) maskNode.show();
+                    if (linesNode) linesNode.show();
+
+                    const img = new Image();
+                    img.onload = () => {
+                        const cvs = document.createElement('canvas');
+                        cvs.width = img.width;
+                        cvs.height = img.height;
+                        const ctx = cvs.getContext('2d');
+                        if (!ctx) {
+                            resolve(null);
+                            return;
+                        }
+
+                        ctx.drawImage(img, 0, 0);
+
+                        if (overlays.mask) {
+                            const maskImg = new Image();
+                            maskImg.crossOrigin = "Anonymous";
+                            maskImg.onload = () => {
+                                ctx.globalCompositeOperation = 'destination-out';
+                                ctx.drawImage(maskImg, 0, 0, cvs.width, cvs.height);
+                                cvs.toBlob((blob) => resolve(blob), 'image/png');
+                            };
+                            maskImg.onerror = () => resolve(null);
+                            maskImg.src = overlays.mask;
+                        } else {
+                            cvs.toBlob((blob) => resolve(blob), 'image/png');
+                        }
+                    };
+                    img.src = baseUri;
+                }, 100);
+            });
         }
     }));
 

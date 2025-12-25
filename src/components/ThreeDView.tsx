@@ -13,6 +13,7 @@ interface ThreeDViewProps {
     modelPath: string;
     showTexture?: boolean;
     isActive?: boolean;
+    onToggleWrap?: (visible: boolean) => void;
     translations?: {
         applyWrap: string;
         removeWrap: string;
@@ -382,7 +383,7 @@ const ErrorFallback = ({ error }: { error?: Error }) => (
     </Html>
 );
 
-export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive = true, translations }: ThreeDViewProps) => {
+export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive = true, onToggleWrap, translations }: ThreeDViewProps) => {
     // Determine if we have a valid model path
     const hasModel = modelPath && modelPath.length > 0;
 
@@ -395,7 +396,9 @@ export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive =
     }, [showTexture]);
 
     const toggleWrap = () => {
-        setIsWrapApplied(prev => !prev);
+        const newState = !isWrapApplied;
+        setIsWrapApplied(newState);
+        onToggleWrap?.(newState);
     };
 
     return (

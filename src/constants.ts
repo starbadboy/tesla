@@ -24,3 +24,15 @@ export const CAR_3D_MODELS: Record<string, string> = {
     "Model Y L": "", // Not available
     "Model Y": `${CDN_BASE}/models/modely_classic/ModelY_High.gltf`,
 };
+
+export const WRAP_FOLDER_MAP: Record<string, string> = {
+    "Cybertruck": "cybertruck",
+    "Model 3 (2024 Base)": "model3-2024-base",
+    "Model 3 (2024 Performance)": "model3-2024-performance",
+    "Model 3 (Classic)": "model3",
+    "Model Y (2025 Base)": "modely-2025-base",
+    "Model Y (2025 Performance)": "modely-2025-performance",
+    "Model Y (2025 Long Range)": "modely-2025-premium",
+    "Model Y L": "modely-l",
+    "Model Y": "modely",
+};
