@@ -17,9 +17,10 @@ interface Wrap {
 export interface GalleryProps {
     onLoadWrap: (imageUrl: string) => void;
     selectedModel?: string;
+    refreshTrigger?: number; // Increment this to trigger a refetch of community wraps
 }
 
-export function Gallery({ onLoadWrap, selectedModel }: GalleryProps) {
+export function Gallery({ onLoadWrap, selectedModel, refreshTrigger }: GalleryProps) {
     const [wraps, setWraps] = useState<Wrap[]>([]);
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(false);
@@ -42,10 +43,10 @@ export function Gallery({ onLoadWrap, selectedModel }: GalleryProps) {
     // Auto-apply logic removed as per user request
 
 
-    // Fetch community wraps on mount so we can show the count
+    // Fetch community wraps on mount and when refreshTrigger changes
     useEffect(() => {
         fetchWraps();
-    }, []);
+    }, [refreshTrigger]);
 
     const fetchWraps = async () => {
         setLoading(true);

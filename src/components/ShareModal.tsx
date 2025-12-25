@@ -6,10 +6,11 @@ import { CAR_MODELS } from '../constants';
 interface ShareModalProps {
     isOpen: boolean;
     onClose: () => void;
+    onShareSuccess?: () => void; // Called after successful share to refresh data
     imageUrl: string | null; // The generated wrap image (blob URL or base64)
 }
 
-export function ShareModal({ isOpen, onClose, imageUrl }: ShareModalProps) {
+export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl }: ShareModalProps) {
     const [name, setName] = useState('');
     const [author, setAuthor] = useState('');
     const [selectedModels, setSelectedModels] = useState<string[]>([]);
@@ -69,6 +70,8 @@ export function ShareModal({ isOpen, onClose, imageUrl }: ShareModalProps) {
             const data = await apiResponse.json();
             console.log('Wrap uploaded:', data);
             onClose();
+            // Trigger refresh of community wraps
+            onShareSuccess?.();
             // Ideally show a success toast here
             alert("Wrap shared successfully!");
 

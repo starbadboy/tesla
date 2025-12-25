@@ -43,6 +43,7 @@ function App() {
   const [shareImageBlob, setShareImageBlob] = useState<string | null>(null);
   const [sidebarMode, setSidebarMode] = useState<'studio' | 'community'>('studio'); // 'studio' | 'community'
   const [isWrapVisible, setIsWrapVisible] = useState(true); // Control wrap visibility for 3D view
+  const [galleryRefreshTrigger, setGalleryRefreshTrigger] = useState(0); // Increment to refresh gallery
 
   const t = TRANSLATIONS[language];
 
@@ -326,6 +327,7 @@ function App() {
             <div className="flex-1 overflow-hidden">
               <Gallery
                 selectedModel={currentModelName}
+                refreshTrigger={galleryRefreshTrigger}
                 onLoadWrap={(url) => {
                   setSingleLayer(url);
                   setUploadMode('single'); // Switch to single mode
@@ -671,6 +673,7 @@ function App() {
       <ShareModal
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
+        onShareSuccess={() => setGalleryRefreshTrigger(prev => prev + 1)}
         imageUrl={shareImageBlob}
       />
     </div >
