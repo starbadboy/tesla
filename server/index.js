@@ -20,33 +20,19 @@ if (!MONGODB_URI) {
 
 const mongoUrl = MONGODB_URI || 'mongodb://admin:password@localhost:27017/teslawrap?authSource=admin&authMechanism=SCRAM-SHA-256';
 
-// Middleware
-app.use(cors());
-app.use(bodyParser.json());
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-// Ensure uploads directory exists
-const uploadsDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir);
-}
-
-// Multer Storage Configuration
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, uploadsDir);
-    },
-    filename: (req, file, cb) => {
-        cb(null, Date.now() + '-' + file.originalname.replace(/\\s+/g, '-'));
-    }
-});
-
-const upload = multer({ storage: storage });
+// Log the connection target (masking password)
+const maskedUrl = mongoUrl.replace(/:([^:@]+)@/, ':****@');
+console.log("Attempting to connect to MongoDB at:", maskedUrl);
 
 // MongoDB Connection
-mongoose.connect(mongoUrl)
-    .then(() => console.log('MongoDB Connected'))
-    .catch(err => console.log('MongoDB Connection Error:', err));
+mongoose.connect(mongoUrl, {
+    serverSelectionTimeoutMS: 5000 // Timeout faster (5s) for better debugging
+})
+    .then(() => console.log('✅ MongoDB Connected Successfully'))
+    .catch(err => {
+        console.error('❌ MongoDB Connection Error:', err);
+        console.error('   Verify your MONGODB_URI and Network Access (IP Whitelist) in Atlas.');
+    });
 
 // Routes
 
