@@ -56,7 +56,7 @@ const TextureImage = ({
     transform: LayerTransform;
     isInteractable?: boolean;
 }) => {
-    const [image] = useImage(imgPath);
+    const [image] = useImage(imgPath, 'anonymous');
     const shapeRef = useRef<Konva.Image>(null);
     const trRef = useRef<Konva.Transformer>(null);
 
@@ -135,8 +135,8 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
     brushSize
 }, ref) => {
     const [overlays, setOverlays] = useState<{ mask: string | null, lines: string | null }>({ mask: null, lines: null });
-    const [maskImage] = useImage(overlays.mask || '');
-    const [linesImage] = useImage(overlays.lines || '');
+    const [maskImage] = useImage(overlays.mask || '', 'anonymous');
+    const [linesImage] = useImage(overlays.lines || '', 'anonymous');
 
     // Drawing state
     const [lines, setLines] = useState<DrawnLine[]>([]);
