@@ -11,14 +11,8 @@ const Wrap = require('./models/Wrap');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
-const MONGODB_URI = process.env.MONGODB_URI;
-
-if (!MONGODB_URI) {
-    console.warn("⚠️  WARNING: MONGODB_URI environment variable is not set!");
-    console.warn("   Falling back to localhost (this will likely fail in production).");
-}
-
-const mongoUrl = MONGODB_URI || 'mongodb://admin:password@localhost:27017/teslawrap?authSource=admin&authMechanism=SCRAM-SHA-256';
+// Hardcoded MongoDB URI as requested to resolve env var issue
+const mongoUrl = 'mongodb+srv://tesla:tesla1234@cluster0.zsfmabv.mongodb.net/teslawrap';
 
 // Middleware
 app.use(cors());
@@ -43,18 +37,15 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
-// Log the connection target (masking password)
-const maskedUrl = mongoUrl.replace(/:([^:@]+)@/, ':****@');
-console.log("Attempting to connect to MongoDB at:", maskedUrl);
+console.log("Attempting to connect to MongoDB...");
 
 // MongoDB Connection
 mongoose.connect(mongoUrl, {
-    serverSelectionTimeoutMS: 5000 // Timeout faster (5s) for better debugging
+    serverSelectionTimeoutMS: 5000
 })
     .then(() => console.log('✅ MongoDB Connected Successfully'))
     .catch(err => {
         console.error('❌ MongoDB Connection Error:', err);
-        console.error('   Verify your MONGODB_URI and Network Access (IP Whitelist) in Atlas.');
     });
 
 // Routes
