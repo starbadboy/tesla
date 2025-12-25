@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Search, Heart, Download } from 'lucide-react';
 import officialWrapsData from '../data/officialWraps.json';
-import { WRAP_FOLDER_MAP } from '../constants';
+import { WRAP_FOLDER_MAP, CDN_BASE } from '../constants';
 
 const officialWraps: Wrap[] = officialWrapsData as Wrap[];
 interface Wrap {
@@ -83,7 +83,8 @@ export function Gallery({ onLoadWrap, selectedModel }: GalleryProps) {
             setWraps(prev => prev.map(w => w._id === wrap._id ? { ...w, downloads: w.downloads + 1 } : w));
 
             // 2. Trigger download
-            const response = await fetch(wrap.imageUrl);
+            const imageUrl = activeTab === 'official' ? `${CDN_BASE}${wrap.imageUrl}` : wrap.imageUrl;
+            const response = await fetch(imageUrl);
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -101,7 +102,8 @@ export function Gallery({ onLoadWrap, selectedModel }: GalleryProps) {
     const handleLoad = (wrap: Wrap) => {
         // Fix image URL to include host if relative
         // Proxy handles /uploads path
-        onLoadWrap(wrap.imageUrl);
+        const url = activeTab === 'official' ? `${CDN_BASE}${wrap.imageUrl}` : wrap.imageUrl;
+        onLoadWrap(url);
         // We don't track download stats on simple view anymore, only on explicit download
     }
 
@@ -167,7 +169,7 @@ export function Gallery({ onLoadWrap, selectedModel }: GalleryProps) {
                             >
                                 <div className="aspect-square bg-gray-50 relative overflow-hidden">
                                     <img
-                                        src={wrap.imageUrl}
+                                        src={`${CDN_BASE}${wrap.imageUrl}`}
                                         alt={wrap.name}
                                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                                     />

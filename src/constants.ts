@@ -1,5 +1,5 @@
 // GitHub CDN base URL for static assets
-const CDN_BASE = "https://raw.githubusercontent.com/starbadboy/tesla/main/public";
+export const CDN_BASE = "https://raw.githubusercontent.com/starbadboy/tesla/main/public";
 
 export const CAR_MODELS: Record<string, string> = {
     "Cybertruck": `${CDN_BASE}/assets/cybertruck.png`,
