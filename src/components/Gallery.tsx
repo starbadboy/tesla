@@ -39,23 +39,13 @@ export function Gallery({ onLoadWrap, selectedModel }: GalleryProps) {
 
     const officialWrapCount = filteredOfficialWraps.length;
 
-    // Auto-apply first official wrap when model changes or on mount
-    useEffect(() => {
-        if (activeTab === 'official' && filteredOfficialWraps.length > 0) {
-            // Use the first wrap
-            const firstWrap = filteredOfficialWraps[0];
-            // Fix image URL to include host if relative
-            // Proxy handles /uploads path, official wraps are in public so just use imageUrl
-            onLoadWrap(firstWrap.imageUrl);
-            // We do NOT track stats for auto-apply
-        }
-    }, [selectedModel]); // Re-run when model changes
+    // Auto-apply logic removed as per user request
 
+
+    // Fetch community wraps on mount so we can show the count
     useEffect(() => {
-        if (activeTab === 'community') {
-            fetchWraps();
-        }
-    }, [activeTab]);
+        fetchWraps();
+    }, []);
 
     const fetchWraps = async () => {
         setLoading(true);
@@ -115,14 +105,20 @@ export function Gallery({ onLoadWrap, selectedModel }: GalleryProps) {
         // We don't track download stats on simple view anymore, only on explicit download
     }
 
-    const filteredWraps = wraps.filter(w => {
+    const communityWrapsByModel = wraps.filter(w => {
+        if (!selectedModel) return true;
+        // If wrap has no specific models, treat as generic/universal? 
+        // Or strictly match? User said "only show selected models".
+        // Let's assume strict match or if models array is empty (Universal)
+        if (w.models.length === 0) return true;
+        return w.models.includes(selectedModel);
+    });
+
+    const filteredWraps = communityWrapsByModel.filter(w => {
         const matchesSearch = w.name.toLowerCase().includes(search.toLowerCase()) ||
             w.author.toLowerCase().includes(search.toLowerCase()) ||
             w.models.some(m => m.toLowerCase().includes(search.toLowerCase()));
 
-        // Also apply model filter to community wraps if desired, but user specifically asked for official.
-        // Let's filter community too for consistency if current tab is community and model is selected?
-        // "community mode also need to select model" - likely implies filtering context.
         return matchesSearch;
     });
 
@@ -140,7 +136,7 @@ export function Gallery({ onLoadWrap, selectedModel }: GalleryProps) {
                     onClick={() => setActiveTab('community')}
                     className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest transition-colors border-b-2 ${activeTab === 'community' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
                 >
-                    Community <span className="ml-1 bg-blue-50 text-blue-600 rounded-full px-2 py-0.5 text-[10px]">{wraps.length}</span>
+                    Community <span className="ml-1 bg-blue-50 text-blue-600 rounded-full px-2 py-0.5 text-[10px]">{communityWrapsByModel.length}</span>
                 </button>
             </div>
 

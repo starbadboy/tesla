@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ChangeEvent } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { CAR_MODELS } from '../constants';
@@ -14,6 +14,7 @@ export function ShareModal({ isOpen, onClose, imageUrl }: ShareModalProps) {
     const [author, setAuthor] = useState('');
     const [selectedModels, setSelectedModels] = useState<string[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
     if (!isOpen) return null;
 
@@ -25,16 +26,29 @@ export function ShareModal({ isOpen, onClose, imageUrl }: ShareModalProps) {
         );
     };
 
+    const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            setUploadedFile(e.target.files[0]);
+        }
+    };
+
     const handleSubmit = async () => {
-        if (!name || !imageUrl) return;
+        if (!name || (!imageUrl && !uploadedFile)) return;
 
         setIsSubmitting(true);
 
         try {
-            // Convert blob URL to File object if necessary, or just fetch the blob
-            const response = await fetch(imageUrl);
-            const blob = await response.blob();
-            const file = new File([blob], "wrap.png", { type: "image/png" });
+            let file: File;
+            if (uploadedFile) {
+                file = uploadedFile;
+            } else if (imageUrl) {
+                // Convert blob URL to File object if necessary, or just fetch the blob
+                const response = await fetch(imageUrl);
+                const blob = await response.blob();
+                file = new File([blob], "wrap.png", { type: "image/png" });
+            } else {
+                throw new Error("No image to upload");
+            }
 
             const formData = new FormData();
             formData.append('name', name);
@@ -103,6 +117,29 @@ export function ShareModal({ isOpen, onClose, imageUrl }: ShareModalProps) {
                                 placeholder="Your name or @twitter"
                                 className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-black transition-colors"
                             />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-1">
+                                Upload Image (Optional)
+                            </label>
+                            <input
+                                type="file"
+                                accept="image/png, image/jpeg, image/jpg"
+                                onChange={handleFileChange}
+                                className="w-full text-sm text-gray-500
+                                  file:mr-4 file:py-2 file:px-4
+                                  file:rounded-full file:border-0
+                                  file:text-xs file:font-semibold
+                                  file:bg-black file:text-white
+                                  hover:file:bg-gray-800
+                                "
+                            />
+                            {uploadedFile && (
+                                <p className="text-xs text-green-600 mt-1">
+                                    Selected: {uploadedFile.name}
+                                </p>
+                            )}
                         </div>
 
                         <div>
