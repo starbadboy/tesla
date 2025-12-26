@@ -3,6 +3,7 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, useGLTF, Html, Environment } from '@react-three/drei';
 import * as THREE from 'three';
 import { useEffect, useMemo, useState } from 'react';
+import { TRANSLATIONS } from '../translations';
 
 
 import type { DesignCanvasHandle } from './DesignCanvas';
@@ -18,6 +19,7 @@ interface ThreeDViewProps {
         applyWrap: string;
         removeWrap: string;
     };
+    language?: 'en' | 'zh';
 }
 
 // Simplified Car that applies texture to specific material
@@ -379,18 +381,22 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true 
     );
 };
 
-const ErrorFallback = ({ error }: { error?: Error }) => (
-    <Html center>
-        <div className="bg-black/80 text-white p-4 rounded text-center min-w-[200px]">
-            <p className="font-bold text-red-400 mb-2">Model Error</p>
-            <p className="text-sm">{error?.message || "Failed to load 3D model"}</p>
-        </div>
-    </Html>
-);
+const ErrorFallback = ({ error, language = 'en' }: { error?: Error, language?: 'en' | 'zh' }) => {
+    const t = TRANSLATIONS[language];
+    return (
+        <Html center>
+            <div className="bg-black/80 text-white p-4 rounded text-center min-w-[200px]">
+                <p className="font-bold text-red-400 mb-2">{t.modelError}</p>
+                <p className="text-sm">{error?.message || t.failedToLoad3DModel}</p>
+            </div>
+        </Html>
+    );
+};
 
-export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive = true, onToggleWrap, translations }: ThreeDViewProps) => {
+export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive = true, onToggleWrap, translations, language = 'en' }: ThreeDViewProps) => {
     // Determine if we have a valid model path
     const hasModel = modelPath && modelPath.length > 0;
+    const t = TRANSLATIONS[language];
 
     // State for toggling wrap on/off
     const [isWrapApplied, setIsWrapApplied] = useState(showTexture);
@@ -407,16 +413,16 @@ export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive =
     };
 
     return (
-        <div className="w-full h-full relative" style={{ background: 'linear-gradient(to bottom, #1a1a1a, #000000)' }}>
+        <div className="w-full h-full relative" style={{ background: 'linear-gradient(to bottom, #dbdbdb, #b0b0b0)' }}>
             <ErrorBoundary fallback={
                 <div className="flex items-center justify-center h-full text-white/50">
-                    <p>3D View Unavailable</p>
+                    <p>{t.viewUnavailable}</p>
                 </div>
             }>
                 <Canvas
                     shadows
                     camera={{ position: [-8, 2, -9], fov: 45, near: 0.01, far: 2000 }}
-                    scene={{ background: new THREE.Color('#111111') }}
+                    scene={{ background: new THREE.Color('#d0d0d0') }}
                     gl={{
                         toneMapping: THREE.NoToneMapping, // FIX: Use NoToneMapping for accurate color matching with 2D overlay
                         outputColorSpace: THREE.SRGBColorSpace,
@@ -485,7 +491,7 @@ export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive =
                     </mesh>
 
                     {hasModel ? (
-                        <ErrorBoundary key={`${modelPath}-${isWrapApplied}`} fallback={<ErrorFallback />}>
+                        <ErrorBoundary key={`${modelPath}-${isWrapApplied}`} fallback={<ErrorFallback language={language} />}>
                             {/* Removed Stage to use custom Environment and lighting control */}
                             <group position={[0, 0, 0]}>
                                 <TexturedCar stageRef={stageRef} modelPath={modelPath} showTexture={isWrapApplied} isActive={isActive} />
@@ -494,79 +500,81 @@ export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive =
                     ) : (
                         <Html center>
                             <div className="bg-black/80 text-white p-4 rounded text-center">
-                                <p className="font-bold">No 3D Model</p>
-                                <p className="text-xs text-gray-400">Select a different vehicle</p>
+                                <p className="font-bold">{t.no3DModel}</p>
+                                <p className="text-xs text-gray-400">{t.selectDifferentVehicle}</p>
                             </div>
                         </Html>
                     )}
                 </Canvas>
-            </ErrorBoundary>
+            </ErrorBoundary >
 
             {/* Apply/Remove Wrap Button */}
-            {hasModel && (
-                <div
-                    style={{
-                        position: 'absolute',
-                        bottom: '24px',
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        zIndex: 10,
-                    }}
-                >
-                    <button
-                        onClick={toggleWrap}
-                        className="group"
+            {
+                hasModel && (
+                    <div
                         style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            padding: '8px 16px',
-                            backgroundColor: isWrapApplied
-                                ? 'rgba(20, 20, 20, 0.8)'
-                                : 'rgba(255, 255, 255, 0.9)',
-                            backdropFilter: 'blur(8px)',
-                            border: `1px solid ${isWrapApplied ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
-                            borderRadius: '30px',
-                            color: isWrapApplied ? 'white' : 'black',
-                            fontSize: '12px',
-                            fontWeight: '500',
-                            cursor: 'pointer',
-                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                            transition: 'all 0.2s ease',
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = 'translateY(-2px)';
-                            e.currentTarget.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.15)';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = 'translateY(0)';
-                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
+                            position: 'absolute',
+                            bottom: '24px',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            zIndex: 10,
                         }}
                     >
-                        {/* Icon */}
-                        <div style={{
-                            width: '16px',
-                            height: '16px',
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            backgroundColor: isWrapApplied ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)',
-                        }}>
-                            <span style={{ fontSize: '10px' }}>
-                                {isWrapApplied ? '✕' : '✓'}
-                            </span>
-                        </div>
+                        <button
+                            onClick={toggleWrap}
+                            className="group"
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '8px 16px',
+                                backgroundColor: isWrapApplied
+                                    ? 'rgba(20, 20, 20, 0.8)'
+                                    : 'rgba(255, 255, 255, 0.9)',
+                                backdropFilter: 'blur(8px)',
+                                border: `1px solid ${isWrapApplied ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+                                borderRadius: '30px',
+                                color: isWrapApplied ? 'white' : 'black',
+                                fontSize: '12px',
+                                fontWeight: '500',
+                                cursor: 'pointer',
+                                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                                transition: 'all 0.2s ease',
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = 'translateY(-2px)';
+                                e.currentTarget.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.15)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
+                            }}
+                        >
+                            {/* Icon */}
+                            <div style={{
+                                width: '16px',
+                                height: '16px',
+                                borderRadius: '50%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                backgroundColor: isWrapApplied ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)',
+                            }}>
+                                <span style={{ fontSize: '10px' }}>
+                                    {isWrapApplied ? '✕' : '✓'}
+                                </span>
+                            </div>
 
-                        {/* Label */}
-                        <span>
-                            {isWrapApplied
-                                ? (translations?.removeWrap || 'Remove Wrap')
-                                : (translations?.applyWrap || 'Apply Wrap')}
-                        </span>
-                    </button>
-                </div>
-            )}
-        </div>
+                            {/* Label */}
+                            <span>
+                                {isWrapApplied
+                                    ? (t.removeWrap)
+                                    : (t.applyWrap)}
+                            </span>
+                        </button>
+                    </div>
+                )
+            }
+        </div >
     );
 };

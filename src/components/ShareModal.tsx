@@ -2,20 +2,24 @@ import { useState, type ChangeEvent } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { CAR_MODELS } from '../constants';
+import { TRANSLATIONS } from '../translations';
 
 interface ShareModalProps {
     isOpen: boolean;
     onClose: () => void;
     onShareSuccess?: () => void; // Called after successful share to refresh data
     imageUrl: string | null; // The generated wrap image (blob URL or base64)
+    language?: 'en' | 'zh';
 }
 
-export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl }: ShareModalProps) {
+export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl, language = 'en' }: ShareModalProps) {
     const [name, setName] = useState('');
     const [author, setAuthor] = useState('');
     const [selectedModels, setSelectedModels] = useState<string[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+
+    const t = TRANSLATIONS[language];
 
     if (!isOpen) return null;
 
@@ -88,7 +92,7 @@ export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl }: ShareM
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
                 <div className="p-6">
                     <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-xl font-bold font-serif">Share Your Wrap</h2>
+                        <h2 className="text-xl font-bold font-serif">{t.shareTitle}</h2>
                         <button onClick={onClose} className="text-gray-400 hover:text-black transition-colors">
                             <X size={24} />
                         </button>
@@ -97,13 +101,13 @@ export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl }: ShareM
                     <div className="space-y-4">
                         <div>
                             <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-1">
-                                Wrap Name *
+                                {t.wrapName} *
                             </label>
                             <input
                                 type="text"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
-                                placeholder="e.g. Lightning McQueen"
+                                placeholder={t.wrapNamePlaceholder}
                                 className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-black transition-colors"
                                 autoFocus
                             />
@@ -111,20 +115,20 @@ export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl }: ShareM
 
                         <div>
                             <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-1">
-                                Credit (optional)
+                                {t.credit}
                             </label>
                             <input
                                 type="text"
                                 value={author}
                                 onChange={(e) => setAuthor(e.target.value)}
-                                placeholder="Your name or @twitter"
+                                placeholder={t.creditPlaceholder}
                                 className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-black transition-colors"
                             />
                         </div>
 
                         <div>
                             <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-1">
-                                Upload Image (Optional)
+                                {t.uploadImageOptional}
                             </label>
                             <input
                                 type="file"
@@ -140,14 +144,14 @@ export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl }: ShareM
                             />
                             {uploadedFile && (
                                 <p className="text-xs text-green-600 mt-1">
-                                    Selected: {uploadedFile.name}
+                                    {t.selected} {uploadedFile.name}
                                 </p>
                             )}
                         </div>
 
                         <div>
                             <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">
-                                Models * <span className="text-gray-400 font-normal normal-case">(check all that apply)</span>
+                                {t.models} * <span className="text-gray-400 font-normal normal-case">{t.checkAllApply}</span>
                             </label>
                             <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar border border-gray-100 rounded-lg p-2">
                                 {Object.keys(CAR_MODELS).map(model => (
@@ -165,12 +169,12 @@ export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl }: ShareM
                         </div>
 
                         <p className="text-[10px] text-gray-400 text-center pt-2">
-                            Max 2MB per file • PNG only • 1024x1024 recommended
+                            {t.maxSize}
                         </p>
 
                         <div className="grid grid-cols-2 gap-3 pt-2">
                             <Button variant="outline" onClick={onClose} fullWidth>
-                                Cancel
+                                {t.cancel}
                             </Button>
                             <Button
                                 onClick={handleSubmit}
@@ -181,10 +185,10 @@ export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl }: ShareM
                                 {isSubmitting ? (
                                     <>
                                         <Loader2 size={16} className="animate-spin mr-2" />
-                                        Sharing...
+                                        {t.sharing}
                                     </>
                                 ) : (
-                                    "Submit Wraps"
+                                    t.submitWraps
                                 )}
                             </Button>
                         </div>

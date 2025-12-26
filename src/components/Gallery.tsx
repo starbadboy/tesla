@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Search, Heart, Download } from 'lucide-react';
 import officialWrapsData from '../data/officialWraps.json';
 import { WRAP_FOLDER_MAP, CDN_BASE } from '../constants';
+import { TRANSLATIONS } from '../translations';
 
 const officialWraps: Wrap[] = officialWrapsData as Wrap[];
 interface Wrap {
@@ -18,13 +19,16 @@ export interface GalleryProps {
     onLoadWrap: (imageUrl: string) => void;
     selectedModel?: string;
     refreshTrigger?: number; // Increment this to trigger a refetch of community wraps
+    language?: 'en' | 'zh';
 }
 
-export function Gallery({ onLoadWrap, selectedModel, refreshTrigger }: GalleryProps) {
+export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 'en' }: GalleryProps) {
     const [wraps, setWraps] = useState<Wrap[]>([]);
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState<'official' | 'community'>('official');
+
+    const t = TRANSLATIONS[language];
 
     // Filter official wraps based on selected model
     const filteredOfficialWraps = officialWraps.filter(w => {
@@ -133,13 +137,13 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger }: GalleryPr
                     onClick={() => setActiveTab('official')}
                     className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest transition-colors border-b-2 ${activeTab === 'official' ? 'border-black text-black' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
                 >
-                    Official <span className="ml-1 bg-gray-100 rounded-full px-2 py-0.5 text-[10px]">{officialWrapCount}</span>
+                    {t.official} <span className="ml-1 bg-gray-100 rounded-full px-2 py-0.5 text-[10px]">{officialWrapCount}</span>
                 </button>
                 <button
                     onClick={() => setActiveTab('community')}
                     className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest transition-colors border-b-2 ${activeTab === 'community' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
                 >
-                    Community <span className="ml-1 bg-blue-50 text-blue-600 rounded-full px-2 py-0.5 text-[10px]">{communityWrapsByModel.length}</span>
+                    {t.community} <span className="ml-1 bg-blue-50 text-blue-600 rounded-full px-2 py-0.5 text-[10px]">{communityWrapsByModel.length}</span>
                 </button>
             </div>
 
@@ -149,7 +153,7 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger }: GalleryPr
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                     <input
                         type="text"
-                        placeholder="Search wraps..."
+                        placeholder={t.searchWraps}
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         className="w-full bg-gray-100 border-none rounded-lg pl-9 pr-4 py-2 text-sm focus:ring-2 focus:ring-black/5"
@@ -180,7 +184,7 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger }: GalleryPr
                                 <div className="p-3">
                                     <h3 className="font-bold text-xs truncate mb-0.5">{wrap.name}</h3>
                                     <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-2 truncate">
-                                        {wrap.models.length > 0 ? wrap.models.join(', ') : 'Universal'} • by {wrap.author}
+                                        {wrap.models.length > 0 ? wrap.models.join(', ') : t.universal} • {t.by} {wrap.author}
                                     </p>
 
                                     <div className="flex items-center justify-between">
@@ -196,7 +200,7 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger }: GalleryPr
                                             <button
                                                 onClick={(e) => handleDownload(e, wrap)}
                                                 className="flex items-center gap-1 text-gray-400 hover:text-black transition-colors bg-gray-50 px-2 py-1 rounded-full cursor-pointer hover:bg-gray-200"
-                                                title="Download Wrap Image"
+                                                title={t.downloadWrapImage}
                                             >
                                                 <Download size={12} />
                                                 <span className="text-[10px] font-medium">{wrap.downloads}</span>
@@ -215,7 +219,7 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger }: GalleryPr
                             </div>
                         ) : filteredWraps.length === 0 ? (
                             <div className="col-span-2 text-center py-8 text-gray-400 text-sm">
-                                No wraps found.
+                                {t.noWrapsFound}
                             </div>
                         ) : (
                             filteredWraps.map(wrap => (
@@ -237,7 +241,7 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger }: GalleryPr
                                     <div className="p-3">
                                         <h3 className="font-bold text-xs truncate mb-0.5">{wrap.name}</h3>
                                         <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-2 truncate">
-                                            {wrap.models.length > 0 ? wrap.models.join(', ') : 'Universal'} • by {wrap.author}
+                                            {wrap.models.length > 0 ? wrap.models.join(', ') : t.universal} • {t.by} {wrap.author}
                                         </p>
 
                                         <div className="flex items-center justify-between">

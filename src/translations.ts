@@ -40,7 +40,49 @@ export const TRANSLATIONS = {
         selectMode: "Select Mode",
         drawMode: "Draw Mode",
         applyWrap: "Apply Wrap",
-        removeWrap: "Remove Wrap"
+        removeWrap: "Remove Wrap",
+
+        // New Keys
+        studio: "Studio",
+        community: "Community",
+        new: "New",
+        shareYourWrap: "Share Your Wrap",
+        design: "2D Design",
+        preview3d: "3D Preview",
+        modelProvider: "Model Provider",
+        computerAI: "Puter AI (Free)",
+        openai: "OpenAI (gpt-image-1.5)",
+        connecting: "Connecting to AI Service...",
+
+        // Gallery
+        official: "Official",
+        searchWraps: "Search wraps...",
+        noWrapsFound: "No wraps found.",
+        universal: "Universal",
+        by: "by",
+        downloadWrapImage: "Download Wrap Image",
+
+        // ThreeDView
+        modelError: "Model Error",
+        failedToLoad3DModel: "Failed to load 3D model",
+        viewUnavailable: "3D View Unavailable",
+        no3DModel: "No 3D Model",
+        selectDifferentVehicle: "Select a different vehicle",
+
+        // ShareModal
+        shareTitle: "Share Your Wrap",
+        wrapName: "Wrap Name",
+        wrapNamePlaceholder: "e.g. Lightning McQueen",
+        credit: "Credit (optional)",
+        creditPlaceholder: "Your name or @twitter",
+        uploadImageOptional: "Upload Image (Optional)",
+        models: "Models",
+        checkAllApply: "(check all that apply)",
+        maxSize: "Max 2MB per file • PNG only • 1024x1024 recommended",
+        cancel: "Cancel",
+        submitWraps: "Submit Wraps",
+        sharing: "Sharing...",
+        selected: "Selected: "
     },
     zh: {
         configurator: "配置器",
@@ -83,6 +125,48 @@ export const TRANSLATIONS = {
         selectMode: "选择模式",
         drawMode: "绘制模式",
         applyWrap: "应用车衣",
-        removeWrap: "移除车衣"
+        removeWrap: "移除车衣",
+
+        // New Keys
+        studio: "工作室",
+        community: "社区",
+        new: "新",
+        shareYourWrap: "分享你的设计",
+        design: "2D 设计",
+        preview3d: "3D 预览",
+        modelProvider: "模型提供商",
+        computerAI: "Puter AI (免费)",
+        openai: "OpenAI (gpt-image-1.5)",
+        connecting: "连接 AI 服务中...",
+
+        // Gallery
+        official: "官方",
+        searchWraps: "搜索车衣...",
+        noWrapsFound: "未找到车衣。",
+        universal: "通用",
+        by: "作者",
+        downloadWrapImage: "下载车衣图片",
+
+        // ThreeDView
+        modelError: "模型错误",
+        failedToLoad3DModel: "无法加载 3D 模型",
+        viewUnavailable: "3D 视图不可用",
+        no3DModel: "无 3D 模型",
+        selectDifferentVehicle: "请选择其他车型",
+
+        // ShareModal
+        shareTitle: "分享你的设计",
+        wrapName: "车衣名称",
+        wrapNamePlaceholder: "例如：闪电麦昆",
+        credit: "作者 (可选)",
+        creditPlaceholder: "你的名字或社交账号",
+        uploadImageOptional: "上传图片 (可选)",
+        models: "适用车型",
+        checkAllApply: "(选择所有适用车型)",
+        maxSize: "最大 2MB • 仅限 PNG • 建议 1024x1024",
+        cancel: "取消",
+        submitWraps: "提交作品",
+        sharing: "分享中...",
+        selected: "已选: "
     }
 };

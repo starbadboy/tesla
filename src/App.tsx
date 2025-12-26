@@ -149,6 +149,7 @@ function App() {
         'Full Wrap': { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1 }
       }));
       setSelectedLayerId('Full Wrap');
+      setIsWrapVisible(true);
       e.target.value = '';
     }
   };
@@ -167,6 +168,7 @@ function App() {
         [part]: { x: 100, y: 100, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1 }
       }));
       setSelectedLayerId(part);
+      setIsWrapVisible(true);
 
       e.target.value = '';
     }
@@ -265,7 +267,7 @@ function App() {
                 isActive={effectiveIs3DView}
                 showTexture={isWrapVisible}
                 onToggleWrap={setIsWrapVisible}
-                translations={{ applyWrap: t.applyWrap, removeWrap: t.removeWrap }}
+                language={language}
               />
             </div>
           </>
@@ -293,7 +295,7 @@ function App() {
               sidebarMode === 'studio' ? "bg-foreground text-background" : "bg-transparent text-foreground hover:bg-gray-100"
             )}
           >
-            Studio
+            {t.studio}
           </button>
           <button
             onClick={() => {
@@ -305,7 +307,7 @@ function App() {
               sidebarMode === 'community' ? "bg-foreground text-background" : "bg-transparent text-foreground hover:bg-gray-100"
             )}
           >
-            Community <span className="bg-blue-100 text-blue-600 text-[9px] px-1.5 rounded-full ml-1">New</span>
+            {t.community} <span className="bg-blue-100 text-blue-600 text-[9px] px-1.5 rounded-full ml-1">{t.new}</span>
           </button>
         </div>
 
@@ -330,7 +332,7 @@ function App() {
                 fullWidth
                 className="bg-blue-600 hover:bg-blue-700 text-white border-0"
               >
-                <Plus size={16} className="mr-1" /> Share Your Wrap
+                <Plus size={16} className="mr-1" /> {t.shareYourWrap}
               </Button>
             </div>
 
@@ -343,7 +345,9 @@ function App() {
                   setUploadMode('single'); // Switch to single mode
                   setIsWrapVisible(true); // Force wrap visibility when loading a new wrap
                   // Don't switch back to studio, let them browse
-                }} />
+                }}
+                language={language}
+              />
             </div>
           </div>
         ) : (
@@ -358,7 +362,7 @@ function App() {
                     !is3DView ? "bg-foreground text-background" : "bg-transparent text-foreground hover:bg-gray-100"
                   )}
                 >
-                  2D Design
+                  {t.design}
                 </button>
                 <button
                   onClick={() => setIs3DView(true)}
@@ -367,7 +371,7 @@ function App() {
                     is3DView ? "bg-foreground text-background" : "bg-transparent text-foreground hover:bg-gray-100"
                   )}
                 >
-                  <Box size={14} /> 3D Preview
+                  <Box size={14} /> {t.preview3d}
                 </button>
               </div>
 
@@ -624,13 +628,13 @@ function App() {
               <div className="space-y-3">
                 {/* Provider Selection */}
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Model Provider</label>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{t.modelProvider}</label>
                   <Select
                     value={aiProvider}
                     onChange={(e) => setAiProvider(e.target.value as 'puter' | 'openai')}
                   >
-                    <option value="puter">Puter AI (Free)</option>
-                    <option value="openai">OpenAI (gpt-image-1.5)</option>
+                    <option value="puter">{t.computerAI}</option>
+                    <option value="openai">{t.openai}</option>
                   </Select>
                 </div>
 
@@ -650,7 +654,7 @@ function App() {
                   fullWidth
                   size="sm"
                 >
-                  {isGenerating ? t.generating : (aiProvider === 'puter' && !isPuterLoaded ? "Connecting to AI Service..." : t.generate)}
+                  {isGenerating ? t.generating : (aiProvider === 'puter' && !isPuterLoaded ? t.connecting : t.generate)}
                 </Button>
               </div>
             </SidebarSection>
@@ -697,6 +701,7 @@ function App() {
         onClose={() => setIsShareModalOpen(false)}
         onShareSuccess={() => setGalleryRefreshTrigger(prev => prev + 1)}
         imageUrl={shareImageBlob}
+        language={language}
       />
     </div >
   )
