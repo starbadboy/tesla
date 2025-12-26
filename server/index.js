@@ -51,6 +51,8 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 console.log("Attempting to connect to MongoDB...");
+console.log("Mongo URL (masked):", mongoUrl.includes('@') ? mongoUrl.split('@')[1] : "No credentials found");
+
 
 // MongoDB Connection
 mongoose.connect(mongoUrl, {
