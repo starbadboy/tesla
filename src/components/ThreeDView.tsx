@@ -294,7 +294,7 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true 
                         metalness: 0.3,   // Higher metalness for "metallic wrap" feel
                         clearcoat: 0.8,   // Max clearcoat for "wet" look
                         clearcoatRoughness: 0.05, // Sharp clearcoat reflections
-                        envMapIntensity: 0.1, // Strong reflections
+                        // envMapIntensity: 0.1, // Strong reflections
                     });
 
                     // If Wrap is Active, we inject custom shader logic to map it using UVset 2 (or 1)
@@ -407,7 +407,7 @@ export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive =
     };
 
     return (
-        <div className="w-full h-full relative" style={{ background: 'linear-gradient(to bottom, #e8e8e8, #d0d0d0)' }}>
+        <div className="w-full h-full relative" style={{ background: 'linear-gradient(to bottom, #1a1a1a, #000000)' }}>
             <ErrorBoundary fallback={
                 <div className="flex items-center justify-center h-full text-white/50">
                     <p>3D View Unavailable</p>
@@ -416,7 +416,7 @@ export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive =
                 <Canvas
                     shadows
                     camera={{ position: [-8, 2, -9], fov: 45, near: 0.01, far: 2000 }}
-                    scene={{ background: new THREE.Color('#e0e0e0') }}
+                    scene={{ background: new THREE.Color('#111111') }}
                     gl={{
                         toneMapping: THREE.NoToneMapping, // FIX: Use NoToneMapping for accurate color matching with 2D overlay
                         outputColorSpace: THREE.SRGBColorSpace,
@@ -435,7 +435,7 @@ export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive =
                     />
 
                     {/* Environment Map for realistic reflections (Critical for metallic look) */}
-                    <Environment preset="studio" background={false} />
+                    <Environment preset="city" background={false} />
 
 
 
