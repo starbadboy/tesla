@@ -393,7 +393,7 @@ const ErrorFallback = ({ error, language = 'en' }: { error?: Error, language?: '
     );
 };
 
-export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive = true, onToggleWrap, translations, language = 'en' }: ThreeDViewProps) => {
+export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive = true, onToggleWrap, language = 'en' }: ThreeDViewProps) => {
     // Determine if we have a valid model path
     const hasModel = modelPath && modelPath.length > 0;
     const t = TRANSLATIONS[language];
