@@ -13,8 +13,8 @@ const OpenAI = require('openai');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
-// Hardcoded MongoDB URI as requested to resolve env var issue
-const mongoUrl = 'mongodb+srv://tesla:tesla1234@cluster0.zsfmabv.mongodb.net/teslawrap';
+// MongoDB URI
+const mongoUrl = process.env.MONGO_URL || 'test-rul';
 
 // Initialize OpenAI
 // Note: This requires OPENAI_API_KEY environment variable to be set
