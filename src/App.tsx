@@ -25,7 +25,7 @@ function App() {
   const [aiPrompt, setAiPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPuterLoaded, setIsPuterLoaded] = useState(false);
-  const [aiProvider, setAiProvider] = useState<'puter' | 'openai'>('puter');
+  const [aiProvider, setAiProvider] = useState<'puter' | 'openai' | 'gemini'>('puter');
 
   // ... (existing code)
 
@@ -631,10 +631,11 @@ function App() {
                   <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{t.modelProvider}</label>
                   <Select
                     value={aiProvider}
-                    onChange={(e) => setAiProvider(e.target.value as 'puter' | 'openai')}
+                    onChange={(e) => setAiProvider(e.target.value as 'puter' | 'openai' | 'gemini')}
                   >
                     <option value="puter">{t.computerAI}</option>
                     <option value="openai">{t.openai}</option>
+                    <option value="gemini">Gemini (Google)</option>
                   </Select>
                 </div>
 

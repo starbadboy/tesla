@@ -13,7 +13,7 @@ export async function generateImage(
     prompt: string,
     inputImageBase64?: string,
     modelName: string = "Car",
-    provider: 'puter' | 'openai' = 'puter',
+    provider: 'puter' | 'openai' | 'gemini' = 'puter',
     openAIModel: string = "gpt-image-1.5"
 ): Promise<string> {
 
@@ -67,6 +67,31 @@ A complete wrap design that fully adheres to the template format and accurately 
             return data.url;
         } catch (error) {
             console.error("OpenAI Image Generation Error:", error);
+            throw error;
+        }
+    } else if (provider === 'gemini') {
+        try {
+            const response = await fetch('/api/generate-image-gemini', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    prompt: enhancedPrompt,
+                    model: "gemini-3-pro-image-preview",
+                    image: inputImageBase64
+                }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error?.message || errorData.error || "Failed to generate image with Gemini");
+            }
+
+            const data = await response.json();
+            return data.url;
+        } catch (error) {
+            console.error("Gemini Image Generation Error:", error);
             throw error;
         }
     } else {
