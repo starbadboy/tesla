@@ -1,6 +1,6 @@
 
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, useGLTF, Html } from '@react-three/drei';
+import { OrbitControls, useGLTF, Html, Environment } from '@react-three/drei';
 import * as THREE from 'three';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -28,6 +28,7 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true 
     const texture = useMemo(() => {
         const t = new THREE.CanvasTexture(document.createElement('canvas'));
         t.flipY = false;
+        t.colorSpace = THREE.SRGBColorSpace; // FIX: Ensure texture is treated as sRGB
         return t;
     }, []);
 
@@ -281,38 +282,39 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true 
                 if (shouldWrap) {
                     wrappedParts.push(name);
 
-                    // Normalize attributes: Tesla models seem to load as 'uv1' for the wrap layer, but Three.js likes 'uv2'
-                    if (mesh.geometry.attributes.uv1 && !mesh.geometry.attributes.uv2) {
-                        mesh.geometry.setAttribute('uv2', mesh.geometry.attributes.uv1);
+                    // Normalize attributes: Tesla models seem to load as 'uv1' for the wrap layer.
+                    // We use a custom attribute 'wrapUv' to avoid collision with standard 'uv2' in shaders.
+                    if (mesh.geometry.attributes.uv1) {
+                        mesh.geometry.setAttribute('wrapUv', mesh.geometry.attributes.uv1);
                     }
 
                     const newMat = new THREE.MeshPhysicalMaterial({
-                        color: 0x000000, // Black base paint (for areas where wrap is white/transparent)
-                        roughness: 0.4,
-                        metalness: 0.0,
-                        clearcoat: 0.3,
-                        clearcoatRoughness: 0.1,
+                        color: 0x000000, // Black base paint
+                        roughness: 0.3,  // Very smooth
+                        metalness: 0.3,   // Higher metalness for "metallic wrap" feel
+                        clearcoat: 0.8,   // Max clearcoat for "wet" look
+                        clearcoatRoughness: 0.05, // Sharp clearcoat reflections
+                        envMapIntensity: 0.1, // Strong reflections
                     });
 
                     // If Wrap is Active, we inject custom shader logic to map it using UVset 2 (or 1)
                     if (isTextureValid) {
                         // Ensure we use the texture
+                        // Ensure we use the texture
                         // We use onBeforeCompile to inject the logic
                         newMat.onBeforeCompile = (shader) => {
                             shader.uniforms.uTex = { value: texture };
 
-                            // Inject vertex shader logic to pass the second UV set
-                            // Found 'uv1' in geometry attributes, so we use that.
+                            // Inject vertex shader logic to pass the custom UV set
                             shader.vertexShader = `
                                 varying vec2 vWrapUv;
-                                attribute vec2 uv2; 
+                                attribute vec2 wrapUv; 
                             ` + shader.vertexShader;
 
                             shader.vertexShader = shader.vertexShader.replace(
                                 '#include <uv_vertex>',
                                 `#include <uv_vertex>
-                                 // Use uv2
-                                 vWrapUv = uv2;
+                                 vWrapUv = wrapUv;
                                  `
                             );
 
@@ -334,6 +336,9 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true 
                                 `
                                 vec4 wrapColor = texture2D(uTex, vWrapUv);
                                 
+                                // With NoToneMapping and SRGBColorSpace set on texture, we don't need manual gamma correction.
+                                // The browser/ThreeJS should handle the texture lookups correctly now.
+
                                 // Use alpha channel to blend between wrap and base paint
                                 // Transparent areas (alpha=0) show base paint color (diffuseColor)
                                 // Opaque areas (alpha=1) show wrap color
@@ -410,11 +415,10 @@ export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive =
             }>
                 <Canvas
                     shadows
-                    camera={{ position: [-5, 2, -9], fov: 45, near: 0.01, far: 2000 }}
+                    camera={{ position: [-8, 2, -9], fov: 45, near: 0.01, far: 2000 }}
                     scene={{ background: new THREE.Color('#e0e0e0') }}
                     gl={{
-                        toneMapping: THREE.ACESFilmicToneMapping,
-                        toneMappingExposure: 1.0,
+                        toneMapping: THREE.NoToneMapping, // FIX: Use NoToneMapping for accurate color matching with 2D overlay
                         outputColorSpace: THREE.SRGBColorSpace,
                     }}
                 >
@@ -430,16 +434,19 @@ export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive =
                         maxPolarAngle={Math.PI * 0.565} // ~101.5 degrees
                     />
 
+                    {/* Environment Map for realistic reflections (Critical for metallic look) */}
+                    <Environment preset="studio" background={false} />
+
 
 
                     {/* Tesla Gallery Studio Lighting - 5 Light Setup */}
                     {/* Ambient: Base illumination */}
-                    <ambientLight intensity={0.5} color="#ffffff" />
+                    <ambientLight intensity={0.3} color="#ffffff" />
 
                     {/* Key Light: Main light from front-right-top */}
                     <directionalLight
                         position={[5, 8, 5]}
-                        intensity={1.0}
+                        intensity={0.3}
                         color="#ffffff"
                         castShadow
                         shadow-mapSize={[2048, 2048]}
@@ -453,21 +460,21 @@ export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive =
                     {/* Fill Light: Fills shadows from back-left */}
                     <directionalLight
                         position={[-5, 4, -3]}
-                        intensity={0.4}
+                        intensity={0.2}
                         color="#ffffff"
                     />
 
                     {/* Rim Light: Highlights on rear */}
                     <directionalLight
                         position={[0, 2, -8]}
-                        intensity={0.5}
+                        intensity={0.3}
                         color="#ffffff"
                     />
 
                     {/* Bottom Light: Subtle upward bounce light */}
                     <directionalLight
                         position={[0, -3, 0]}
-                        intensity={0.2}
+                        intensity={0.1}
                         color="#ffffff"
                     />
 
