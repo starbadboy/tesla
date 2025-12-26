@@ -74,8 +74,17 @@ mongoose.connect(mongoUrl, {
 // GET /api/wraps - List all wraps (simplified for now)
 app.get('/api/wraps', async (req, res) => {
     try {
-        // Sort by newest first
-        const wraps = await Wrap.find().sort({ createdAt: -1 });
+        // Sort by popularity (likes + downloads) descending, then by newest
+        const wraps = await Wrap.aggregate([
+            {
+                $addFields: {
+                    score: { $add: ["$likes", "$downloads"] }
+                }
+            },
+            {
+                $sort: { score: -1, createdAt: -1 }
+            }
+        ]);
         res.json(wraps);
     } catch (err) {
         res.status(500).json({ error: err.message });
