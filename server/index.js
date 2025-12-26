@@ -1,18 +1,26 @@
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const multer = require('multer');
-const path = require('path');
+
 const fs = require('fs');
 
 const Wrap = require('./models/Wrap');
+const OpenAI = require('openai');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
 // Hardcoded MongoDB URI as requested to resolve env var issue
 const mongoUrl = 'mongodb+srv://tesla:tesla1234@cluster0.zsfmabv.mongodb.net/teslawrap';
+
+// Initialize OpenAI
+// Note: This requires OPENAI_API_KEY environment variable to be set
+const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY || "dummy-key",
+});
 
 // Middleware
 app.use(cors());
@@ -127,6 +135,46 @@ app.post('/api/wraps/:id/download', async (req, res) => {
         res.json({ downloads: wrap.downloads });
     } catch (err) {
         res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /api/generate-image - Generate image via OpenAI
+app.post('/api/generate-image', async (req, res) => {
+    try {
+        const { prompt, model, size, quality, n } = req.body;
+
+        if (!process.env.OPENAI_API_KEY) {
+            return res.status(500).json({ error: 'OpenAI API key not configured on server' });
+        }
+
+        const response = await openai.images.generate({
+            model: model || "dall-e-3", // Default to dall-e-3 if not specified, but user provided model will override
+            prompt: prompt,
+            n: n || 1,
+            size: size || "1024x1024",
+            quality: quality || "high",
+        });
+
+        // Return the first image
+        const image = response.data[0];
+
+        // Handle URL response (default behavior)
+        if (image.url) {
+            res.json({ url: image.url });
+        } else if (image.b64_json) {
+            res.json({ url: `data:image/png;base64,${image.b64_json}` });
+        } else {
+            res.status(500).json({ error: "No image data received from OpenAI" });
+        }
+
+    } catch (err) {
+        console.error("OpenAI Generation Error:", err);
+        // Handle OpenAI specific errors gracefully
+        if (err.response) {
+            res.status(err.response.status).json({ error: err.response.data });
+        } else {
+            res.status(500).json({ error: err.message });
+        }
     }
 });
 

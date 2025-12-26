@@ -25,8 +25,40 @@ function App() {
   const [aiPrompt, setAiPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPuterLoaded, setIsPuterLoaded] = useState(false);
+  const [aiProvider, setAiProvider] = useState<'puter' | 'openai'>('puter');
 
-  // Transform State
+  // ... (existing code)
+
+  const handleGenerateImage = async () => {
+    if (!aiPrompt) {
+      alert("Please enter a prompt");
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      // Fetch current model image for img2img context
+      const modelBase64 = await urlToBase64(currentModelPath);
+
+      // Pass selected provider to generateImage
+      const imageUrl = await generateImage(aiPrompt, modelBase64, currentModelName, aiProvider, "gpt-image-1.5");
+
+      if (uploadMode === 'single') {
+        setSingleLayer(imageUrl);
+      } else {
+        setUploadMode('single');
+        setSingleLayer(imageUrl);
+      }
+    } catch (error) {
+      alert(t.error + ": " + (error as Error).message);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // ... (inside return statement/JSX)
+
+
   const [layerTransforms, setLayerTransforms] = useState<Record<string, LayerTransform>>({});
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
   const [uniformScale, setUniformScale] = useState(true);
@@ -138,31 +170,7 @@ function App() {
     }
   };
 
-  const handleGenerateImage = async () => {
-    if (!aiPrompt) {
-      alert("Please enter a prompt");
-      return;
-    }
 
-    setIsGenerating(true);
-    try {
-      // Fetch current model image for img2img context
-      const modelBase64 = await urlToBase64(currentModelPath);
-
-      const imageUrl = await generateImage(aiPrompt, modelBase64, currentModelName);
-
-      if (uploadMode === 'single') {
-        setSingleLayer(imageUrl);
-      } else {
-        setUploadMode('single');
-        setSingleLayer(imageUrl);
-      }
-    } catch (error) {
-      alert(t.error + ": " + (error as Error).message);
-    } finally {
-      setIsGenerating(false);
-    }
-  };
 
   const handleExport = () => {
     canvasRef.current?.exportImage();
@@ -612,6 +620,18 @@ function App() {
             {/* Section: AI Generation */}
             <SidebarSection title={t.aiGeneration} icon={<Sparkles />}>
               <div className="space-y-3">
+                {/* Provider Selection */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Model Provider</label>
+                  <Select
+                    value={aiProvider}
+                    onChange={(e) => setAiProvider(e.target.value as 'puter' | 'openai')}
+                  >
+                    <option value="puter">Puter AI (Free)</option>
+                    <option value="openai">OpenAI (gpt-image-1.5)</option>
+                  </Select>
+                </div>
+
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{t.prompt}</label>
                   <input
@@ -624,11 +644,11 @@ function App() {
                 </div>
                 <Button
                   onClick={handleGenerateImage}
-                  disabled={isGenerating || !aiPrompt || !isPuterLoaded}
+                  disabled={isGenerating || !aiPrompt || (aiProvider === 'puter' && !isPuterLoaded)}
                   fullWidth
                   size="sm"
                 >
-                  {isGenerating ? t.generating : (isPuterLoaded ? t.generate : "Connecting to AI Service...")}
+                  {isGenerating ? t.generating : (aiProvider === 'puter' && !isPuterLoaded ? "Connecting to AI Service..." : t.generate)}
                 </Button>
               </div>
             </SidebarSection>
