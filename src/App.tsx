@@ -16,7 +16,7 @@ import { ShareModal } from './components/ShareModal';
 import { Gallery } from './components/Gallery';
 
 function App() {
-  const [currentModelName, setCurrentModelName] = useState(Object.keys(CAR_MODELS)[0]);
+  const [currentModelName, setCurrentModelName] = useState("Model 3 (2024 Base)");
   const [uploadMode, setUploadMode] = useState<'single' | 'multi'>('single');
   const [singleLayer, setSingleLayer] = useState<string | null>(null);
   const [language, setLanguage] = useState<'en' | 'zh'>('en');
@@ -125,6 +125,8 @@ function App() {
   });
 
   const currentModelPath = CAR_MODELS[currentModelName];
+  const has3DModel = Boolean(CAR_3D_MODELS[currentModelName]);
+  const effectiveIs3DView = is3DView && has3DModel;
 
   const urlToBase64 = async (url: string): Promise<string> => {
     const response = await fetch(url);
@@ -241,7 +243,7 @@ function App() {
       <div className="flex-none h-[50vh] w-full md:h-full md:w-auto md:flex-1 relative flex items-center justify-center bg-gray-50 p-6 md:p-12 border-b-4 md:border-b-0 border-foreground">
         <div className="w-full h-full border border-foreground relative bg-white overflow-hidden">
           <>
-            <div className={cn("w-full h-full transition-opacity duration-300", is3DView ? "absolute top-0 left-0 opacity-0 pointer-events-none z-0" : "relative z-10")}>
+            <div className={cn("w-full h-full transition-opacity duration-300", effectiveIs3DView ? "absolute top-0 left-0 opacity-0 pointer-events-none z-0" : "relative z-10")}>
               <DesignCanvas
                 ref={canvasRef}
                 modelPath={currentModelPath}
@@ -256,11 +258,11 @@ function App() {
                 brushSize={brushSize}
               />
             </div>
-            <div className={cn("w-full h-full absolute top-0 left-0 transition-opacity duration-300", is3DView ? "opacity-100 z-10" : "opacity-0 pointer-events-none z-0")}>
+            <div className={cn("w-full h-full absolute top-0 left-0 transition-opacity duration-300", effectiveIs3DView ? "opacity-100 z-10" : "opacity-0 pointer-events-none z-0")}>
               <ThreeDView
                 stageRef={canvasRef}
                 modelPath={CAR_3D_MODELS[currentModelName]}
-                isActive={is3DView}
+                isActive={effectiveIs3DView}
                 showTexture={isWrapVisible}
                 onToggleWrap={setIsWrapVisible}
                 translations={{ applyWrap: t.applyWrap, removeWrap: t.removeWrap }}
