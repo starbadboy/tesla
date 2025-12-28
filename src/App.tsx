@@ -14,6 +14,7 @@ import { ThreeDView } from './components/ThreeDView';
 import { Box, Plus } from 'lucide-react';
 import { ShareModal } from './components/ShareModal';
 import { Gallery } from './components/Gallery';
+import { BuyMeCoffee } from './components/BuyMeCoffee';
 
 function App() {
   const [currentModelName, setCurrentModelName] = useState("Model 3 (2024 Base)");
@@ -243,6 +244,7 @@ function App() {
       {/* Main Canvas Area */}
       {/* Framed by whitespace as per design spec "Dramatic Negative Space" */}
       <div className="flex-none h-[50vh] w-full md:h-full md:w-auto md:flex-1 relative flex items-center justify-center bg-gray-50 p-6 md:p-12 border-b-4 md:border-b-0 border-foreground">
+        <BuyMeCoffee />
         <div className="w-full h-full border border-foreground relative bg-white overflow-hidden">
           <>
             <div className={cn("w-full h-full transition-opacity duration-300", effectiveIs3DView ? "absolute top-0 left-0 opacity-0 pointer-events-none z-0" : "relative z-10")}>
