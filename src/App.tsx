@@ -20,7 +20,13 @@ function App() {
   const [currentModelName, setCurrentModelName] = useState("Model 3 (2024 Base)");
   const [uploadMode, setUploadMode] = useState<'single' | 'multi'>('single');
   const [singleLayer, setSingleLayer] = useState<string | null>(null);
-  const [language, setLanguage] = useState<'en' | 'zh'>('en');
+  const [language, setLanguage] = useState<'en' | 'zh'>(() => {
+    if (typeof navigator !== 'undefined') {
+      const browserLang = navigator.language || navigator.languages?.[0];
+      return browserLang?.toLowerCase().startsWith('zh') ? 'zh' : 'en';
+    }
+    return 'en';
+  });
 
   // AI State
   const [aiPrompt, setAiPrompt] = useState('');
