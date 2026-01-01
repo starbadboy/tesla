@@ -26,7 +26,7 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
     const [wraps, setWraps] = useState<Wrap[]>([]);
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(false);
-    const [activeTab, setActiveTab] = useState<'official' | 'community'>('official');
+    const [activeTab, setActiveTab] = useState<'official' | 'community'>('community');
 
     const t = TRANSLATIONS[language];
 
