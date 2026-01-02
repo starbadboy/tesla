@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { Download, Heart, Search, Trash2 } from 'lucide-react';
 import { TRANSLATIONS } from '../translations';
 import { useAuth } from '../contexts/AuthContext';
+import { compressBlob } from '../utils/imageProcessor';
 
 interface Wrap {
     _id: string;
@@ -102,7 +103,11 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
             const imageUrl = wrap.imageUrl;
             const response = await fetch(imageUrl);
             const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
+
+            // Compress if needed
+            const compressedBlob = await compressBlob(blob, 1);
+
+            const url = window.URL.createObjectURL(compressedBlob);
             const a = document.createElement('a');
             a.href = url;
             a.download = `${wrap.name.replace(/\s+/g, '_')}_wrap.png`;
