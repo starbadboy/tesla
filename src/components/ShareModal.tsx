@@ -3,6 +3,8 @@ import { X, Loader2 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { CAR_MODELS } from '../constants';
 import { TRANSLATIONS } from '../translations';
+import { useAuth } from '../contexts/AuthContext';
+import { useEffect } from 'react';
 
 interface ShareModalProps {
     isOpen: boolean;
@@ -18,6 +20,13 @@ export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl, language
     const [selectedModels, setSelectedModels] = useState<string[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+    const { user, token } = useAuth();
+
+    useEffect(() => {
+        if (user && isOpen) {
+            setAuthor(user.username);
+        }
+    }, [user, isOpen]);
 
     const t = TRANSLATIONS[language];
 
@@ -62,9 +71,15 @@ export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl, language
             formData.append('image', file);
 
             // Sending to /api/wraps (proxy handles forwarding to localhost:5000)
+            const headers: Record<string, string> = {};
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
             const apiResponse = await fetch('/api/wraps', {
                 method: 'POST',
                 body: formData,
+                headers // Fetch will parse headers object
             });
 
             if (!apiResponse.ok) {
@@ -118,11 +133,12 @@ export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl, language
                                 {t.credit}
                             </label>
                             <input
-                                type="text"
                                 value={author}
                                 onChange={(e) => setAuthor(e.target.value)}
                                 placeholder={t.creditPlaceholder}
-                                className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-black transition-colors"
+                                disabled={!!user} // Disable editing if logged in
+                                title={user ? "Author name linked to your account" : ""}
+                                className={`w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-black transition-colors ${user ? 'text-gray-500 cursor-not-allowed' : ''}`}
                             />
                         </div>
 
@@ -162,7 +178,7 @@ export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl, language
                                             onChange={() => handleModelToggle(model)}
                                             className="rounded border-gray-300 text-black focus:ring-black"
                                         />
-                                        <span className="text-sm text-gray-700">{model}</span>
+                                        <span className="text-sm text-gray-700">{(t as any)[model] || model}</span>
                                     </label>
                                 ))}
                             </div>

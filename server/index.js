@@ -11,6 +11,9 @@ const fs = require('fs');
 const Wrap = require('./models/Wrap');
 const OpenAI = require('openai');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const authRoutes = require('./routes/auth');
+const jwt = require('jsonwebtoken');
+const User = require('./models/User');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -32,6 +35,23 @@ app.use(cors());
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 app.use('/uploads', express.static(process.env.UPLOAD_DIR ? path.resolve(process.env.UPLOAD_DIR) : path.join(__dirname, 'uploads')));
+app.use('/api/auth', authRoutes);
+
+// Middleware to optionally attach user to request if token is present
+const authenticateOptional = (req, res, next) => {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (token) {
+        try {
+            const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key-123');
+            req.user = decoded;
+        } catch (err) {
+            console.log('Invalid token provided, proceeding as guest');
+        }
+    }
+    next();
+};
+
+app.use(authenticateOptional);
 
 // Ensure uploads directory exists
 const uploadsDir = process.env.UPLOAD_DIR
@@ -100,12 +120,25 @@ app.post('/api/wraps', upload.single('image'), async (req, res) => {
 
         const { name, author, models } = req.body;
 
+        // If user is logged in, override author with username and set user ID
+        let wrapData = {
+            name,
+            author, // Default to provided author (which might be filled by frontend with username)
+            imageUrl: `/uploads/${req.file.filename}`
+        };
+
+        if (req.user) {
+            wrapData.user = req.user.id;
+            wrapData.author = req.user.username; // Enforce username as author for execution consistency
+        }
+
         // Construct public URL for the image (assuming server is reachable)
         // In production/railway, this might need adjustment if using object storage, 
         // but for simple hosting, serving static files works if persistence is handled.
         // Railway ephemeral file system warning: Uploads will disappear on restart unless using a volume or external storage (S3/Cloudinary).
         // For this MVP, we will stick to local filesystem, but be aware of ephemeral nature.
-        const imageUrl = `/uploads/${req.file.filename}`;
+        // For this MVP, we will stick to local filesystem, but be aware of ephemeral nature.
+        // const imageUrl = `/uploads/${req.file.filename}`; // MOVED UP
 
         // Parse models JSON string if sent as string from FormData
         let parsedModels = [];
@@ -119,9 +152,7 @@ app.post('/api/wraps', upload.single('image'), async (req, res) => {
         }
 
         const newWrap = new Wrap({
-            name,
-            author,
-            imageUrl,
+            ...wrapData,
             models: parsedModels
         });
 
@@ -138,9 +169,43 @@ app.post('/api/wraps/:id/like', async (req, res) => {
         const wrap = await Wrap.findById(req.params.id);
         if (!wrap) return res.status(404).json({ error: 'Wrap not found' });
 
-        wrap.likes += 1;
+        let userLikes = [];
+        let liked = false;
+
+        // If user is authenticated, track their like
+        if (req.user) {
+            const user = await User.findById(req.user.id);
+            if (user) {
+                // Check if already liked
+                const alreadyLiked = user.likedWraps.includes(wrap._id);
+
+                if (alreadyLiked) {
+                    // Unlike logic (optional, but good UX)
+                    // For now, let's keep it simple: if already liked, just return current state or toggle?
+                    // User said "record down the wrap i like", implying a toggle or at least adding it.
+                    // If we just want to ADD to like count every time? No, that's spammy.
+                    // Let's implement toggle logic.
+                    user.likedWraps.pull(wrap._id);
+                    wrap.likes = Math.max(0, wrap.likes - 1);
+                    liked = false;
+                } else {
+                    user.likedWraps.push(wrap._id);
+                    wrap.likes += 1;
+                    liked = true;
+                }
+                await user.save();
+            }
+        } else {
+            // Anonymous like - just increment (legacy)
+            // Or restrict likes to logged-in users? The prompt didn't say restrict.
+            // Let's allow anonymous likes to just increment count for now to not break existing behavior,
+            // but they won't be saved to any garage.
+            wrap.likes += 1;
+            liked = true;
+        }
+
         await wrap.save();
-        res.json({ likes: wrap.likes });
+        res.json({ likes: wrap.likes, liked });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -156,6 +221,80 @@ app.post('/api/wraps/:id/download', async (req, res) => {
         await wrap.save();
         res.json({ downloads: wrap.downloads });
     } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/user/garage - Get current user's uploads
+app.get('/api/user/garage', async (req, res) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        const type = req.query.type; // 'my-uploads' or 'liked'
+
+        if (type === 'liked') {
+            const user = await User.findById(req.user.id).populate('likedWraps');
+            // User.likedWraps will be an array of Wrap documents now
+            return res.json(user.likedWraps.reverse()); // Show newest first
+        } else {
+            // Default: My Uploads
+            const wraps = await Wrap.find({ user: req.user.id }).sort({ createdAt: -1 });
+            res.json(wraps);
+        }
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// DELETE /api/wraps/:id - Delete a wrap
+app.delete('/api/wraps/:id', async (req, res) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        const wrap = await Wrap.findById(req.params.id);
+        if (!wrap) {
+            return res.status(404).json({ error: 'Wrap not found' });
+        }
+
+        // Check ownership
+        if (wrap.user && wrap.user.toString() !== req.user.id) {
+            return res.status(403).json({ error: 'You do not have permission to delete this wrap' });
+        }
+
+        // If wrap has no user (anonymous legacy), only allow deletion if we decide to (maybe admin?)
+        // For now, if no user linked, nobody can delete via API except maybe admin (not implemented).
+        if (!wrap.user) {
+            return res.status(403).json({ error: 'Cannot delete anonymous wraps' });
+        }
+
+        // Delete the file from filesystem (optional but good practice)
+        // Extract filename from usage: /uploads/filename.png
+        if (wrap.imageUrl && wrap.imageUrl.startsWith('/uploads/')) {
+            const filename = wrap.imageUrl.split('/uploads/')[1];
+            const filePath = path.join(uploadsDir, filename);
+            if (fs.existsSync(filePath)) {
+                fs.unlinkSync(filePath);
+            }
+        }
+
+        await Wrap.findByIdAndDelete(req.params.id);
+
+        // Also remove from any user's likedWraps to keep DB clean?
+        // This might be expensive to search all users. 
+        // Better: let the Populate handle it gracefully or use middleware. 
+        // For MVP, we'll leave the broken reference or handle it on get.
+        // Actually, let's just update the current user's likedWraps if they liked their own?
+        // But many users might have liked it. 
+        // We will skip this complex cleanup for now.
+
+        res.json({ message: 'Wrap deleted successfully' });
+
+    } catch (err) {
+        console.error("Delete error:", err);
         res.status(500).json({ error: err.message });
     }
 });

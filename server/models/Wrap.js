@@ -21,6 +21,10 @@ const WrapSchema = new mongoose.Schema({
         type: [String], // Array of model names this wrap is compatible with/showcased on
         default: []
     },
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    },
     likes: {
         type: Number,
         default: 0

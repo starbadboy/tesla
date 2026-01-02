@@ -82,7 +82,30 @@ export const TRANSLATIONS = {
         cancel: "Cancel",
         submitWraps: "Submit Wraps",
         sharing: "Sharing...",
-        selected: "Selected: "
+        selected: "Selected: ",
+        delete: "Delete",
+        like: "Like",
+        download: "Download",
+        myGarage: "My Garage",
+        myUploads: "My Uploads",
+        likedWraps: "Liked Wraps",
+        login: "Login",
+        register: "Register",
+        logout: "Logout",
+        confirmDelete: "Are you sure you want to delete this wrap? This cannot be undone.",
+        deleteSuccess: "Wrap deleted successfully",
+        deleteError: "Failed to delete wrap",
+
+        // Car Models
+        "Cybertruck": "Cybertruck",
+        "Model 3 (2024 Base)": "Model 3 (2024 Base)",
+        "Model 3 (2024 Performance)": "Model 3 (2024 Performance)",
+        "Model 3 (Classic)": "Model 3 (Classic)",
+        "Model Y (2025 Base)": "Model Y (2025 Base)",
+        "Model Y (2025 Performance)": "Model Y (2025 Performance)",
+        "Model Y (2025 Long Range)": "Model Y (2025 Long Range)",
+        "Model Y L": "Model Y L",
+        "Model Y": "Model Y"
     },
     zh: {
         configurator: "配置器",
@@ -167,6 +190,29 @@ export const TRANSLATIONS = {
         cancel: "取消",
         submitWraps: "提交作品",
         sharing: "分享中...",
-        selected: "已选: "
+        selected: "已选: ",
+        delete: "删除",
+        like: "喜欢",
+        download: "下载",
+        myGarage: "我的车库",
+        myUploads: "我的上传",
+        likedWraps: "喜欢的车衣",
+        login: "登录",
+        register: "注册",
+        logout: "退出登录",
+        confirmDelete: "确定要删除此车衣吗？此操作无法撤销。",
+        deleteSuccess: "删除成功",
+        deleteError: "删除失败",
+
+        // Car Models
+        "Cybertruck": "赛博皮卡 (Cybertruck)",
+        "Model 3 (2024 Base)": "Model 3 (2024 焕新版)",
+        "Model 3 (2024 Performance)": "Model 3 (2024 高性能版)",
+        "Model 3 (Classic)": "Model 3 (经典版)",
+        "Model Y (2025 Base)": "Model Y (2025 标准版)",
+        "Model Y (2025 Performance)": "Model Y (2025 高性能版)",
+        "Model Y (2025 Long Range)": "Model Y (2025 长续航版)",
+        "Model Y L": "Model Y (L 加长版)",
+        "Model Y": "Model Y"
     }
 };

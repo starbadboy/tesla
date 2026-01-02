@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Heart, Download } from 'lucide-react';
+import { Download, Heart, Search, Trash2 } from 'lucide-react';
 import officialWrapsData from '../data/officialWraps.json';
 import { WRAP_FOLDER_MAP, CDN_BASE } from '../constants';
 import { TRANSLATIONS } from '../translations';
@@ -20,13 +20,15 @@ export interface GalleryProps {
     selectedModel?: string;
     refreshTrigger?: number; // Increment this to trigger a refetch of community wraps
     language?: 'en' | 'zh';
+    viewMode?: 'all' | 'garage';
 }
 
-export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 'en' }: GalleryProps) {
+export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 'en', viewMode = 'all' }: GalleryProps) {
     const [wraps, setWraps] = useState<Wrap[]>([]);
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState<'official' | 'community'>('community');
+    const [garageTab, setGarageTab] = useState<'my-uploads' | 'liked'>('my-uploads');
 
     const t = TRANSLATIONS[language];
 
@@ -39,7 +41,7 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
 
         // Check if the image url uses the target folder
         // Format: /official_wraps/<folder>/filename.png
-        return w.imageUrl.includes(`/${targetFolder}/`);
+        return w.imageUrl.includes(`/ ${targetFolder}/`);
     });
 
     const officialWrapCount = filteredOfficialWraps.length;
@@ -50,15 +52,31 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
     // Fetch community wraps on mount and when refreshTrigger changes
     useEffect(() => {
         fetchWraps();
-    }, [refreshTrigger]);
+    }, [refreshTrigger, viewMode, garageTab]);
 
     const fetchWraps = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/wraps');
+            let endpoint = '/api/wraps';
+            if (viewMode === 'garage') {
+                endpoint = garageTab === 'liked'
+                    ? '/api/user/garage?type=liked'
+                    : '/api/user/garage?type=my-uploads';
+            }
+
+            const headers: Record<string, string> = {};
+            const token = localStorage.getItem('token');
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
+            const res = await fetch(endpoint, { headers });
             if (res.ok) {
                 const data = await res.json();
                 setWraps(data);
+            } else if (res.status === 401) {
+                console.error("Unauthorized access to garage");
+                setWraps([]);
             }
         } catch (error) {
             console.error("Failed to fetch wraps", error);
@@ -70,7 +88,18 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
     const handleLike = async (e: React.MouseEvent, id: string) => {
         e.stopPropagation();
         try {
-            const res = await fetch(`/api/wraps/${id}/like`, { method: 'POST' });
+            const token = localStorage.getItem('token');
+            const headers: Record<string, string> = {
+                'Content-Type': 'application/json'
+            };
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
+            const res = await fetch(`/api/wraps/${id}/like`, {
+                method: 'POST',
+                headers
+            });
             if (res.ok) {
                 const data = await res.json();
                 setWraps(prev => prev.map(w => w._id === id ? { ...w, likes: data.likes } : w));
@@ -112,6 +141,31 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
         // We don't track download stats on simple view anymore, only on explicit download
     }
 
+    const handleDelete = async (e: React.MouseEvent, id: string) => {
+        e.stopPropagation();
+        if (!confirm(t.confirmDelete)) return;
+
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`/api/wraps/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (res.ok) {
+                setWraps(prev => prev.filter(w => w._id !== id));
+            } else {
+                const data = await res.json();
+                alert(data.error || t.deleteError);
+            }
+        } catch (error) {
+            console.error("Failed to delete wrap", error);
+            alert(t.deleteError);
+        }
+    };
+
     const communityWrapsByModel = wraps.filter(w => {
         if (!selectedModel) return true;
         // If wrap has no specific models, treat as generic/universal? 
@@ -132,20 +186,38 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
     return (
         <div className="h-full flex flex-col bg-gray-50">
             {/* Tabs */}
-            <div className="flex border-b border-gray-200 bg-white">
-                <button
-                    onClick={() => setActiveTab('official')}
-                    className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest transition-colors border-b-2 ${activeTab === 'official' ? 'border-black text-black' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
-                >
-                    {t.official} <span className="ml-1 bg-gray-100 rounded-full px-2 py-0.5 text-[10px]">{officialWrapCount}</span>
-                </button>
-                <button
-                    onClick={() => setActiveTab('community')}
-                    className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest transition-colors border-b-2 ${activeTab === 'community' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
-                >
-                    {t.community} <span className="ml-1 bg-blue-50 text-blue-600 rounded-full px-2 py-0.5 text-[10px]">{communityWrapsByModel.length}</span>
-                </button>
-            </div>
+            {/* Tabs (Only show if not in garage mode) */}
+            {viewMode !== 'garage' ? (
+                <div className="flex border-b border-gray-200 bg-white">
+                    <button
+                        onClick={() => setActiveTab('official')}
+                        className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest transition-colors border-b-2 ${activeTab === 'official' ? 'border-black text-black' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                    >
+                        {t.official} <span className="ml-1 bg-gray-100 rounded-full px-2 py-0.5 text-[10px]">{officialWrapCount}</span>
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('community')}
+                        className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest transition-colors border-b-2 ${activeTab === 'community' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                    >
+                        {t.community} <span className="ml-1 bg-blue-50 text-blue-600 rounded-full px-2 py-0.5 text-[10px]">{wraps.length}</span>
+                    </button>
+                </div>
+            ) : (
+                <div className="flex border-b border-gray-200 bg-white">
+                    <button
+                        onClick={() => setGarageTab('my-uploads')}
+                        className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest transition-colors border-b-2 ${garageTab === 'my-uploads' ? 'border-black text-black' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                    >
+                        {t.myUploads} {garageTab === 'my-uploads' && <span className="ml-1 bg-gray-100 rounded-full px-2 py-0.5 text-[10px]">{wraps.length}</span>}
+                    </button>
+                    <button
+                        onClick={() => setGarageTab('liked')}
+                        className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest transition-colors border-b-2 ${garageTab === 'liked' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                    >
+                        {t.likedWraps} {garageTab === 'liked' && <span className="ml-1 bg-red-50 text-red-600 rounded-full px-2 py-0.5 text-[10px]">{wraps.length}</span>}
+                    </button>
+                </div>
+            )}
 
             {/* Search */}
             <div className="p-4 bg-white border-b border-gray-200">
@@ -245,27 +317,44 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
                                         </p>
 
                                         <div className="flex items-center justify-between">
-                                            <button
-                                                onClick={(e) => handleLike(e, wrap._id)}
-                                                className="flex items-center gap-1.5 text-gray-400 hover:text-red-500 transition-colors bg-gray-50 px-2 py-1 rounded-full"
-                                            >
-                                                <Heart size={12} className={wrap.likes > 0 ? "fill-current" : ""} />
-                                                <span className="text-[10px] font-medium">{wrap.likes}</span>
-                                            </button>
+                                            {/* Action Buttons */}
+                                            <div className="flex gap-2">
+                                                {/* Show Delete button only in 'My Uploads' tab of Garage */}
+                                                {viewMode === 'garage' && garageTab === 'my-uploads' ? (
+                                                    <button
+                                                        onClick={(e) => handleDelete(e, wrap._id)}
+                                                        className="p-2 bg-white/90 backdrop-blur-sm rounded-full text-red-600 hover:bg-white hover:scale-110 transition-all shadow-sm"
+                                                        title={t.delete}
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                ) : (
+                                                    /* Like Button */
+                                                    <button
+                                                        onClick={(e) => handleLike(e, wrap._id)}
+                                                        className={`p-2 bg-white/90 backdrop-blur-sm rounded-full hover:bg-white hover:scale-110 transition-all shadow-sm ${wrap.likes > 0 ? 'text-red-500' : 'text-gray-700'}`}
+                                                        title={t.like}
+                                                    >
+                                                        <Heart size={16} fill={wrap.likes > 0 ? "currentColor" : "none"} />
+                                                    </button>
+                                                )}
 
-                                            <div className="flex gap-1 items-center">
-                                                <button className="p-1.5 text-gray-400 hover:text-blue-600 bg-gray-50 rounded-full transition-colors hidden">
-                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
-                                                </button>
                                                 <button
                                                     onClick={(e) => handleDownload(e, wrap)}
-                                                    className="flex items-center gap-1 text-gray-400 hover:text-black transition-colors bg-gray-50 px-2 py-1 rounded-full cursor-pointer hover:bg-gray-200"
-                                                    title="Download Wrap Image"
+                                                    className="p-2 bg-white/90 backdrop-blur-sm rounded-full text-gray-700 hover:bg-white hover:scale-110 transition-all shadow-sm"
+                                                    title={t.download}
                                                 >
-                                                    <Download size={12} />
-                                                    <span className="text-[10px] font-medium">{wrap.downloads}</span>
+                                                    <Download size={16} />
                                                 </button>
                                             </div>
+
+                                            {/* Like Count Display for non-garage or liked mode */}
+                                            {(viewMode !== 'garage' || garageTab === 'liked') && (
+                                                <div className="flex items-center gap-1.5 text-gray-400 bg-gray-50 px-2 py-1 rounded-full">
+                                                    <Heart size={12} className={wrap.likes > 0 ? "fill-red-500 text-red-500" : ""} />
+                                                    <span className="text-[10px] font-medium">{wrap.likes}</span>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -277,4 +366,3 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
         </div>
     );
 }
-
