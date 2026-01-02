@@ -1,11 +1,9 @@
+// Imports updated
 import { useState, useEffect } from 'react';
 import { Download, Heart, Search, Trash2 } from 'lucide-react';
-import officialWrapsData from '../data/officialWraps.json';
-import { WRAP_FOLDER_MAP, CDN_BASE } from '../constants';
 import { TRANSLATIONS } from '../translations';
 import { useAuth } from '../contexts/AuthContext';
 
-const officialWraps: Wrap[] = officialWrapsData as Wrap[];
 interface Wrap {
     _id: string;
     name: string;
@@ -29,27 +27,9 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(false);
     const { user } = useAuth();
-    const [activeTab, setActiveTab] = useState<'official' | 'community'>('community');
     const [garageTab, setGarageTab] = useState<'my-uploads' | 'liked'>('my-uploads');
 
     const t = TRANSLATIONS[language];
-
-    // Filter official wraps based on selected model
-    const filteredOfficialWraps = officialWraps.filter(w => {
-        if (!selectedModel) return true;
-
-        const targetFolder = WRAP_FOLDER_MAP[selectedModel];
-        if (!targetFolder) return true; // Fallback if no map found
-
-        // Check if the image url uses the target folder
-        // Format: /official_wraps/<folder>/filename.png
-        return w.imageUrl.includes(`/ ${targetFolder}/`);
-    });
-
-    const officialWrapCount = filteredOfficialWraps.length;
-
-    // Auto-apply logic removed as per user request
-
 
     // Fetch community wraps on mount and when refreshTrigger changes
     useEffect(() => {
@@ -119,7 +99,7 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
             setWraps(prev => prev.map(w => w._id === wrap._id ? { ...w, downloads: w.downloads + 1 } : w));
 
             // 2. Trigger download
-            const imageUrl = activeTab === 'official' ? `${CDN_BASE}${wrap.imageUrl}` : wrap.imageUrl;
+            const imageUrl = wrap.imageUrl;
             const response = await fetch(imageUrl);
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
@@ -138,9 +118,8 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
     const handleLoad = (wrap: Wrap) => {
         // Fix image URL to include host if relative
         // Proxy handles /uploads path
-        const url = activeTab === 'official' ? `${CDN_BASE}${wrap.imageUrl}` : wrap.imageUrl;
+        const url = wrap.imageUrl;
         onLoadWrap(url);
-        // We don't track download stats on simple view anymore, only on explicit download
     }
 
     const handleDelete = async (e: React.MouseEvent, id: string) => {
@@ -187,24 +166,8 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
 
     return (
         <div className="h-full flex flex-col bg-gray-50">
-            {/* Tabs */}
-            {/* Tabs (Only show if not in garage mode) */}
-            {viewMode !== 'garage' ? (
-                <div className="flex border-b border-gray-200 bg-white">
-                    <button
-                        onClick={() => setActiveTab('official')}
-                        className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest transition-colors border-b-2 ${activeTab === 'official' ? 'border-black text-black' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
-                    >
-                        {t.official} <span className="ml-1 bg-gray-100 rounded-full px-2 py-0.5 text-[10px]">{officialWrapCount}</span>
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('community')}
-                        className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest transition-colors border-b-2 ${activeTab === 'community' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
-                    >
-                        {t.community} <span className="ml-1 bg-blue-50 text-blue-600 rounded-full px-2 py-0.5 text-[10px]">{wraps.length}</span>
-                    </button>
-                </div>
-            ) : (
+            {/* Tabs (Only show if in garage mode) */}
+            {viewMode === 'garage' && (
                 <div className="flex border-b border-gray-200 bg-white">
                     <button
                         onClick={() => setGarageTab('my-uploads')}
@@ -238,9 +201,17 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
 
             {/* Grid */}
             <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-                {activeTab === 'official' ? (
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {filteredOfficialWraps.map(wrap => (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {loading ? (
+                        <div className="col-span-2 flex justify-center py-8">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black"></div>
+                        </div>
+                    ) : filteredWraps.length === 0 ? (
+                        <div className="col-span-2 text-center py-8 text-gray-400 text-sm">
+                            {t.noWrapsFound}
+                        </div>
+                    ) : (
+                        filteredWraps.map(wrap => (
                             <div
                                 key={wrap._id}
                                 className="group bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
@@ -248,136 +219,60 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
                             >
                                 <div className="aspect-square bg-gray-50 relative overflow-hidden">
                                     <img
-                                        src={`${CDN_BASE}${wrap.imageUrl}`}
+                                        src={wrap.imageUrl}
                                         alt={wrap.name}
                                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                                     />
                                     <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+
+                                    {/* Owner/Admin Delete Button Overlay on Image (Cleaner) */}
+                                    {((viewMode === 'garage' && garageTab === 'my-uploads') || (user && user.isAdmin)) && (
+                                        <button
+                                            onClick={(e) => handleDelete(e, wrap._id)}
+                                            className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow-sm"
+                                            title={t.delete}
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                    )}
                                 </div>
 
                                 <div className="p-3">
                                     <h3 className="font-bold text-xs truncate mb-0.5">{wrap.name}</h3>
-                                    <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-2 truncate">
+                                    <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-3 truncate">
                                         {wrap.models.length > 0 ? wrap.models.join(', ') : t.universal} • {t.by} {wrap.author}
                                     </p>
 
+                                    {/* Clean Action Row */}
                                     <div className="flex items-center justify-between">
-                                        {/* Likes (Static for official) */}
+                                        {/* Like Button with Count */}
                                         <button
-                                            className="flex items-center gap-1.5 text-gray-400 cursor-default bg-gray-50 px-2 py-1 rounded-full"
+                                            onClick={(e) => handleLike(e, wrap._id)}
+                                            className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md transition-colors ${wrap.likes > 0
+                                                ? 'bg-red-50 text-red-600 hover:bg-red-100'
+                                                : 'bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-black'
+                                                }`}
+                                            title={t.like}
                                         >
-                                            <Heart size={12} />
-                                            <span className="text-[10px] font-medium">{wrap.likes}</span>
+                                            <Heart size={14} className={wrap.likes > 0 ? "fill-current" : ""} />
+                                            <span className="text-xs font-medium">{wrap.likes}</span>
                                         </button>
 
-                                        <div className="flex gap-1 items-center">
-                                            <button
-                                                onClick={(e) => handleDownload(e, wrap)}
-                                                className="flex items-center gap-1 text-gray-400 hover:text-black transition-colors bg-gray-50 px-2 py-1 rounded-full cursor-pointer hover:bg-gray-200"
-                                                title={t.downloadWrapImage}
-                                            >
-                                                <Download size={12} />
-                                                <span className="text-[10px] font-medium">{wrap.downloads}</span>
-                                            </button>
-                                        </div>
+                                        {/* Download Button */}
+                                        <button
+                                            onClick={(e) => handleDownload(e, wrap)}
+                                            className="flex items-center gap-1.5 px-2 py-1.5 rounded-md bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-black transition-colors"
+                                            title={t.download}
+                                        >
+                                            <Download size={14} />
+                                            <span className="text-xs font-medium">{wrap.downloads}</span>
+                                        </button>
                                     </div>
                                 </div>
                             </div>
-                        ))}
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {loading ? (
-                            <div className="col-span-2 flex justify-center py-8">
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black"></div>
-                            </div>
-                        ) : filteredWraps.length === 0 ? (
-                            <div className="col-span-2 text-center py-8 text-gray-400 text-sm">
-                                {t.noWrapsFound}
-                            </div>
-                        ) : (
-                            filteredWraps.map(wrap => (
-                                <div
-                                    key={wrap._id}
-                                    className="group bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
-                                    onClick={() => handleLoad(wrap)}
-                                >
-                                    <div className="aspect-square bg-gray-50 relative overflow-hidden">
-                                        <img
-                                            src={wrap.imageUrl}
-                                            alt={wrap.name}
-                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                        />
-                                        {/* Hover Overlay */}
-                                        <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                    </div>
-
-                                    <div className="p-3">
-                                        <h3 className="font-bold text-xs truncate mb-0.5">{wrap.name}</h3>
-                                        <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-2 truncate">
-                                            {wrap.models.length > 0 ? wrap.models.join(', ') : t.universal} • {t.by} {wrap.author}
-                                        </p>
-
-                                        <div className="flex items-center justify-between">
-                                            {/* Action Buttons */}
-                                            <div className="flex gap-2">
-                                                {/* Show Delete button if owner (in 'my-uploads') OR if admin */}
-                                                {(viewMode === 'garage' && garageTab === 'my-uploads') || (user && user.isAdmin) ? (
-                                                    <button
-                                                        onClick={(e) => handleDelete(e, wrap._id)}
-                                                        className="p-2 bg-white/90 backdrop-blur-sm rounded-full text-red-600 hover:bg-white hover:scale-110 transition-all shadow-sm"
-                                                        title={t.delete}
-                                                    >
-                                                        <Trash2 size={16} />
-                                                    </button>
-                                                ) : (
-                                                    <button
-                                                        onClick={(e) => handleLike(e, wrap._id)}
-                                                        className={`p-2 bg-white/90 backdrop-blur-sm rounded-full hover:bg-white hover:scale-110 transition-all shadow-sm ${wrap.likes > 0 ? 'text-red-500' : 'text-gray-700'}`}
-                                                        title={t.like}
-                                                    >
-                                                        <Heart size={16} fill={wrap.likes > 0 ? "currentColor" : "none"} />
-                                                    </button>
-                                                )}
-
-                                                {/* Admin extra delete button if we want to support both Like AND Delete for admin in community view? 
-                                                   If I use the logic above:
-                                                   If Admin -> enters the first block -> shows Delete. Like is hidden.
-                                                   This means Admins can't like. That's probably acceptable for a "manager".
-                                                   Or I can render both.
-                                                   Let's render Delete button conditionally, and Like button conditionally.
-                                                */}
-                                            </div>
-
-                                            {/* Revised Logic for Admin to have Delete button AND Like button? */}
-                                            {/* Let's stick to the replacement logic for now as it fits the current slot.
-                                                If admin, they see Delete button.
-                                                If they are in 'my-uploads', they see Delete button.
-                                                Otherwise (Community/Liked + Not Admin), they see Like button.
-                                            */}
-
-                                            <button
-                                                onClick={(e) => handleDownload(e, wrap)}
-                                                className="p-2 bg-white/90 backdrop-blur-sm rounded-full text-gray-700 hover:bg-white hover:scale-110 transition-all shadow-sm"
-                                                title={t.download}
-                                            >
-                                                <Download size={16} />
-                                            </button>
-                                        </div>
-
-                                        {/* Like Count Display for non-garage or liked mode */}
-                                        {(viewMode !== 'garage' || garageTab === 'liked') && (
-                                            <div className="flex items-center gap-1.5 text-gray-400 bg-gray-50 px-2 py-1 rounded-full">
-                                                <Heart size={12} className={wrap.likes > 0 ? "fill-red-500 text-red-500" : ""} />
-                                                <span className="text-[10px] font-medium">{wrap.likes}</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                )}
+                        ))
+                    )}
+                </div>
             </div>
         </div>
     );
