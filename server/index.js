@@ -260,14 +260,14 @@ app.delete('/api/wraps/:id', async (req, res) => {
             return res.status(404).json({ error: 'Wrap not found' });
         }
 
-        // Check ownership
-        if (wrap.user && wrap.user.toString() !== req.user.id) {
+        // Check ownership or admin status
+        if (wrap.user && wrap.user.toString() !== req.user.id && !req.user.isAdmin) {
             return res.status(403).json({ error: 'You do not have permission to delete this wrap' });
         }
 
         // If wrap has no user (anonymous legacy), only allow deletion if we decide to (maybe admin?)
         // For now, if no user linked, nobody can delete via API except maybe admin (not implemented).
-        if (!wrap.user) {
+        if (!wrap.user && !req.user.isAdmin) {
             return res.status(403).json({ error: 'Cannot delete anonymous wraps' });
         }
 
