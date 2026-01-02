@@ -5,6 +5,7 @@ interface User {
     id: string;
     username: string;
     email: string;
+    isAdmin?: boolean;
 }
 
 interface AuthContextType {
@@ -34,7 +35,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     const res = await axios.get('/api/auth/me', {
                         headers: { Authorization: `Bearer ${storedToken}` }
                     });
-                    setUser(res.data.user);
+                    // /me endpoint returns the user object directly
+                    setUser(res.data);
                     setToken(storedToken);
                 } catch (err) {
                     console.error("Auth check failed:", err);

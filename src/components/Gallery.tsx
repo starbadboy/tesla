@@ -3,6 +3,7 @@ import { Download, Heart, Search, Trash2 } from 'lucide-react';
 import officialWrapsData from '../data/officialWraps.json';
 import { WRAP_FOLDER_MAP, CDN_BASE } from '../constants';
 import { TRANSLATIONS } from '../translations';
+import { useAuth } from '../contexts/AuthContext';
 
 const officialWraps: Wrap[] = officialWrapsData as Wrap[];
 interface Wrap {
@@ -27,6 +28,7 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
     const [wraps, setWraps] = useState<Wrap[]>([]);
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(false);
+    const { user } = useAuth();
     const [activeTab, setActiveTab] = useState<'official' | 'community'>('community');
     const [garageTab, setGarageTab] = useState<'my-uploads' | 'liked'>('my-uploads');
 
@@ -319,8 +321,8 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
                                         <div className="flex items-center justify-between">
                                             {/* Action Buttons */}
                                             <div className="flex gap-2">
-                                                {/* Show Delete button only in 'My Uploads' tab of Garage */}
-                                                {viewMode === 'garage' && garageTab === 'my-uploads' ? (
+                                                {/* Show Delete button if owner (in 'my-uploads') OR if admin */}
+                                                {(viewMode === 'garage' && garageTab === 'my-uploads') || (user && user.isAdmin) ? (
                                                     <button
                                                         onClick={(e) => handleDelete(e, wrap._id)}
                                                         className="p-2 bg-white/90 backdrop-blur-sm rounded-full text-red-600 hover:bg-white hover:scale-110 transition-all shadow-sm"
@@ -329,7 +331,6 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
                                                         <Trash2 size={16} />
                                                     </button>
                                                 ) : (
-                                                    /* Like Button */
                                                     <button
                                                         onClick={(e) => handleLike(e, wrap._id)}
                                                         className={`p-2 bg-white/90 backdrop-blur-sm rounded-full hover:bg-white hover:scale-110 transition-all shadow-sm ${wrap.likes > 0 ? 'text-red-500' : 'text-gray-700'}`}
@@ -339,23 +340,38 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
                                                     </button>
                                                 )}
 
-                                                <button
-                                                    onClick={(e) => handleDownload(e, wrap)}
-                                                    className="p-2 bg-white/90 backdrop-blur-sm rounded-full text-gray-700 hover:bg-white hover:scale-110 transition-all shadow-sm"
-                                                    title={t.download}
-                                                >
-                                                    <Download size={16} />
-                                                </button>
+                                                {/* Admin extra delete button if we want to support both Like AND Delete for admin in community view? 
+                                                   If I use the logic above:
+                                                   If Admin -> enters the first block -> shows Delete. Like is hidden.
+                                                   This means Admins can't like. That's probably acceptable for a "manager".
+                                                   Or I can render both.
+                                                   Let's render Delete button conditionally, and Like button conditionally.
+                                                */}
                                             </div>
 
-                                            {/* Like Count Display for non-garage or liked mode */}
-                                            {(viewMode !== 'garage' || garageTab === 'liked') && (
-                                                <div className="flex items-center gap-1.5 text-gray-400 bg-gray-50 px-2 py-1 rounded-full">
-                                                    <Heart size={12} className={wrap.likes > 0 ? "fill-red-500 text-red-500" : ""} />
-                                                    <span className="text-[10px] font-medium">{wrap.likes}</span>
-                                                </div>
-                                            )}
+                                            {/* Revised Logic for Admin to have Delete button AND Like button? */}
+                                            {/* Let's stick to the replacement logic for now as it fits the current slot.
+                                                If admin, they see Delete button.
+                                                If they are in 'my-uploads', they see Delete button.
+                                                Otherwise (Community/Liked + Not Admin), they see Like button.
+                                            */}
+
+                                            <button
+                                                onClick={(e) => handleDownload(e, wrap)}
+                                                className="p-2 bg-white/90 backdrop-blur-sm rounded-full text-gray-700 hover:bg-white hover:scale-110 transition-all shadow-sm"
+                                                title={t.download}
+                                            >
+                                                <Download size={16} />
+                                            </button>
                                         </div>
+
+                                        {/* Like Count Display for non-garage or liked mode */}
+                                        {(viewMode !== 'garage' || garageTab === 'liked') && (
+                                            <div className="flex items-center gap-1.5 text-gray-400 bg-gray-50 px-2 py-1 rounded-full">
+                                                <Heart size={12} className={wrap.likes > 0 ? "fill-red-500 text-red-500" : ""} />
+                                                <span className="text-[10px] font-medium">{wrap.likes}</span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             ))

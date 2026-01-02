@@ -25,34 +25,41 @@ router.post('/register', async (req, res) => {
             return res.status(400).json({ error: 'Please provide all fields' });
         }
 
-        // Check existing user
-        const existingUser = await User.findOne({ $or: [{ email }, { username }] });
-        if (existingUser) {
-            return res.status(400).json({ error: 'Username or email already exists' });
-        }
-
-        // Hash password
-        const salt = await bcrypt.genSalt(10);
-        const passwordHash = await bcrypt.hash(password, salt);
-
-        // Create user
-        const newUser = new User({
-            username,
-            email,
-            passwordHash
+        // Check if user already exists
+        let user = await User.findOne({
+            $or: [{ email }, { username }]
         });
 
-        await newUser.save();
+        if (user) {
+            return res.status(400).json({ error: 'User already exists' });
+        }
 
-        // Generate token
-        const token = generateToken(newUser);
+        // Create new user
+        // simplified admin logic: if username is 'admin', they are admin
+        const isAdmin = username.toLowerCase() === 'admin';
+
+        user = new User({
+            username,
+            email,
+            passwordHash: await bcrypt.hash(password, 10),
+            isAdmin
+        });
+
+        await user.save();
+
+        const token = jwt.sign(
+            { id: user._id, isAdmin: user.isAdmin },
+            process.env.JWT_SECRET || 'secret',
+            { expiresIn: '7d' }
+        );
 
         res.status(201).json({
             token,
             user: {
-                id: newUser._id,
-                username: newUser.username,
-                email: newUser.email
+                id: user._id,
+                username: user.username,
+                email: user.email,
+                isAdmin: user.isAdmin
             }
         });
 
@@ -92,22 +99,27 @@ router.post('/login', async (req, res) => {
 
         // Check password
         const isMatch = await bcrypt.compare(password, user.passwordHash);
+
         if (!isMatch) {
             return res.status(400).json({ error: 'Invalid credentials' });
         }
 
-        // Generate token
-        const token = generateToken(user);
+        const token = jwt.sign(
+            { id: user._id, isAdmin: user.isAdmin },
+            process.env.JWT_SECRET || 'secret',
+            { expiresIn: '7d' }
+        );
 
         res.json({
             token,
             user: {
                 id: user._id,
                 username: user.username,
-                email: user.email
+                email: user.email,
+                likedWraps: user.likedWraps,
+                isAdmin: user.isAdmin
             }
         });
-
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Server error during login' });
@@ -129,7 +141,8 @@ router.get('/me', async (req, res) => {
             user: {
                 id: user._id,
                 username: user.username,
-                email: user.email
+                email: user.email,
+                isAdmin: user.isAdmin
             }
         });
     } catch (err) {

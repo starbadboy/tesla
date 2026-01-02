@@ -31,7 +31,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onOpenGarage, language = 'en
                         onClick={() => setIsOpen(!isOpen)}
                         className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-bold text-xs hover:scale-105 transition-transform"
                     >
-                        {user.username.charAt(0).toUpperCase()}
+                        {user.username?.charAt(0).toUpperCase() || '?'}
                     </button>
 
                     {isOpen && (

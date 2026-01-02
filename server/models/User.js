@@ -27,7 +27,8 @@ const UserSchema = new mongoose.Schema({
     likedWraps: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Wrap'
-    }]
+    }],
+    isAdmin: { type: Boolean, default: false }
 });
 
 module.exports = mongoose.model('User', UserSchema);
