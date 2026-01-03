@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
 import { Stage, Layer, Image as KonvaImage, Transformer, Rect, Line } from 'react-konva';
 import useImage from 'use-image';
-import { processTemplateMask } from '../utils/imageProcessor';
+import { processTemplateMask, compressBlob } from '../utils/imageProcessor';
 import Konva from 'konva';
 
 export interface DesignCanvasHandle {
@@ -272,6 +272,20 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
                         // Draw Base Design
                         ctx.drawImage(img, 0, 0);
 
+                        const finalizeExport = (blob: Blob | null) => {
+                            if (!blob) return;
+                            compressBlob(blob, 1).then(compressedBlob => {
+                                const url = URL.createObjectURL(compressedBlob);
+                                const link = document.createElement('a');
+                                link.download = `design-tesla-1024.png`;
+                                link.href = url;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                                URL.revokeObjectURL(url);
+                            });
+                        };
+
                         // Draw Mask with Destination-Out (Cut hole for exterior)
                         if (overlays.mask) {
                             const maskImg = new Image();
@@ -281,23 +295,12 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
                                 // Draw mask stretch to fit
                                 ctx.drawImage(maskImg, 0, 0, cvs.width, cvs.height);
 
-                                // Export Final
-                                const link = document.createElement('a');
-                                link.download = `design-tesla-1024.png`;
-                                link.href = cvs.toDataURL('image/png');
-                                document.body.appendChild(link);
-                                link.click();
-                                document.body.removeChild(link);
+                                cvs.toBlob(finalizeExport, 'image/png');
                             };
                             maskImg.src = overlays.mask;
                         } else {
                             // Fallback if no mask
-                            const link = document.createElement('a');
-                            link.download = `design-tesla-1024.png`;
-                            link.href = cvs.toDataURL('image/png');
-                            document.body.appendChild(link);
-                            link.click();
-                            document.body.removeChild(link);
+                            cvs.toBlob(finalizeExport, 'image/png');
                         }
                     };
                     img.src = baseUri;
@@ -354,18 +357,26 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
 
                         ctx.drawImage(img, 0, 0);
 
+                        const finalizeBlob = (blob: Blob | null) => {
+                            if (!blob) {
+                                resolve(null);
+                                return;
+                            }
+                            compressBlob(blob, 1).then(resolve);
+                        };
+
                         if (overlays.mask) {
                             const maskImg = new Image();
                             maskImg.crossOrigin = "Anonymous";
                             maskImg.onload = () => {
                                 ctx.globalCompositeOperation = 'destination-out';
                                 ctx.drawImage(maskImg, 0, 0, cvs.width, cvs.height);
-                                cvs.toBlob((blob) => resolve(blob), 'image/png');
+                                cvs.toBlob(finalizeBlob, 'image/png');
                             };
                             maskImg.onerror = () => resolve(null);
                             maskImg.src = overlays.mask;
                         } else {
-                            cvs.toBlob((blob) => resolve(blob), 'image/png');
+                            cvs.toBlob(finalizeBlob, 'image/png');
                         }
                     };
                     img.src = baseUri;
