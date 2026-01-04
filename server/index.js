@@ -107,10 +107,10 @@ app.get('/api/wraps', async (req, res) => {
         const aggregationPipeline = [];
 
         // Only add score field if we are sorting by popularity (default)
-        if (!sort || sort === 'popularity') {
+        if (!sort) {
             aggregationPipeline.push({
                 $addFields: {
-                    score: { $add: [{ $ifNull: ["$likes", 0] }, { $ifNull: ["$downloads", 0] }] }
+                    score: { $add: ["$likes", "$downloads"] }
                 }
             });
         }
