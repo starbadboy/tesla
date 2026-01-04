@@ -94,18 +94,58 @@ mongoose.connect(mongoUrl, {
 // GET /api/wraps - List all wraps (simplified for now)
 app.get('/api/wraps', async (req, res) => {
     try {
-        // Sort by popularity (likes + downloads) descending, then by newest
-        const wraps = await Wrap.aggregate([
-            {
+        const { sort } = req.query; // 'latest' or 'downloads' or undefined (popularity)
+
+        let sortStage = { score: -1, createdAt: -1 };
+
+        if (sort === 'latest') {
+            sortStage = { createdAt: -1 };
+        } else if (sort === 'downloads') {
+            sortStage = { downloads: -1, createdAt: -1 };
+        }
+
+        const aggregationPipeline = [];
+
+        // Only add score field if we are sorting by popularity (default)
+        if (!sort) {
+            aggregationPipeline.push({
                 $addFields: {
                     score: { $add: ["$likes", "$downloads"] }
                 }
-            },
+            });
+        }
+
+        aggregationPipeline.push({
+            $sort: sortStage
+        });
+
+        const wraps = await Wrap.aggregate(aggregationPipeline);
+        res.json(wraps);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/wraps/stats - Get wrap counts by model
+app.get('/api/wraps/stats', async (req, res) => {
+    try {
+        const stats = await Wrap.aggregate([
+            { $unwind: "$models" },
             {
-                $sort: { score: -1, createdAt: -1 }
+                $group: {
+                    _id: "$models",
+                    count: { $sum: 1 }
+                }
             }
         ]);
-        res.json(wraps);
+
+        // Transform to object { "Model Y": 5, ... }
+        const statsMap = {};
+        stats.forEach(item => {
+            if (item._id) statsMap[item._id] = item.count;
+        });
+
+        res.json(statsMap);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
