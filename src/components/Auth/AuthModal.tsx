@@ -43,8 +43,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTa
 
             login(res.data.token, res.data.user);
             onClose();
-        } catch (err: any) {
-            setError(err.response?.data?.error || 'An error occurred. Please try again.');
+        } catch (err: unknown) {
+            if (axios.isAxiosError(err)) {
+                setError(err.response?.data?.error || 'An error occurred. Please try again.');
+            } else {
+                setError('An error occurred. Please try again.');
+            }
         } finally {
             setLoading(false);
         }

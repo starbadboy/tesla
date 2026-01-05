@@ -1,0 +1,87 @@
+
+> web-car-designer@0.0.0 lint
+> eslint .
+
+
+/Users/tao.song51/Desktop/teslawrap/src/App.tsx
+  344:62  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  406:62  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/tao.song51/Desktop/teslawrap/src/components/Auth/AuthModal.tsx
+  46:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/tao.song51/Desktop/teslawrap/src/components/DesignCanvas.tsx
+  393:17  error  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/ban-ts-comment
+  407:13  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/tao.song51/Desktop/teslawrap/src/components/DesignCanvas.tsx:407:13
+  405 |     useEffect(() => {
+  406 |         if (maskImage) {
+> 407 |             setDimensions({
+      |             ^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  408 |                 width: maskImage.width,
+  409 |                 height: maskImage.height
+  410 |             });  react-hooks/set-state-in-effect
+
+/Users/tao.song51/Desktop/teslawrap/src/components/Gallery.tsx
+  38:8  warning  React Hook useEffect has a missing dependency: 'fetchWraps'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/tao.song51/Desktop/teslawrap/src/components/Layout/Sidebar.tsx
+  55:68  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/tao.song51/Desktop/teslawrap/src/components/ShareModal.tsx
+  181:88  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/tao.song51/Desktop/teslawrap/src/components/ThreeDView.tsx
+  52:22  error    'e' is defined but never used                                                                                     @typescript-eslint/no-unused-vars
+  82:8   warning  React Hook useEffect has a missing dependency: 'updateTexture'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  95:33  error    Unexpected any. Specify a different type                                                                          @typescript-eslint/no-explicit-any
+  98:32  error    Unexpected any. Specify a different type                                                                          @typescript-eslint/no-explicit-any
+
+/Users/tao.song51/Desktop/teslawrap/src/contexts/AuthContext.tsx
+  43:21  error  Error: Cannot access variable before it is declared
+
+`logout` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+/Users/tao.song51/Desktop/teslawrap/src/contexts/AuthContext.tsx:43:21
+  41 |                 } catch (err) {
+  42 |                     console.error("Auth check failed:", err);
+> 43 |                     logout();
+     |                     ^^^^^^ `logout` accessed before it is declared
+  44 |                 }
+  45 |             }
+  46 |             setLoading(false);
+
+/Users/tao.song51/Desktop/teslawrap/src/contexts/AuthContext.tsx:57:5
+  55 |     };
+  56 |
+> 57 |     const logout = () => {
+     |     ^^^^^^^^^^^^^^^^^^^^^^
+> 58 |         localStorage.removeItem('token');
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 59 |         setToken(null);
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 60 |         setUser(null);
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 61 |     };
+     | ^^^^^^^ `logout` is declared here
+  62 |
+  63 |     return (
+  64 |         <AuthContext.Provider value={{ user, token, loading, login, logout, isAuthenticated: !!user }}>  react-hooks/immutability
+  70:14  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                react-refresh/only-export-components
+
+/Users/tao.song51/Desktop/teslawrap/src/utils/imageProcessor.ts
+  185:17  error  'canvas' is never reassigned. Use 'const' instead  prefer-const
+  186:17  error  'ctx' is never reassigned. Use 'const' instead     prefer-const
+  193:17  error  'width' is never reassigned. Use 'const' instead   prefer-const
+  194:17  error  'height' is never reassigned. Use 'const' instead  prefer-const
+
+✖ 18 problems (16 errors, 2 warnings)
+  4 errors and 0 warnings potentially fixable with the `--fix` option.
+

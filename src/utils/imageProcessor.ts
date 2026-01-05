@@ -182,16 +182,16 @@ export const compressBlob = async (blob: Blob, maxSizeMB: number = 1): Promise<B
         img.onload = () => {
             URL.revokeObjectURL(img.src);
 
-            let canvas = document.createElement('canvas');
-            let ctx = canvas.getContext('2d');
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
 
             if (!ctx) {
                 resolve(blob); // Fail safe
                 return;
             }
 
-            let width = img.width;
-            let height = img.height;
+            const width = img.width;
+            const height = img.height;
 
             // Start stepping down
             const stepDown = async (currentW: number, currentH: number, attempt: number): Promise<Blob> => {

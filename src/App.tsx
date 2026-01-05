@@ -341,6 +341,7 @@ function App() {
                   onChange={(e) => setCurrentModelName(e.target.value)}
                 >
                   {Object.keys(CAR_MODELS).map(model => (
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     <option key={model} value={model}>{(t as any)[model] || model}</option>
                   ))}
                 </Select>
@@ -403,6 +404,7 @@ function App() {
                   onChange={(e) => setCurrentModelName(e.target.value)}
                 >
                   {Object.keys(CAR_MODELS).map(model => (
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     <option key={model} value={model}>{(t as any)[model] || model}</option>
                   ))}
                 </Select>

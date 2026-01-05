@@ -2,7 +2,7 @@
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, useGLTF, Html, Environment } from '@react-three/drei';
 import * as THREE from 'three';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { TRANSLATIONS } from '../translations';
 
 
@@ -40,7 +40,7 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true 
         setTextureActive(showTexture);
     }, [showTexture]);
 
-    const updateTexture = () => {
+    const updateTexture = useCallback(() => {
         if (stageRef.current && textureActive) {
             try {
                 const newCanvas = stageRef.current.getTextureCanvas();
@@ -49,11 +49,11 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true 
                     texture.image = newCanvas;
                     texture.needsUpdate = true;
                 }
-            } catch (e) {
-                // console.error("Failed to update texture", e);
+            } catch {
+                // console.error("Failed to update texture");
             }
         }
-    };
+    }, [stageRef, textureActive, texture]);
 
     // Force update when becoming active
     useEffect(() => {
@@ -79,7 +79,7 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true 
                 clearTimeout(timer2);
             };
         }
-    }, [isActive, textureActive, stageRef, texture]);
+    }, [isActive, textureActive, stageRef, texture, updateTexture]);
 
 
     // Setup initial material properties for realism (this useEffect remains for base material setup)
@@ -92,10 +92,10 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true 
                 const name = mesh.name.toLowerCase();
                 // DEBUG: Log mesh names to find glass
                 // DEBUG: Log mesh names and material names to find glass
-                if (!(window as any)['logged_meshes_' + name]) {
+                if (!(window as unknown as Record<string, boolean>)['logged_meshes_' + name]) {
                     // const matName = (mesh.material as THREE.Material)?.name || 'unknown';
                     // console.log('Found mesh:', name, 'Material:', matName);
-                    (window as any)['logged_meshes_' + name] = true;
+                    (window as unknown as Record<string, boolean>)['logged_meshes_' + name] = true;
                 }
                 const isGlass = name.includes('glass') || name.includes('window') || name.includes('windshield');
                 const isLight = name.includes('light') || name.includes('lamp');

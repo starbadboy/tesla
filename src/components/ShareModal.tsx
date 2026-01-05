@@ -178,6 +178,7 @@ export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl, language
                                             onChange={() => handleModelToggle(model)}
                                             className="rounded border-gray-300 text-black focus:ring-black"
                                         />
+                                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                                         <span className="text-sm text-gray-700">{(t as any)[model] || model}</span>
                                     </label>
                                 ))}

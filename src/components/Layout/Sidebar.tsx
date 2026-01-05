@@ -52,7 +52,7 @@ export const SidebarSection: React.FC<{
 }> = ({ title, icon, children, className }) => (
     <div className={cn("space-y-6", className)}>
         <h3 className="flex items-center gap-2 text-xs font-sans font-bold uppercase tracking-widest border-b border-gray-200 pb-2">
-            {icon && React.cloneElement(icon as React.ReactElement<any>, { size: 14 })}
+            {icon && React.cloneElement(icon as React.ReactElement<Record<string, unknown>>, { size: 14 })}
             {title}
         </h3>
         <div className="space-y-4">

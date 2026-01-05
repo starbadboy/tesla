@@ -390,7 +390,7 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
         let isMounted = true;
         const loadAndProcess = async () => {
             try {
-                // @ts-ignore
+
                 const result = await processTemplateMask(modelPath);
                 if (isMounted) setOverlays(result);
             } catch (e) {
@@ -404,9 +404,13 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
     // Update dimensions when overlay loads
     useEffect(() => {
         if (maskImage) {
-            setDimensions({
-                width: maskImage.width,
-                height: maskImage.height
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setDimensions(prev => {
+                if (prev.width === maskImage.width && prev.height === maskImage.height) return prev;
+                return {
+                    width: maskImage.width,
+                    height: maskImage.height
+                };
             });
         }
     }, [maskImage]);

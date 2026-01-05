@@ -34,39 +34,40 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
 
     // Fetch community wraps on mount and when refreshTrigger changes
     useEffect(() => {
+        const fetchWraps = async () => {
+            setLoading(true);
+            try {
+                let endpoint = '/api/wraps';
+                if (viewMode === 'garage') {
+                    endpoint = garageTab === 'liked'
+                        ? '/api/user/garage?type=liked'
+                        : '/api/user/garage?type=my-uploads';
+                }
+
+                const headers: Record<string, string> = {};
+                const token = localStorage.getItem('token');
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
+
+                const res = await fetch(endpoint, { headers });
+                if (res.ok) {
+                    const data = await res.json();
+                    setWraps(data);
+                } else if (res.status === 401) {
+                    console.error("Unauthorized access to garage");
+                    setWraps([]);
+                }
+            } catch (error) {
+                console.error("Failed to fetch wraps", error);
+            } finally {
+                setLoading(false);
+            }
+        };
         fetchWraps();
     }, [refreshTrigger, viewMode, garageTab]);
 
-    const fetchWraps = async () => {
-        setLoading(true);
-        try {
-            let endpoint = '/api/wraps';
-            if (viewMode === 'garage') {
-                endpoint = garageTab === 'liked'
-                    ? '/api/user/garage?type=liked'
-                    : '/api/user/garage?type=my-uploads';
-            }
 
-            const headers: Record<string, string> = {};
-            const token = localStorage.getItem('token');
-            if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
-            }
-
-            const res = await fetch(endpoint, { headers });
-            if (res.ok) {
-                const data = await res.json();
-                setWraps(data);
-            } else if (res.status === 401) {
-                console.error("Unauthorized access to garage");
-                setWraps([]);
-            }
-        } catch (error) {
-            console.error("Failed to fetch wraps", error);
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const handleLike = async (e: React.MouseEvent, id: string) => {
         e.stopPropagation();
