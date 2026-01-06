@@ -34,8 +34,6 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "dummy-key");
 app.use(cors());
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
-app.use('/uploads', express.static(process.env.UPLOAD_DIR ? path.resolve(process.env.UPLOAD_DIR) : path.join(__dirname, 'uploads')));
-app.use('/api/auth', authRoutes);
 
 // Middleware to optionally attach user to request if token is present
 const authenticateOptional = (req, res, next) => {
@@ -52,6 +50,11 @@ const authenticateOptional = (req, res, next) => {
 };
 
 app.use(authenticateOptional);
+
+app.use('/uploads', express.static(process.env.UPLOAD_DIR ? path.resolve(process.env.UPLOAD_DIR) : path.join(__dirname, 'uploads')));
+app.use('/api/auth', authRoutes);
+const commentRoutes = require('./routes/comments');
+app.use('/api', commentRoutes);
 
 // Ensure uploads directory exists
 const uploadsDir = process.env.UPLOAD_DIR

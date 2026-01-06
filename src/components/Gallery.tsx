@@ -1,11 +1,12 @@
 // Imports updated
 import { useState, useEffect } from 'react';
-import { Download, Heart, Search, Trash2 } from 'lucide-react';
+import { Download, Heart, Search, Trash2, MessageCircle } from 'lucide-react';
 import { TRANSLATIONS } from '../translations';
 import { useAuth } from '../contexts/AuthContext';
 import { compressBlob } from '../utils/imageProcessor';
+import { WrapDetailModal } from './WrapDetailModal';
 
-interface Wrap {
+export interface Wrap {
     _id: string;
     name: string;
     author: string;
@@ -29,6 +30,8 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
     const [loading, setLoading] = useState(false);
     const { user } = useAuth();
     const [garageTab, setGarageTab] = useState<'my-uploads' | 'liked'>('my-uploads');
+    const [selectedWrap, setSelectedWrap] = useState<Wrap | null>(null);
+    const [isDetailOpen, setIsDetailOpen] = useState(false);
 
     const t = TRANSLATIONS[language];
 
@@ -120,6 +123,12 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
             console.error("Failed to download wrap", e)
         }
     }
+
+    const handleOpenComments = (e: React.MouseEvent, wrap: Wrap) => {
+        e.stopPropagation();
+        setSelectedWrap(wrap);
+        setIsDetailOpen(true);
+    };
 
     const handleLoad = (wrap: Wrap) => {
         // Fix image URL to include host if relative
@@ -250,28 +259,37 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
                                     </p>
 
                                     {/* Clean Action Row */}
-                                    <div className="flex items-center justify-between">
-                                        {/* Like Button with Count */}
+                                    <div className="flex items-center justify-between mt-2 gap-1">
+                                        {/* Like Button */}
                                         <button
                                             onClick={(e) => handleLike(e, wrap._id)}
-                                            className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md transition-colors ${wrap.likes > 0
+                                            className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md transition-colors ${wrap.likes > 0
                                                 ? 'bg-red-50 text-red-600 hover:bg-red-100'
                                                 : 'bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-black'
                                                 }`}
                                             title={t.like}
                                         >
-                                            <Heart size={14} className={wrap.likes > 0 ? "fill-current" : ""} />
-                                            <span className="text-xs font-medium">{wrap.likes}</span>
+                                            <Heart size={12} className={wrap.likes > 0 ? "fill-current" : ""} />
+                                            <span className="text-[10px] font-bold">{wrap.likes}</span>
+                                        </button>
+
+                                        {/* Comment/Message Button */}
+                                        <button
+                                            onClick={(e) => handleOpenComments(e, wrap)}
+                                            className="flex-none w-8 flex items-center justify-center py-1.5 rounded-md bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-black transition-colors"
+                                            title="Comments"
+                                        >
+                                            <MessageCircle size={12} />
                                         </button>
 
                                         {/* Download Button */}
                                         <button
                                             onClick={(e) => handleDownload(e, wrap)}
-                                            className="flex items-center gap-1.5 px-2 py-1.5 rounded-md bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-black transition-colors"
+                                            className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-black transition-colors"
                                             title={t.download}
                                         >
-                                            <Download size={14} />
-                                            <span className="text-xs font-medium">{wrap.downloads}</span>
+                                            <Download size={12} />
+                                            <span className="text-[10px] font-bold">{wrap.downloads}</span>
                                         </button>
                                     </div>
                                 </div>
@@ -280,6 +298,13 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
                     )}
                 </div>
             </div>
+
+            <WrapDetailModal
+                isOpen={isDetailOpen}
+                onClose={() => setIsDetailOpen(false)}
+                wrap={selectedWrap}
+                onLoadWrap={onLoadWrap}
+            />
         </div>
     );
 }

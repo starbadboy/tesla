@@ -1,0 +1,242 @@
+import { useState, useEffect, useRef } from 'react';
+import { X, Heart, Download, Send, Trash2, User } from 'lucide-react';
+import { Button } from './ui/Button';
+import { useAuth } from '../contexts/AuthContext';
+import { type Wrap } from './Gallery'; // Assume Wrap is exported from Gallery
+
+interface Comment {
+    _id: string;
+    wrap: string;
+    user: string;
+    username: string;
+    text: string;
+    createdAt: string;
+}
+
+interface WrapDetailModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    wrap: Wrap | null;
+    onLoadWrap: (url: string) => void;
+}
+
+export function WrapDetailModal({ isOpen, onClose, wrap, onLoadWrap }: WrapDetailModalProps) {
+    const [comments, setComments] = useState<Comment[]>([]);
+    const [newComment, setNewComment] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const { user, token } = useAuth();
+    const commentListRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (isOpen && wrap) {
+            fetchComments();
+        } else {
+            setComments([]);
+            setNewComment('');
+        }
+    }, [isOpen, wrap]);
+
+    const fetchComments = async () => {
+        if (!wrap) return;
+        try {
+            const res = await fetch(`/api/wraps/${wrap._id}/comments`);
+            if (res.ok) {
+                const data = await res.json();
+                setComments(data);
+            }
+        } catch (error) {
+            console.error("Failed to fetch comments", error);
+        }
+    };
+
+    const handlePostComment = async () => {
+        if (!newComment.trim() || !wrap || !token) return;
+
+        setIsSubmitting(true);
+        try {
+            const res = await fetch(`/api/wraps/${wrap._id}/comments`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ text: newComment })
+            });
+
+            if (res.ok) {
+                const comment = await res.json();
+                setComments(prev => [comment, ...prev]);
+                setNewComment('');
+            } else {
+                const err = await res.json();
+                alert(err.error || 'Failed to post comment');
+            }
+        } catch (error) {
+            console.error("Failed to post comment", error);
+            alert('Failed to post comment');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleDeleteComment = async (commentId: string) => {
+        if (!confirm('Are you sure you want to delete this comment?')) return;
+
+        try {
+            const res = await fetch(`/api/comments/${commentId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (res.ok) {
+                setComments(prev => prev.filter(c => c._id !== commentId));
+            } else {
+                const err = await res.json();
+                alert(err.error || 'Failed to delete comment');
+            }
+        } catch (error) {
+            console.error("Failed to delete comment", error);
+        }
+    };
+
+    // Calculate relative time (simple version)
+    const timeAgo = (dateStr: string) => {
+        const date = new Date(dateStr);
+        const now = new Date();
+        const diff = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+        if (diff < 60) return 'Just now';
+        if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+        if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+        return `${Math.floor(diff / 86400)}d ago`;
+    };
+
+    if (!isOpen || !wrap) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 text-sans">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl h-[80vh] flex overflow-hidden animate-in fade-in zoom-in duration-200">
+
+                {/* Close Button on Mobile (Overlay) - or just rely on top right in Layout */}
+                <button
+                    onClick={onClose}
+                    className="absolute top-4 right-4 z-50 text-white/50 hover:text-white md:hidden"
+                >
+                    <X size={24} />
+                </button>
+
+                {/* Left Side: Image */}
+                <div className="hidden md:flex flex-col w-2/3 bg-gray-100 relative">
+                    <div className="absolute inset-0 flex items-center justify-center p-8">
+                        <img
+                            src={wrap.imageUrl}
+                            alt={wrap.name}
+                            className="max-w-full max-h-full object-contain shadow-lg"
+                        />
+                    </div>
+                    <div className="absolute bottom-4 right-4 flex gap-2">
+                        <Button
+                            onClick={() => {
+                                onLoadWrap(wrap.imageUrl);
+                                onClose();
+                            }}
+                            className="bg-white/90 hover:bg-white text-black text-xs"
+                            size="sm"
+                        >
+                            Load to Studio
+                        </Button>
+                    </div>
+                </div>
+
+                {/* Right Side: Details & Comments */}
+                <div className="w-full md:w-1/3 flex flex-col bg-white border-l border-gray-200">
+                    {/* Header */}
+                    <div className="p-4 border-b border-gray-100 flex justify-between items-start">
+                        <div>
+                            <h2 className="font-bold text-lg leading-tight">{wrap.name}</h2>
+                            <p className="text-xs text-gray-500 mt-1">by <span className="font-semibold text-black">{wrap.author}</span></p>
+                        </div>
+                        <button onClick={onClose} className="text-gray-400 hover:text-black">
+                            <X size={20} />
+                        </button>
+                    </div>
+
+                    {/* Stats Row */}
+                    <div className="flex px-4 py-3 gap-4 border-b border-gray-100 text-xs text-gray-600 font-medium">
+                        <div className="flex items-center gap-1">
+                            <Heart size={14} className={wrap.likes > 0 ? "fill-red-500 text-red-500" : ""} />
+                            {wrap.likes} Likes
+                        </div>
+                        <div className="flex items-center gap-1">
+                            <Download size={14} />
+                            {wrap.downloads} Downloads
+                        </div>
+                    </div>
+
+                    {/* Comments List */}
+                    <div className="flex-1 overflow-y-auto p-4 custom-scrollbar bg-gray-50 flex flex-col gap-3" ref={commentListRef}>
+                        {comments.length === 0 ? (
+                            <div className="text-center py-8 text-gray-400 text-sm">
+                                No comments yet. Be the first to say something!
+                            </div>
+                        ) : (
+                            comments.map(comment => (
+                                <div key={comment._id} className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm text-sm">
+                                    <div className="flex justify-between items-start mb-1">
+                                        <span className="font-bold text-xs flex items-center gap-1">
+                                            <User size={10} className="text-gray-400" />
+                                            {comment.username}
+                                        </span>
+                                        <span className="text-[10px] text-gray-400">{timeAgo(comment.createdAt)}</span>
+                                    </div>
+                                    <p className="text-gray-700 leading-relaxed break-words">{comment.text}</p>
+
+                                    {/* Delete option for owner or admin */}
+                                    {(user && (user.id === comment.user || user.isAdmin)) && (
+                                        <div className="flex justify-end mt-1">
+                                            <button
+                                                onClick={() => handleDeleteComment(comment._id)}
+                                                className="text-[10px] text-red-400 hover:text-red-600 flex items-center gap-1"
+                                            >
+                                                <Trash2 size={10} /> Delete
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            ))
+                        )}
+                    </div>
+
+                    {/* Comment Input */}
+                    <div className="p-4 bg-white border-t border-gray-200">
+                        {user ? (
+                            <div className="flex gap-2 items-end">
+                                <textarea
+                                    value={newComment}
+                                    onChange={(e) => setNewComment(e.target.value)}
+                                    placeholder="Add a comment..."
+                                    className="flex-1 bg-gray-50 border-0 rounded-lg p-2 text-sm focus:ring-2 focus:ring-black/5 resize-none min-h-[40px] max-h-[100px]"
+                                    rows={2}
+                                />
+                                <Button
+                                    onClick={handlePostComment}
+                                    disabled={!newComment.trim() || isSubmitting}
+                                    size="sm"
+                                    className="h-10 w-10 p-0 rounded-full flex items-center justify-center shrink-0"
+                                >
+                                    <Send size={16} className={isSubmitting ? "opacity-50" : ""} />
+                                </Button>
+                            </div>
+                        ) : (
+                            <div className="text-center py-2 text-xs text-gray-500 bg-gray-50 rounded-lg">
+                                Please <span className="font-bold text-black">login</span> to leave a message.
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
