@@ -17,9 +17,9 @@ interface ShareModalProps {
 export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl, language = 'en' }: ShareModalProps) {
     const [name, setName] = useState('');
     const [author, setAuthor] = useState('');
-    const [selectedModels, setSelectedModels] = useState<string[]>([]);
+    const [selectedModel, setSelectedModel] = useState<string>('');
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+    const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
     const { user, token } = useAuth();
 
     useEffect(() => {
@@ -32,67 +32,87 @@ export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl, language
 
     if (!isOpen) return null;
 
-    const handleModelToggle = (model: string) => {
-        setSelectedModels(prev =>
-            prev.includes(model)
-                ? prev.filter(m => m !== model)
-                : [...prev, model]
-        );
+    const handleModelChange = (model: string) => {
+        setSelectedModel(model);
     };
 
     const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            setUploadedFile(e.target.files[0]);
+        if (e.target.files && e.target.files.length > 0) {
+            const files = Array.from(e.target.files);
+            setUploadedFiles(files);
+
+            // If single file selected, pre-fill name with filename (no extension)
+            if (files.length === 1) {
+                const fileName = files[0].name.replace(/\.[^/.]+$/, "");
+                setName(fileName);
+            } else {
+                // If multiple files, clear name as we'll use individual filenames
+                setName('');
+            }
         }
     };
 
     const handleSubmit = async () => {
-        if (!name || (!imageUrl && !uploadedFile)) return;
+        // Validation:
+        // - Single upload/Canvas: requires 'name'
+        // - Bulk upload: doesn't require 'name' (uses filenames)
+        const isBulk = uploadedFiles.length > 1;
+        if ((!isBulk && !name) || (!imageUrl && uploadedFiles.length === 0)) return;
+
+        if (!selectedModel) {
+            alert(t.selectModel);
+            return;
+        }
 
         setIsSubmitting(true);
 
         try {
-            let file: File;
-            if (uploadedFile) {
-                file = uploadedFile;
+            const uploadSingleFile = async (file: File) => {
+                const formData = new FormData();
+
+                // Determine name: use input name for single/canvas, or filename for bulk
+                const wrapName = isBulk ? file.name.replace(/\.[^/.]+$/, "") : name;
+
+                formData.append('name', wrapName);
+                formData.append('author', author || 'Anonymous');
+                formData.append('models', JSON.stringify([selectedModel])); // Send as array with single item
+                formData.append('image', file);
+
+                const headers: Record<string, string> = {};
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
+
+                const apiResponse = await fetch('/api/wraps', {
+                    method: 'POST',
+                    body: formData,
+                    headers // Fetch will parse headers object
+                });
+
+                if (!apiResponse.ok) {
+                    throw new Error(`Failed to upload wrap ${file.name}`);
+                }
+
+                return await apiResponse.json();
+            };
+
+            if (uploadedFiles.length > 0) {
+                // Bulk upload (or single file upload)
+                await Promise.all(uploadedFiles.map((file) => uploadSingleFile(file)));
             } else if (imageUrl) {
-                // Convert blob URL to File object if necessary, or just fetch the blob
+                // Single image from canvas
                 const response = await fetch(imageUrl);
                 const blob = await response.blob();
-                file = new File([blob], "wrap.png", { type: "image/png" });
+                const file = new File([blob], "wrap.png", { type: "image/png" });
+                await uploadSingleFile(file);
             } else {
                 throw new Error("No image to upload");
             }
 
-            const formData = new FormData();
-            formData.append('name', name);
-            formData.append('author', author || 'Anonymous');
-            formData.append('models', JSON.stringify(selectedModels)); // Send as JSON string
-            formData.append('image', file);
-
-            // Sending to /api/wraps (proxy handles forwarding to localhost:5000)
-            const headers: Record<string, string> = {};
-            if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
-            }
-
-            const apiResponse = await fetch('/api/wraps', {
-                method: 'POST',
-                body: formData,
-                headers // Fetch will parse headers object
-            });
-
-            if (!apiResponse.ok) {
-                throw new Error('Failed to upload wrap');
-            }
-
-            const data = await apiResponse.json();
-            console.log('Wrap uploaded:', data);
+            // Success
             onClose();
-            // Trigger refresh of community wraps
             onShareSuccess?.();
-            // Ideally show a success toast here
-            alert("Wrap shared successfully!");
+            alert("Wrap(s) shared successfully!");
 
         } catch (error) {
             console.error('Error sharing wrap:', error);
@@ -101,6 +121,8 @@ export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl, language
             setIsSubmitting(false);
         }
     };
+
+    const isBulk = uploadedFiles.length > 1;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -120,11 +142,12 @@ export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl, language
                             </label>
                             <input
                                 type="text"
-                                value={name}
+                                value={isBulk ? "" : name}
                                 onChange={(e) => setName(e.target.value)}
-                                placeholder={t.wrapNamePlaceholder}
-                                className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-black transition-colors"
-                                autoFocus
+                                placeholder={isBulk ? "Original filenames will be used" : t.wrapNamePlaceholder}
+                                disabled={isBulk}
+                                className={`w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-black transition-colors ${isBulk ? 'cursor-not-allowed text-gray-400' : ''}`}
+                                autoFocus={!isBulk}
                             />
                         </div>
 
@@ -150,6 +173,7 @@ export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl, language
                                 type="file"
                                 accept="image/png, image/jpeg, image/jpg"
                                 onChange={handleFileChange}
+                                multiple
                                 className="w-full text-sm text-gray-500
                                   file:mr-4 file:py-2 file:px-4
                                   file:rounded-full file:border-0
@@ -158,25 +182,33 @@ export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl, language
                                   hover:file:bg-gray-800
                                 "
                             />
-                            {uploadedFile && (
-                                <p className="text-xs text-green-600 mt-1">
-                                    {t.selected} {uploadedFile.name}
-                                </p>
+                            {uploadedFiles.length > 0 && (
+                                <div className="mt-1">
+                                    <p className="text-xs text-green-600">
+                                        {uploadedFiles.length} file(s) selected
+                                    </p>
+                                    <ul className="text-[10px] text-gray-500 max-h-16 overflow-y-auto">
+                                        {uploadedFiles.map((f, i) => (
+                                            <li key={i} className="truncate">{f.name}</li>
+                                        ))}
+                                    </ul>
+                                </div>
                             )}
                         </div>
 
                         <div>
                             <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">
-                                {t.models} * <span className="text-gray-400 font-normal normal-case">{t.checkAllApply}</span>
+                                {t.models} * <span className="text-gray-400 font-normal normal-case">{t.selectOne}</span>
                             </label>
                             <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar border border-gray-100 rounded-lg p-2">
                                 {Object.keys(CAR_MODELS).map(model => (
                                     <label key={model} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1 rounded">
                                         <input
-                                            type="checkbox"
-                                            checked={selectedModels.includes(model)}
-                                            onChange={() => handleModelToggle(model)}
-                                            className="rounded border-gray-300 text-black focus:ring-black"
+                                            type="radio"
+                                            name="carModel"
+                                            checked={selectedModel === model}
+                                            onChange={() => handleModelChange(model)}
+                                            className="rounded-full border-gray-300 text-black focus:ring-black"
                                         />
                                         {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                                         <span className="text-sm text-gray-700">{(t as any)[model] || model}</span>
@@ -195,7 +227,7 @@ export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl, language
                             </Button>
                             <Button
                                 onClick={handleSubmit}
-                                disabled={!name || isSubmitting}
+                                disabled={(!isBulk && !name) || isSubmitting || (!selectedModel)}
                                 fullWidth
                                 className="bg-blue-600 hover:bg-blue-700 text-white border-0"
                             >
@@ -209,6 +241,7 @@ export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl, language
                                 )}
                             </Button>
                         </div>
+
 
                     </div>
                 </div>
