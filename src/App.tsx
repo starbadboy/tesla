@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import { DesignCanvas, type DesignCanvasHandle, type LayerTransform } from './components/DesignCanvas';
 import { CAR_MODELS, CAR_3D_MODELS } from './constants';
-import { Upload, Download, Trash2, Layers, RotateCw, Globe, Menu, HelpCircle, Sparkles, Settings, Eye, Maximize, Lock, Unlock, PenTool, Eraser, CarFront, CreditCard, Wand2, AlertCircle, X } from 'lucide-react';
+import { Upload, Download, Trash2, Layers, RotateCw, Globe, Menu, HelpCircle, Sparkles, Settings, Eye, Maximize, Lock, Unlock, PenTool, Eraser, CarFront, CreditCard, Wand2, AlertCircle } from 'lucide-react';
 import { TRANSLATIONS } from './translations';
 import { Sidebar, SidebarSection } from './components/Layout/Sidebar';
 import { Button } from './components/ui/Button';
