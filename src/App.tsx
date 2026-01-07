@@ -359,7 +359,12 @@ function App() {
             {/* Mode Toggle at the Top */}
             <div className="flex border border-foreground divide-x divide-foreground mb-6">
               <button
-                onClick={() => setSidebarMode('studio')}
+                onClick={() => {
+                  setSidebarMode('studio');
+                  if (appMode === 'plate') {
+                    setIs3DView(false);
+                  }
+                }}
                 className={cn(
                   "flex-1 py-2 text-xs font-bold uppercase tracking-widest transition-colors",
                   sidebarMode === 'studio' ? "bg-foreground text-background" : "bg-transparent text-foreground hover:bg-gray-100"
@@ -417,7 +422,9 @@ function App() {
                       setSingleLayer(url);
                       setUploadMode('single'); // Switch to single mode
                       setIsWrapVisible(true); // Force wrap visibility when loading a new wrap
-                      setSidebarMode('studio'); // Switch to editor view
+                      if (appMode !== 'car') {
+                        setSidebarMode('studio'); // Switch to editor view
+                      }
                       if (appMode === 'plate') {
                         setIs3DView(false);
                       }

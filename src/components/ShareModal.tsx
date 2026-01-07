@@ -134,7 +134,7 @@ export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl, language
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
                 <div className="p-6">
                     <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-xl font-bold font-serif">{t.shareTitle}</h2>
+                        <h2 className="text-xl font-bold font-serif">{type === 'car' ? t.shareYourWrap : t.shareYourPlate}</h2>
                         <button onClick={onClose} className="text-gray-400 hover:text-black transition-colors">
                             <X size={24} />
                         </button>
@@ -143,7 +143,7 @@ export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl, language
                     <div className="space-y-4">
                         <div>
                             <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-1">
-                                {t.wrapName} *
+                                {type === 'car' ? t.wrapName : (t as any).plateName} *
                             </label>
                             <input
                                 type="text"
@@ -225,7 +225,7 @@ export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl, language
                         )}
 
                         <p className="text-[10px] text-gray-400 text-center pt-2">
-                            {t.maxSize}
+                            {type === 'car' ? t.maxSize : (t as any).maxSizePlate}
                         </p>
 
                         <div className="grid grid-cols-2 gap-3 pt-2">
@@ -244,7 +244,7 @@ export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl, language
                                         {t.sharing}
                                     </>
                                 ) : (
-                                    t.submitWraps
+                                    type === 'car' ? t.submitWraps : (t as any).submitPlates
                                 )}
                             </Button>
                         </div>
