@@ -183,27 +183,27 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
     });
 
     return (
-        <div className="h-full flex flex-col bg-gray-50">
+        <div className="h-full flex flex-col bg-gray-50 dark:bg-zinc-900">
             {/* Tabs (Only show if in garage mode) */}
             {viewMode === 'garage' && (
-                <div className="flex border-b border-gray-200 bg-white">
+                <div className="flex border-b border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
                     <button
                         onClick={() => setGarageTab('my-uploads')}
-                        className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest transition-colors border-b-2 ${garageTab === 'my-uploads' ? 'border-black text-black' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                        className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest transition-colors border-b-2 ${garageTab === 'my-uploads' ? 'border-black dark:border-white text-black dark:text-white' : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
                     >
-                        {t.myUploads} {garageTab === 'my-uploads' && <span className="ml-1 bg-gray-100 rounded-full px-2 py-0.5 text-[10px]">{wraps.length}</span>}
+                        {t.myUploads} {garageTab === 'my-uploads' && <span className="ml-1 bg-gray-100 dark:bg-zinc-800 rounded-full px-2 py-0.5 text-[10px]">{wraps.length}</span>}
                     </button>
                     <button
                         onClick={() => setGarageTab('liked')}
-                        className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest transition-colors border-b-2 ${garageTab === 'liked' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                        className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest transition-colors border-b-2 ${garageTab === 'liked' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
                     >
-                        {t.likedWraps} {garageTab === 'liked' && <span className="ml-1 bg-red-50 text-red-600 rounded-full px-2 py-0.5 text-[10px]">{wraps.length}</span>}
+                        {t.likedWraps} {garageTab === 'liked' && <span className="ml-1 bg-red-50 dark:bg-red-900/20 text-red-600 rounded-full px-2 py-0.5 text-[10px]">{wraps.length}</span>}
                     </button>
                 </div>
             )}
 
             {/* Search and Filter */}
-            <div className="p-4 bg-white border-b border-gray-200 flex gap-2">
+            <div className="p-4 bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800 flex gap-2">
                 <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                     <input
@@ -211,7 +211,7 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
                         placeholder={t.searchWraps}
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="w-full bg-gray-100 border-none rounded-lg pl-9 pr-4 py-2 text-sm focus:ring-2 focus:ring-black/5"
+                        className="w-full bg-gray-100 dark:bg-zinc-800 dark:text-white border-none rounded-lg pl-9 pr-4 py-2 text-sm focus:ring-2 focus:ring-black/5 dark:focus:ring-white/10"
                     />
                 </div>
 
@@ -220,7 +220,7 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
                         <select
                             value={sortBy}
                             onChange={(e) => setSortBy(e.target.value as SortOption)}
-                            className="appearance-none bg-gray-100 border-none rounded-lg pl-3 pr-8 py-2 text-sm focus:ring-2 focus:ring-black/5 cursor-pointer font-medium text-gray-600"
+                            className="appearance-none bg-gray-100 dark:bg-zinc-800 dark:text-white border-none rounded-lg pl-3 pr-8 py-2 text-sm focus:ring-2 focus:ring-black/5 dark:focus:ring-white/10 cursor-pointer font-medium text-gray-600"
                         >
                             <option value="popular">{t.popular}</option>
                             <option value="downloads">{t.mostDownloaded}</option>
@@ -247,10 +247,10 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
                         filteredWraps.map(wrap => (
                             <div
                                 key={wrap._id}
-                                className="group bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+                                className="group bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-zinc-800 overflow-hidden hover:shadow-lg dark:hover:shadow-zinc-800/50 transition-shadow cursor-pointer"
                                 onClick={() => handleLoad(wrap)}
                             >
-                                <div className="aspect-square bg-gray-50 relative overflow-hidden">
+                                <div className="aspect-square bg-gray-50 dark:bg-black relative overflow-hidden">
                                     <img
                                         src={wrap.imageUrl}
                                         alt={wrap.name}
@@ -271,7 +271,7 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
                                 </div>
 
                                 <div className="p-3">
-                                    <h3 className="font-bold text-xs truncate mb-0.5">{wrap.name}</h3>
+                                    <h3 className="font-bold text-xs truncate mb-0.5 dark:text-white">{wrap.name}</h3>
                                     <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-3 truncate">
                                         {wrap.models.length > 0 ? wrap.models.join(', ') : t.universal} • {t.by} {wrap.author}
                                     </p>
@@ -282,8 +282,8 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
                                         <button
                                             onClick={(e) => handleLike(e, wrap._id)}
                                             className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md transition-colors ${wrap.likes > 0
-                                                ? 'bg-red-50 text-red-600 hover:bg-red-100'
-                                                : 'bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-black'
+                                                ? 'bg-red-50 dark:bg-red-900/20 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30'
+                                                : 'bg-gray-50 dark:bg-zinc-800 text-gray-500 hover:bg-gray-100 dark:hover:bg-zinc-700 hover:text-black dark:hover:text-white'
                                                 }`}
                                             title={t.like}
                                         >
@@ -294,7 +294,7 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
                                         {/* Comment/Message Button */}
                                         <button
                                             onClick={(e) => handleOpenComments(e, wrap)}
-                                            className="flex-none w-8 flex items-center justify-center py-1.5 rounded-md bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-black transition-colors"
+                                            className="flex-none w-8 flex items-center justify-center py-1.5 rounded-md bg-gray-50 dark:bg-zinc-800 text-gray-500 hover:bg-gray-100 dark:hover:bg-zinc-700 hover:text-black dark:hover:text-white transition-colors"
                                             title="Comments"
                                         >
                                             <MessageCircle size={12} />
@@ -303,7 +303,7 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
                                         {/* Download Button */}
                                         <button
                                             onClick={(e) => handleDownload(e, wrap)}
-                                            className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-black transition-colors"
+                                            className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md bg-gray-50 dark:bg-zinc-800 text-gray-500 hover:bg-gray-100 dark:hover:bg-zinc-700 hover:text-black dark:hover:text-white transition-colors"
                                             title={t.download}
                                         >
                                             <Download size={12} />

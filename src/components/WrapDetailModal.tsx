@@ -117,7 +117,7 @@ export function WrapDetailModal({ isOpen, onClose, wrap, onLoadWrap }: WrapDetai
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 text-sans">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl h-[80vh] flex overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-2xl w-full max-w-5xl h-[80vh] flex overflow-hidden animate-in fade-in zoom-in duration-200">
 
                 {/* Close Button on Mobile (Overlay) - or just rely on top right in Layout */}
                 <button
@@ -128,7 +128,7 @@ export function WrapDetailModal({ isOpen, onClose, wrap, onLoadWrap }: WrapDetai
                 </button>
 
                 {/* Left Side: Image */}
-                <div className="hidden md:flex flex-col w-2/3 bg-gray-100 relative">
+                <div className="hidden md:flex flex-col w-2/3 bg-gray-100 dark:bg-zinc-950/50 relative">
                     <div className="absolute inset-0 flex items-center justify-center p-8">
                         <img
                             src={wrap.imageUrl}
@@ -151,12 +151,12 @@ export function WrapDetailModal({ isOpen, onClose, wrap, onLoadWrap }: WrapDetai
                 </div>
 
                 {/* Right Side: Details & Comments */}
-                <div className="w-full md:w-1/3 flex flex-col bg-white border-l border-gray-200">
+                <div className="w-full md:w-1/3 flex flex-col bg-white dark:bg-zinc-900 border-l border-gray-200 dark:border-zinc-800">
                     {/* Header */}
-                    <div className="p-4 border-b border-gray-100 flex justify-between items-start">
+                    <div className="p-4 border-b border-gray-100 dark:border-zinc-800 flex justify-between items-start">
                         <div>
-                            <h2 className="font-bold text-lg leading-tight">{wrap.name}</h2>
-                            <p className="text-xs text-gray-500 mt-1">by <span className="font-semibold text-black">{wrap.author}</span></p>
+                            <h2 className="font-bold text-lg leading-tight dark:text-white">{wrap.name}</h2>
+                            <p className="text-xs text-gray-500 mt-1">by <span className="font-semibold text-black dark:text-white">{wrap.author}</span></p>
                         </div>
                         <button onClick={onClose} className="text-gray-400 hover:text-black">
                             <X size={20} />
@@ -176,22 +176,22 @@ export function WrapDetailModal({ isOpen, onClose, wrap, onLoadWrap }: WrapDetai
                     </div>
 
                     {/* Comments List */}
-                    <div className="flex-1 overflow-y-auto p-4 custom-scrollbar bg-gray-50 flex flex-col gap-3" ref={commentListRef}>
+                    <div className="flex-1 overflow-y-auto p-4 custom-scrollbar bg-gray-50 dark:bg-zinc-950 flex flex-col gap-3" ref={commentListRef}>
                         {comments.length === 0 ? (
                             <div className="text-center py-8 text-gray-400 text-sm">
                                 No comments yet. Be the first to say something!
                             </div>
                         ) : (
                             comments.map(comment => (
-                                <div key={comment._id} className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm text-sm">
+                                <div key={comment._id} className="bg-white dark:bg-zinc-900 p-3 rounded-lg border border-gray-100 dark:border-zinc-800 shadow-sm text-sm">
                                     <div className="flex justify-between items-start mb-1">
-                                        <span className="font-bold text-xs flex items-center gap-1">
+                                        <span className="font-bold text-xs flex items-center gap-1 dark:text-gray-200">
                                             <User size={10} className="text-gray-400" />
                                             {comment.username}
                                         </span>
                                         <span className="text-[10px] text-gray-400">{timeAgo(comment.createdAt)}</span>
                                     </div>
-                                    <p className="text-gray-700 leading-relaxed break-words">{comment.text}</p>
+                                    <p className="text-gray-700 dark:text-gray-300 leading-relaxed break-words">{comment.text}</p>
 
                                     {/* Delete option for owner or admin */}
                                     {(user && (user.id === comment.user || user.isAdmin)) && (
@@ -210,14 +210,14 @@ export function WrapDetailModal({ isOpen, onClose, wrap, onLoadWrap }: WrapDetai
                     </div>
 
                     {/* Comment Input */}
-                    <div className="p-4 bg-white border-t border-gray-200">
+                    <div className="p-4 bg-white dark:bg-zinc-900 border-t border-gray-200 dark:border-zinc-800">
                         {user ? (
                             <div className="flex gap-2 items-end">
                                 <textarea
                                     value={newComment}
                                     onChange={(e) => setNewComment(e.target.value)}
                                     placeholder="Add a comment..."
-                                    className="flex-1 bg-gray-50 border-0 rounded-lg p-2 text-sm focus:ring-2 focus:ring-black/5 resize-none min-h-[40px] max-h-[100px]"
+                                    className="flex-1 bg-gray-50 dark:bg-zinc-800 border-0 rounded-lg p-2 text-sm focus:ring-2 focus:ring-black/5 dark:focus:ring-white/10 resize-none min-h-[40px] max-h-[100px] dark:text-white"
                                     rows={2}
                                 />
                                 <Button
@@ -230,8 +230,8 @@ export function WrapDetailModal({ isOpen, onClose, wrap, onLoadWrap }: WrapDetai
                                 </Button>
                             </div>
                         ) : (
-                            <div className="text-center py-2 text-xs text-gray-500 bg-gray-50 rounded-lg">
-                                Please <span className="font-bold text-black">login</span> to leave a message.
+                            <div className="text-center py-2 text-xs text-gray-500 bg-gray-50 dark:bg-zinc-800 rounded-lg">
+                                Please <span className="font-bold text-black dark:text-white">login</span> to leave a message.
                             </div>
                         )}
                     </div>

@@ -4,6 +4,7 @@ import { OrbitControls, useGLTF, Html, Environment } from '@react-three/drei';
 import * as THREE from 'three';
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { TRANSLATIONS } from '../translations';
+import { useTheme } from '../contexts/ThemeContext';
 
 
 import type { DesignCanvasHandle } from './DesignCanvas';
@@ -406,6 +407,9 @@ export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive =
         setIsWrapApplied(showTexture);
     }, [showTexture]);
 
+    const { theme } = useTheme();
+    const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
     const toggleWrap = () => {
         const newState = !isWrapApplied;
         setIsWrapApplied(newState);
@@ -413,7 +417,11 @@ export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive =
     };
 
     return (
-        <div className="w-full h-full relative" style={{ background: 'linear-gradient(to bottom, #dbdbdb, #b0b0b0)' }}>
+        <div className="w-full h-full relative" style={{
+            background: isDark
+                ? 'linear-gradient(to bottom, #1a1a1a, #000000)'
+                : 'linear-gradient(to bottom, #dbdbdb, #b0b0b0)'
+        }}>
             <ErrorBoundary fallback={
                 <div className="flex items-center justify-center h-full text-white/50">
                     <p>{t.viewUnavailable}</p>
@@ -422,12 +430,12 @@ export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive =
                 <Canvas
                     shadows
                     camera={{ position: [-8, 2, -9], fov: 45, near: 0.01, far: 2000 }}
-                    scene={{ background: new THREE.Color('#d0d0d0') }}
                     gl={{
                         toneMapping: THREE.NoToneMapping, // FIX: Use NoToneMapping for accurate color matching with 2D overlay
                         outputColorSpace: THREE.SRGBColorSpace,
                     }}
                 >
+                    <color attach="background" args={[isDark ? '#1a1a1a' : '#d0d0d0']} />
                     {/* Tesla Gallery-style OrbitControls */}
                     <OrbitControls
                         makeDefault
