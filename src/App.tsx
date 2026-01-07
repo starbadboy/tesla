@@ -125,11 +125,12 @@ function App() {
   const canvasRef = useRef<DesignCanvasHandle>(null);
 
   // Force 3D view when in community or garage mode
+  // Force 3D view when in community or garage mode, ONLY for car mode
   useEffect(() => {
     if (sidebarMode === 'community' || sidebarMode === 'garage') {
-      setIs3DView(true);
+      setIs3DView(appMode === 'car');
     }
-  }, [sidebarMode]);
+  }, [sidebarMode, appMode]);
 
   // Layers state for multiple parts
   const [multiLayers, setMultiLayers] = useState<Record<string, string | null>>({
@@ -423,7 +424,7 @@ function App() {
                       setUploadMode('single'); // Switch to single mode
                       setIsWrapVisible(true); // Force wrap visibility when loading a new wrap
                       if (appMode !== 'car') {
-                        setSidebarMode('studio'); // Switch to editor view
+                        // setSidebarMode('studio'); // Switch to editor view
                       }
                       if (appMode === 'plate') {
                         setIs3DView(false);
