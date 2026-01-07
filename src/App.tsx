@@ -22,6 +22,8 @@ import { ThemeToggle } from './components/ThemeToggle';
 
 function App() {
   const [currentModelName, setCurrentModelName] = useState("Model 3 (2024 Base)");
+  const [appMode, setAppMode] = useState<'car' | 'plate'>('car');
+  const [plateSize, setPlateSize] = useState<'420x100' | '420x200'>('420x100');
   const [uploadMode, setUploadMode] = useState<'single' | 'multi'>('single');
   const [singleLayer, setSingleLayer] = useState<string | null>(null);
   const [language, setLanguage] = useState<'en' | 'zh'>(() => {
@@ -272,9 +274,12 @@ function App() {
                     mode={interactionMode}
                     brushColor={brushColor}
                     brushSize={brushSize}
+                    brushSize={brushSize}
+                    canvasType={appMode === 'plate' ? 'plate' : 'car'}
+                    plateSize={plateSize}
                   />
                 </div>
-                <div className={cn("w-full h-full absolute top-0 left-0 transition-opacity duration-300", effectiveIs3DView ? "opacity-100 z-10" : "opacity-0 pointer-events-none z-0")}>
+                <div className={cn("w-full h-full absolute top-0 left-0 transition-opacity duration-300", (effectiveIs3DView && appMode === 'car') ? "opacity-100 z-10" : "opacity-0 pointer-events-none z-0")}>
                   <ThreeDView
                     stageRef={canvasRef}
                     modelPath={CAR_3D_MODELS[currentModelName]}
@@ -310,6 +315,32 @@ function App() {
               </div>
             }
           >
+            {/* App Mode Toggle (Car vs Plate) */}
+            <div className="flex border border-foreground divide-x divide-foreground mb-4">
+              <button
+                onClick={() => setAppMode('car')}
+                className={cn(
+                  "flex-1 py-2 text-xs font-bold uppercase tracking-widest transition-colors",
+                  appMode === 'car' ? "bg-foreground text-background" : "bg-transparent text-foreground hover:bg-gray-100"
+                )}
+              >
+                Car Wrap
+              </button>
+              <button
+                onClick={() => {
+                  setAppMode('plate');
+                  setSidebarMode('studio');
+                  setIs3DView(false);
+                }}
+                className={cn(
+                  "flex-1 py-2 text-xs font-bold uppercase tracking-widest transition-colors",
+                  appMode === 'plate' ? "bg-foreground text-background" : "bg-transparent text-foreground hover:bg-gray-100"
+                )}
+              >
+                License Plate
+              </button>
+            </div>
+
             {/* Mode Toggle at the Top */}
             <div className="flex border border-foreground divide-x divide-foreground mb-6">
               <button
@@ -373,46 +404,78 @@ function App() {
                     }}
                     language={language}
                     viewMode={sidebarMode === 'garage' ? 'garage' : 'all'}
+                    type={appMode}
                   />
                 </div>
               </div>
             ) : (
               <>
-                {/* Section 1: Model Selection */}
-                <SidebarSection title={t.modelSelection} icon={<Menu />}>
-                  <div className="mb-4 flex border border-foreground divide-x divide-foreground">
-                    <button
-                      onClick={() => setIs3DView(false)}
-                      className={cn(
-                        "flex-1 py-2 text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center gap-2",
-                        !is3DView ? "bg-foreground text-background" : "bg-transparent text-foreground hover:bg-gray-100"
-                      )}
-                    >
-                      {t.design}
-                    </button>
-                    <button
-                      onClick={() => setIs3DView(true)}
-                      className={cn(
-                        "flex-1 py-2 text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center gap-2",
-                        is3DView ? "bg-foreground text-background" : "bg-transparent text-foreground hover:bg-gray-100"
-                      )}
-                    >
-                      <Box size={14} /> {t.preview3d}
-                    </button>
-                  </div>
+                {/* Section 1: Model Selection (Only for Car) */}
+                {appMode === 'car' && (
+                  <SidebarSection title={t.modelSelection} icon={<Menu />}>
+                    <div className="mb-4 flex border border-foreground divide-x divide-foreground">
+                      <button
+                        onClick={() => setIs3DView(false)}
+                        className={cn(
+                          "flex-1 py-2 text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center gap-2",
+                          !is3DView ? "bg-foreground text-background" : "bg-transparent text-foreground hover:bg-gray-100"
+                        )}
+                      >
+                        {t.design}
+                      </button>
+                      <button
+                        onClick={() => setIs3DView(true)}
+                        className={cn(
+                          "flex-1 py-2 text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center gap-2",
+                          is3DView ? "bg-foreground text-background" : "bg-transparent text-foreground hover:bg-gray-100"
+                        )}
+                      >
+                        <Box size={14} /> {t.preview3d}
+                      </button>
+                    </div>
 
-                  {/* Toggle removed as per request, default off for now */}
+                    <Select
+                      value={currentModelName}
+                      onChange={(e) => setCurrentModelName(e.target.value)}
+                    >
+                      {Object.keys(CAR_MODELS).map(model => (
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        <option key={model} value={model}>{(t as any)[model] || model}</option>
+                      ))}
+                    </Select>
+                  </SidebarSection>
+                )}
 
-                  <Select
-                    value={currentModelName}
-                    onChange={(e) => setCurrentModelName(e.target.value)}
-                  >
-                    {Object.keys(CAR_MODELS).map(model => (
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      <option key={model} value={model}>{(t as any)[model] || model}</option>
-                    ))}
-                  </Select>
-                </SidebarSection>
+                {/* Section 1.5: Template Selection (Only for Plate) */}
+                {appMode === 'plate' && (
+                  <SidebarSection title="Template Size" icon={<Maximize />}>
+                    <div className="flex border border-foreground divide-x divide-foreground mb-4">
+                      <button
+                        onClick={() => setPlateSize('420x100')}
+                        className={cn(
+                          "flex-1 py-2 text-xs font-bold uppercase tracking-widest transition-colors",
+                          plateSize === '420x100' ? "bg-foreground text-background" : "bg-transparent text-foreground hover:bg-gray-100"
+                        )}
+                      >
+                        420x100
+                      </button>
+                      <button
+                        onClick={() => setPlateSize('420x200')}
+                        className={cn(
+                          "flex-1 py-2 text-xs font-bold uppercase tracking-widest transition-colors",
+                          plateSize === '420x200' ? "bg-foreground text-background" : "bg-transparent text-foreground hover:bg-gray-100"
+                        )}
+                      >
+                        420x200
+                      </button>
+                    </div>
+                    <div className="text-[10px] text-gray-500 font-serif">
+                      {plateSize === '420x100'
+                        ? "Standard US license plate size layout. Top and bottom areas are masked."
+                        : "Full canvas usage. Useful for custom graphics that extend beyond the standard area."}
+                    </div>
+                  </SidebarSection>
+                )}
 
 
 
@@ -690,22 +753,41 @@ function App() {
                 {/* Section 3: Instructions */}
                 <SidebarSection title={t.controls} icon={<RotateCw />}>
                   <ul className="space-y-2">
-                    {t.controlSteps.map((step, i) => (
+                    {appMode === 'car' ? t.controlSteps.map((step, i) => (
                       <li key={i} className="text-sm font-serif text-gray-600 pl-4 border-l border-foreground/20">
                         {step}
                       </li>
-                    ))}
+                    )) : (
+                      <li className="text-sm font-serif text-gray-600 pl-4 border-l border-foreground/20">
+                        Use mouse/touch to draw. Select objects to transform.
+                      </li>
+                    )}
                   </ul>
                 </SidebarSection>
 
                 {/* Section 4: Installation */}
                 <SidebarSection title={t.installation} icon={<HelpCircle />}>
                   <ul className="space-y-2">
-                    {t.installSteps.map((step, i) => (
+                    {appMode === 'car' ? t.installSteps.map((step, i) => (
                       <li key={i} className="text-sm font-serif text-gray-600 pl-4 border-l border-foreground/20">
                         {step}
                       </li>
-                    ))}
+                    )) : (
+                      <>
+                        <li className="text-sm font-serif text-gray-600 pl-4 border-l border-foreground/20">
+                          1. Create a folder named "LicensePlate" on your USB drive.
+                        </li>
+                        <li className="text-sm font-serif text-gray-600 pl-4 border-l border-foreground/20">
+                          2. Export your design (it will be saved as a PNG).
+                        </li>
+                        <li className="text-sm font-serif text-gray-600 pl-4 border-l border-foreground/20">
+                          3. Place the PNG file into the "LicensePlate" folder.
+                        </li>
+                        <li className="text-sm font-serif text-gray-600 pl-4 border-l border-foreground/20">
+                          4. Plug USB into car &gt; Display &gt; License Plate &gt; Custom.
+                        </li>
+                      </>
+                    )}
                   </ul>
                 </SidebarSection>
               </>

@@ -22,11 +22,12 @@ export interface GalleryProps {
     refreshTrigger?: number; // Increment this to trigger a refetch of community wraps
     language?: 'en' | 'zh';
     viewMode?: 'all' | 'garage';
+    type?: 'car' | 'plate';
 }
 
 type SortOption = 'popular' | 'downloads' | 'newest';
 
-export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 'en', viewMode = 'all' }: GalleryProps) {
+export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 'en', viewMode = 'all', type = 'car' }: GalleryProps) {
     const [wraps, setWraps] = useState<Wrap[]>([]);
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(false);
@@ -43,8 +44,18 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
         const fetchWraps = async () => {
             setLoading(true);
             try {
-                let endpoint = `/api/wraps?sort=${sortBy}`;
+                let endpoint = `/api/wraps?sort=${sortBy}&type=${type}`;
                 if (viewMode === 'garage') {
+                    // For garage, we probably want to filter by type too? Or show everything?
+                    // User might want to see both. But for now let's keep it simple or user might get confused.
+                    // Let's assume Garage shows all tailored to the current view? 
+                    // Or let garage be universal. 
+                    // Actually, if I am in Plate Mode, I only want to see my Plates in Garage.
+                    // But backend garage endpoint returns all. Improve backend? 
+                    // Or client side filter. Let's do client side filter for garage if necessary, 
+                    // or just show all. 
+                    // Let's just append type if backend supports it on garage, but backend only supports type on /wraps.
+                    // For now, only filtered for community.
                     endpoint = garageTab === 'liked'
                         ? '/api/user/garage?type=liked'
                         : '/api/user/garage?type=my-uploads';
@@ -59,7 +70,14 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
                 const res = await fetch(endpoint, { headers });
                 if (res.ok) {
                     const data = await res.json();
-                    setWraps(data);
+                    let fetchedWraps: Wrap[] = data;
+
+                    // Client-side filter for Garage if mixed types returned (since backend garage doesn't filter by type yet)
+                    if (viewMode === 'garage') {
+                        fetchedWraps = fetchedWraps.filter((w: any) => (w.type || 'car') === type);
+                    }
+
+                    setWraps(fetchedWraps);
                 } else if (res.status === 401) {
                     console.error("Unauthorized access to garage");
                     setWraps([]);
@@ -71,7 +89,7 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
             }
         };
         fetchWraps();
-    }, [refreshTrigger, viewMode, garageTab, sortBy]);
+    }, [refreshTrigger, viewMode, garageTab, sortBy, type]);
 
 
 

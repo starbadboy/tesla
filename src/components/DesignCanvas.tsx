@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
-import { Stage, Layer, Image as KonvaImage, Transformer, Rect, Line } from 'react-konva';
+import { Stage, Layer, Image as KonvaImage, Transformer, Rect, Line, Group } from 'react-konva';
 import useImage from 'use-image';
 import { processTemplateMask, compressBlob } from '../utils/imageProcessor';
 import Konva from 'konva';
@@ -39,6 +39,8 @@ interface DesignCanvasProps {
     mode: 'select' | 'draw';
     brushColor: string;
     brushSize: number;
+    canvasType?: 'car' | 'plate';
+    plateSize?: '420x100' | '420x200';
 }
 
 const TextureImage = ({
@@ -132,7 +134,9 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
     onSelect,
     mode,
     brushColor,
-    brushSize
+    brushSize,
+    canvasType = 'car',
+    plateSize = '420x100'
 }, ref) => {
     const [overlays, setOverlays] = useState<{ mask: string | null, lines: string | null }>({ mask: null, lines: null });
     const [maskImage] = useImage(overlays.mask || '', 'anonymous');
@@ -231,22 +235,32 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
 
                 // Allow state update to clear selection
                 setTimeout(() => {
-                    // 1. Hide Overlays (Mask & Lines) so we capture only the user's design
+                    // 1. Hide Overlays
                     const maskNode = stage.findOne('.maskImage');
                     const linesNode = stage.findOne('.linesImage');
+                    const plateOverlay = stage.findOne('.plateOverlay');
+
                     if (maskNode) maskNode.hide();
                     if (linesNode) linesNode.hide();
+                    if (plateOverlay) plateOverlay.hide();
 
-                    const TARGET_SIZE = 1024;
-                    // Calculate crop based on dimensions and scale, same as before
+                    const isSmallPlate = canvasType === 'plate' && plateSize === '420x100';
+                    const TARGET_WIDTH = canvasType === 'plate' ? 420 : 1024;
+                    const TARGET_HEIGHT = isSmallPlate ? 100 : (canvasType === 'plate' ? 200 : 1024);
+
+                    // Calculate crop based on dimensions and scale
                     const contentX = (stage.width() - dimensions.width * scale) / 2;
-                    const contentY = (stage.height() - dimensions.height * scale) / 2;
-                    const contentW = dimensions.width * scale;
-                    const contentH = dimensions.height * scale;
-                    // Scale to target size
-                    const pixelRatio = TARGET_SIZE / contentW;
+                    // For 420x100, crop the middle 100px (yoffset 50)
+                    const yOffset = isSmallPlate ? 50 * scale : 0;
+                    const contentY = ((stage.height() - dimensions.height * scale) / 2) + yOffset;
 
-                    // Get Base Image (User Design + White Rect, NO Overlays)
+                    const contentW = dimensions.width * scale;
+                    const contentH = (isSmallPlate ? 100 : dimensions.height) * scale;
+
+                    // Scale to target size
+                    const pixelRatio = TARGET_WIDTH / contentW;
+
+                    // Get Base Image
                     const baseUri = stage.toDataURL({
                         x: contentX,
                         y: contentY,
@@ -259,25 +273,33 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
                     // Restore Overlays
                     if (maskNode) maskNode.show();
                     if (linesNode) linesNode.show();
+                    if (plateOverlay) plateOverlay.show();
 
-                    // 2. Post-Process: Apply Mask to make exterior transparent
+                    // 2. Post-Process
                     const img = new Image();
                     img.onload = () => {
                         const cvs = document.createElement('canvas');
-                        cvs.width = img.width;
-                        cvs.height = img.height;
+                        cvs.width = TARGET_WIDTH;
+                        cvs.height = TARGET_HEIGHT;
                         const ctx = cvs.getContext('2d');
                         if (!ctx) return;
 
                         // Draw Base Design
-                        ctx.drawImage(img, 0, 0);
+                        ctx.drawImage(img, 0, 0, TARGET_WIDTH, TARGET_HEIGHT);
 
                         const finalizeExport = (blob: Blob | null) => {
                             if (!blob) return;
-                            compressBlob(blob, 1).then(compressedBlob => {
+                            compressBlob(blob, canvasType === 'plate' ? 0.5 : 1).then(compressedBlob => {
                                 const url = URL.createObjectURL(compressedBlob);
                                 const link = document.createElement('a');
-                                link.download = `design-tesla-1024.png`;
+
+                                let filename = `design-tesla-1024.png`;
+                                if (canvasType === 'plate') {
+                                    const id = Math.random().toString(36).substring(2, 10).toUpperCase();
+                                    filename = `PLATE${id}.png`;
+                                }
+
+                                link.download = filename;
                                 link.href = url;
                                 document.body.appendChild(link);
                                 link.click();
@@ -286,20 +308,17 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
                             });
                         };
 
-                        // Draw Mask with Destination-Out (Cut hole for exterior)
-                        if (overlays.mask) {
+                        // Apply Mask logic for Car (or if we needed it for plate)
+                        if (overlays.mask && canvasType !== 'plate') {
                             const maskImg = new Image();
                             maskImg.crossOrigin = "Anonymous";
                             maskImg.onload = () => {
                                 ctx.globalCompositeOperation = 'destination-out';
-                                // Draw mask stretch to fit
                                 ctx.drawImage(maskImg, 0, 0, cvs.width, cvs.height);
-
                                 cvs.toBlob(finalizeExport, 'image/png');
                             };
                             maskImg.src = overlays.mask;
                         } else {
-                            // Fallback if no mask
                             cvs.toBlob(finalizeExport, 'image/png');
                         }
                     };
@@ -322,15 +341,24 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
                 setTimeout(() => {
                     const maskNode = stage.findOne('.maskImage');
                     const linesNode = stage.findOne('.linesImage');
+                    const plateOverlay = stage.findOne('.plateOverlay');
+
                     if (maskNode) maskNode.hide();
                     if (linesNode) linesNode.hide();
+                    if (plateOverlay) plateOverlay.hide();
 
-                    const TARGET_SIZE = 1024;
+                    const isSmallPlate = canvasType === 'plate' && plateSize === '420x100';
+                    const TARGET_WIDTH = canvasType === 'plate' ? 420 : 1024;
+                    const TARGET_HEIGHT = isSmallPlate ? 100 : (canvasType === 'plate' ? 200 : 1024);
+
                     const contentX = (stage.width() - dimensions.width * scale) / 2;
-                    const contentY = (stage.height() - dimensions.height * scale) / 2;
+                    const yOffset = isSmallPlate ? 50 * scale : 0;
+                    const contentY = ((stage.height() - dimensions.height * scale) / 2) + yOffset;
+
                     const contentW = dimensions.width * scale;
-                    const contentH = dimensions.height * scale;
-                    const pixelRatio = TARGET_SIZE / contentW;
+                    const contentH = (isSmallPlate ? 100 : dimensions.height) * scale;
+
+                    const pixelRatio = TARGET_WIDTH / contentW;
 
                     const baseUri = stage.toDataURL({
                         x: contentX,
@@ -343,29 +371,30 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
 
                     if (maskNode) maskNode.show();
                     if (linesNode) linesNode.show();
+                    if (plateOverlay) plateOverlay.show();
 
                     const img = new Image();
                     img.onload = () => {
                         const cvs = document.createElement('canvas');
-                        cvs.width = img.width;
-                        cvs.height = img.height;
+                        cvs.width = TARGET_WIDTH;
+                        cvs.height = TARGET_HEIGHT;
                         const ctx = cvs.getContext('2d');
                         if (!ctx) {
                             resolve(null);
                             return;
                         }
 
-                        ctx.drawImage(img, 0, 0);
+                        ctx.drawImage(img, 0, 0, TARGET_WIDTH, TARGET_HEIGHT);
 
                         const finalizeBlob = (blob: Blob | null) => {
                             if (!blob) {
                                 resolve(null);
                                 return;
                             }
-                            compressBlob(blob, 1).then(resolve);
+                            compressBlob(blob, canvasType === 'plate' ? 0.5 : 1).then(resolve);
                         };
 
-                        if (overlays.mask) {
+                        if (overlays.mask && canvasType !== 'plate') {
                             const maskImg = new Image();
                             maskImg.crossOrigin = "Anonymous";
                             maskImg.onload = () => {
@@ -387,6 +416,12 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
 
     // Process the car mask whenever the model changes
     useEffect(() => {
+        if (canvasType === 'plate') {
+            setDimensions({ width: 420, height: 200 });
+            setOverlays({ mask: null, lines: null });
+            return;
+        }
+
         let isMounted = true;
         const loadAndProcess = async () => {
             try {
@@ -399,10 +434,12 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
         }
         loadAndProcess();
         return () => { isMounted = false; };
-    }, [modelPath]);
+    }, [modelPath, canvasType]);
 
     // Update dimensions when overlay loads
     useEffect(() => {
+        if (canvasType === 'plate') return; // Handled above
+
         if (maskImage) {
             // eslint-disable-next-line react-hooks/set-state-in-effect
             setDimensions(prev => {
@@ -413,7 +450,7 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
                 };
             });
         }
-    }, [maskImage]);
+    }, [maskImage, canvasType]);
 
     // Layout state
     const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
@@ -505,6 +542,9 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
                 <Layer>
                     <Rect width={dimensions.width} height={dimensions.height} fill="#ffffff" />
 
+                    {/* Visual guide for 420x100 recommendation in Plate Mode */}
+
+
                     {Object.entries(layers).map(([part, path]) => {
                         const transform = transforms[part] || { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1 };
                         return path && (
@@ -519,6 +559,55 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
                             />
                         );
                     })}
+
+                    {/* Plate Template Overlay */}
+                    {canvasType === 'plate' && (
+                        <Group name="plateOverlay" listening={false}>
+                            {/* Blocking Blocks - Only for 420x100 */}
+                            {plateSize === '420x100' && (
+                                <>
+                                    <Rect
+                                        x={0}
+                                        y={0}
+                                        width={dimensions.width}
+                                        height={50}
+                                        fill="white"
+                                        opacity={0.9}
+                                    />
+                                    <Rect
+                                        x={0}
+                                        y={150}
+                                        width={dimensions.width}
+                                        height={50}
+                                        fill="white"
+                                        opacity={0.9}
+                                    />
+                                </>
+                            )}
+
+                            {/* Border - Adapts to size */}
+                            <Rect
+                                x={0.5}
+                                y={plateSize === '420x100' ? 50.5 : 0.5}
+                                width={419}
+                                height={plateSize === '420x100' ? 99 : 199}
+                                stroke="black"
+                                strokeWidth={1}
+                                cornerRadius={4}
+                            />
+                        </Group>
+                    )}
+
+                    {overlays.lines && linesImage && canvasType !== 'plate' && (
+                        <KonvaImage
+                            name="linesImage"
+                            image={linesImage}
+                            width={dimensions.width}
+                            height={dimensions.height}
+                            globalCompositeOperation="multiply"
+                            listening={false}
+                        />
+                    )}
                 </Layer>
 
                 {/* Drawing Layer */}
@@ -544,14 +633,6 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
                         <KonvaImage
                             name="maskImage"
                             image={maskImage}
-                            width={dimensions.width}
-                            height={dimensions.height}
-                        />
-                    )}
-                    {overlays.lines && linesImage && (
-                        <KonvaImage
-                            name="linesImage"
-                            image={linesImage}
                             width={dimensions.width}
                             height={dimensions.height}
                         />

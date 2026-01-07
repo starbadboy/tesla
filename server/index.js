@@ -112,6 +112,13 @@ app.get('/api/wraps', async (req, res) => {
             });
         }
 
+        // Filter by type if provided, otherwise default to 'car' (for backward compatibility if needed, or just allow all?)
+        // The user request implies a separation. Let's filter by type if provided.
+        // If no type provided, maybe return all? Or default to 'car'? 
+        // Existing frontend doesn't send type, so it expects cars.
+        const type = req.query.type || 'car';
+        pipeline.unshift({ $match: { type: type } });
+
         // 2. Determine sort object
         let sortStage = {};
         if (sort === 'downloads') {
@@ -139,13 +146,15 @@ app.post('/api/wraps', upload.single('image'), async (req, res) => {
             return res.status(400).json({ error: 'No image file uploaded' });
         }
 
-        const { name, author, models } = req.body;
+
+        const { name, author, models, type } = req.body;
 
         // If user is logged in, override author with username and set user ID
         let wrapData = {
             name,
             author, // Default to provided author (which might be filled by frontend with username)
-            imageUrl: `/uploads/${req.file.filename}`
+            imageUrl: `/uploads/${req.file.filename}`,
+            type: type || 'car'
         };
 
         if (req.user) {

@@ -21,6 +21,11 @@ const WrapSchema = new mongoose.Schema({
         type: [String], // Array of model names this wrap is compatible with/showcased on
         default: []
     },
+    type: {
+        type: String,
+        enum: ['car', 'plate'],
+        default: 'car'
+    },
     user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
