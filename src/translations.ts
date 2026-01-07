@@ -61,6 +61,10 @@ export const TRANSLATIONS = {
         universal: "Universal",
         by: "by",
         downloadWrapImage: "Download Wrap Image",
+        sortBy: "Sort by",
+        popular: "Popular",
+        mostDownloaded: "Most Downloaded",
+        newest: "Newest",
 
         // ThreeDView
         modelError: "Model Error",
@@ -171,6 +175,10 @@ export const TRANSLATIONS = {
         universal: "通用",
         by: "作者",
         downloadWrapImage: "下载车衣图片",
+        sortBy: "排序",
+        popular: "热门",
+        mostDownloaded: "下载最多",
+        newest: "最新",
 
         // ThreeDView
         modelError: "模型错误",

@@ -95,19 +95,37 @@ mongoose.connect(mongoUrl, {
 // Routes
 
 // GET /api/wraps - List all wraps (simplified for now)
+// GET /api/wraps - List all wraps (simplified for now)
 app.get('/api/wraps', async (req, res) => {
     try {
-        // Sort by popularity (likes + downloads) descending, then by newest
-        const wraps = await Wrap.aggregate([
-            {
+        const { sort } = req.query; // 'popular', 'downloads', 'newest'
+
+        let pipeline = [];
+
+        // 1. Add fields if needed for sorting (e.g. score)
+        // We always add it for consistency or just add it if popular
+        if (!sort || sort === 'popular') {
+            pipeline.push({
                 $addFields: {
                     score: { $add: ["$likes", "$downloads"] }
                 }
-            },
-            {
-                $sort: { score: -1, createdAt: -1 }
-            }
-        ]);
+            });
+        }
+
+        // 2. Determine sort object
+        let sortStage = {};
+        if (sort === 'downloads') {
+            sortStage = { downloads: -1, createdAt: -1 };
+        } else if (sort === 'newest') {
+            sortStage = { createdAt: -1 };
+        } else {
+            // Default: popular
+            sortStage = { score: -1, createdAt: -1 };
+        }
+
+        pipeline.push({ $sort: sortStage });
+
+        const wraps = await Wrap.aggregate(pipeline);
         res.json(wraps);
     } catch (err) {
         res.status(500).json({ error: err.message });

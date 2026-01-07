@@ -1,6 +1,6 @@
 // Imports updated
 import { useState, useEffect } from 'react';
-import { Download, Heart, Search, Trash2, MessageCircle } from 'lucide-react';
+import { Download, Heart, Search, Trash2, MessageCircle, ChevronDown } from 'lucide-react';
 import { TRANSLATIONS } from '../translations';
 import { useAuth } from '../contexts/AuthContext';
 import { compressBlob } from '../utils/imageProcessor';
@@ -24,6 +24,8 @@ export interface GalleryProps {
     viewMode?: 'all' | 'garage';
 }
 
+type SortOption = 'popular' | 'downloads' | 'newest';
+
 export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 'en', viewMode = 'all' }: GalleryProps) {
     const [wraps, setWraps] = useState<Wrap[]>([]);
     const [search, setSearch] = useState('');
@@ -32,6 +34,7 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
     const [garageTab, setGarageTab] = useState<'my-uploads' | 'liked'>('my-uploads');
     const [selectedWrap, setSelectedWrap] = useState<Wrap | null>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
+    const [sortBy, setSortBy] = useState<SortOption>('popular');
 
     const t = TRANSLATIONS[language];
 
@@ -40,7 +43,7 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
         const fetchWraps = async () => {
             setLoading(true);
             try {
-                let endpoint = '/api/wraps';
+                let endpoint = `/api/wraps?sort=${sortBy}`;
                 if (viewMode === 'garage') {
                     endpoint = garageTab === 'liked'
                         ? '/api/user/garage?type=liked'
@@ -68,7 +71,7 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
             }
         };
         fetchWraps();
-    }, [refreshTrigger, viewMode, garageTab]);
+    }, [refreshTrigger, viewMode, garageTab, sortBy]);
 
 
 
@@ -199,9 +202,9 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
                 </div>
             )}
 
-            {/* Search */}
-            <div className="p-4 bg-white border-b border-gray-200">
-                <div className="relative">
+            {/* Search and Filter */}
+            <div className="p-4 bg-white border-b border-gray-200 flex gap-2">
+                <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                     <input
                         type="text"
@@ -211,6 +214,21 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
                         className="w-full bg-gray-100 border-none rounded-lg pl-9 pr-4 py-2 text-sm focus:ring-2 focus:ring-black/5"
                     />
                 </div>
+
+                {viewMode === 'all' && (
+                    <div className="relative">
+                        <select
+                            value={sortBy}
+                            onChange={(e) => setSortBy(e.target.value as SortOption)}
+                            className="appearance-none bg-gray-100 border-none rounded-lg pl-3 pr-8 py-2 text-sm focus:ring-2 focus:ring-black/5 cursor-pointer font-medium text-gray-600"
+                        >
+                            <option value="popular">{t.popular}</option>
+                            <option value="downloads">{t.mostDownloaded}</option>
+                            <option value="newest">{t.newest}</option>
+                        </select>
+                        <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={14} />
+                    </div>
+                )}
 
             </div>
 
