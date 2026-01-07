@@ -117,7 +117,21 @@ app.get('/api/wraps', async (req, res) => {
         // If no type provided, maybe return all? Or default to 'car'? 
         // Existing frontend doesn't send type, so it expects cars.
         const type = req.query.type || 'car';
-        pipeline.unshift({ $match: { type: type } });
+
+        // Filter by type. For 'car', we also include documents where type is missing (legacy data)
+        if (type === 'car') {
+            pipeline.unshift({
+                $match: {
+                    $or: [
+                        { type: 'car' },
+                        { type: { $exists: false } },
+                        { type: null }
+                    ]
+                }
+            });
+        } else {
+            pipeline.unshift({ $match: { type: type } });
+        }
 
         // 2. Determine sort object
         let sortStage = {};

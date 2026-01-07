@@ -12,9 +12,10 @@ interface ShareModalProps {
     onShareSuccess?: () => void; // Called after successful share to refresh data
     imageUrl: string | null; // The generated wrap image (blob URL or base64)
     language?: 'en' | 'zh';
+    type?: 'car' | 'plate';
 }
 
-export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl, language = 'en' }: ShareModalProps) {
+export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl, language = 'en', type = 'car' }: ShareModalProps) {
     const [name, setName] = useState('');
     const [author, setAuthor] = useState('');
     const [selectedModel, setSelectedModel] = useState<string>('');
@@ -59,7 +60,8 @@ export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl, language
         const isBulk = uploadedFiles.length > 1;
         if ((!isBulk && !name) || (!imageUrl && uploadedFiles.length === 0)) return;
 
-        if (!selectedModel) {
+        // If car, require model. If plate, model is optional (or we set default).
+        if (type === 'car' && !selectedModel) {
             alert(t.selectModel);
             return;
         }
@@ -75,7 +77,9 @@ export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl, language
 
                 formData.append('name', wrapName);
                 formData.append('author', author || 'Anonymous');
-                formData.append('models', JSON.stringify([selectedModel])); // Send as array with single item
+                // For plates, we can send empty models or 'Universal'? Let's send empty if not selected.
+                formData.append('models', JSON.stringify(selectedModel ? [selectedModel] : []));
+                formData.append('type', type);
                 formData.append('image', file);
 
                 const headers: Record<string, string> = {};
@@ -88,6 +92,7 @@ export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl, language
                     body: formData,
                     headers // Fetch will parse headers object
                 });
+
 
                 if (!apiResponse.ok) {
                     throw new Error(`Failed to upload wrap ${file.name}`);
@@ -196,26 +201,28 @@ export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl, language
                             )}
                         </div>
 
-                        <div>
-                            <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">
-                                {t.models} * <span className="text-gray-400 font-normal normal-case">{t.selectOne}</span>
-                            </label>
-                            <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar border border-gray-100 rounded-lg p-2">
-                                {Object.keys(CAR_MODELS).map(model => (
-                                    <label key={model} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1 rounded">
-                                        <input
-                                            type="radio"
-                                            name="carModel"
-                                            checked={selectedModel === model}
-                                            onChange={() => handleModelChange(model)}
-                                            className="rounded-full border-gray-300 text-black focus:ring-black"
-                                        />
-                                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                                        <span className="text-sm text-gray-700">{(t as any)[model] || model}</span>
-                                    </label>
-                                ))}
+                        {type === 'car' && (
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">
+                                    {t.models} * <span className="text-gray-400 font-normal normal-case">{t.selectOne}</span>
+                                </label>
+                                <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar border border-gray-100 rounded-lg p-2">
+                                    {Object.keys(CAR_MODELS).map(model => (
+                                        <label key={model} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1 rounded">
+                                            <input
+                                                type="radio"
+                                                name="carModel"
+                                                checked={selectedModel === model}
+                                                onChange={() => handleModelChange(model)}
+                                                className="rounded-full border-gray-300 text-black focus:ring-black"
+                                            />
+                                            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                                            <span className="text-sm text-gray-700">{(t as any)[model] || model}</span>
+                                        </label>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
+                        )}
 
                         <p className="text-[10px] text-gray-400 text-center pt-2">
                             {t.maxSize}
@@ -227,7 +234,7 @@ export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl, language
                             </Button>
                             <Button
                                 onClick={handleSubmit}
-                                disabled={(!isBulk && !name) || isSubmitting || (!selectedModel)}
+                                disabled={(!isBulk && !name) || isSubmitting || (type === 'car' && !selectedModel)}
                                 fullWidth
                                 className="bg-blue-600 hover:bg-blue-700 text-white border-0"
                             >

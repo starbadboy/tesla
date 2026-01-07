@@ -1,8 +1,7 @@
-
 import { useRef, useState, useEffect } from 'react';
 import { DesignCanvas, type DesignCanvasHandle, type LayerTransform } from './components/DesignCanvas';
 import { CAR_MODELS, CAR_3D_MODELS } from './constants';
-import { Upload, Download, Trash2, Layers, RotateCw, Globe, Menu, HelpCircle, Sparkles, Settings, Eye, Maximize, Lock, Unlock, PenTool, Eraser } from 'lucide-react';
+import { Upload, Download, Trash2, Layers, RotateCw, Globe, Menu, HelpCircle, Sparkles, Settings, Eye, Maximize, Lock, Unlock, PenTool, Eraser, CarFront, CreditCard, Wand2, AlertCircle, X } from 'lucide-react';
 import { TRANSLATIONS } from './translations';
 import { Sidebar, SidebarSection } from './components/Layout/Sidebar';
 import { Button } from './components/ui/Button';
@@ -39,6 +38,7 @@ function App() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPuterLoaded, setIsPuterLoaded] = useState(false);
   const [aiProvider, setAiProvider] = useState<'puter' | 'openai' | 'gemini'>('puter');
+  const [aiError, setAiError] = useState<string | null>(null);
 
   // ... (existing code)
 
@@ -49,6 +49,7 @@ function App() {
     }
 
     setIsGenerating(true);
+    setAiError(null);
     try {
       // Fetch current model image for img2img context
       const modelBase64 = await urlToBase64(currentModelPath);
@@ -63,7 +64,8 @@ function App() {
         setSingleLayer(imageUrl);
       }
     } catch (error) {
-      alert(t.error + ": " + (error as Error).message);
+      console.error(error);
+      setAiError((error as Error).message || "Failed to generate image");
     } finally {
       setIsGenerating(false);
     }
@@ -274,7 +276,6 @@ function App() {
                     mode={interactionMode}
                     brushColor={brushColor}
                     brushSize={brushSize}
-                    brushSize={brushSize}
                     canvasType={appMode === 'plate' ? 'plate' : 'car'}
                     plateSize={plateSize}
                   />
@@ -301,6 +302,44 @@ function App() {
             }
             actions={
               <div className="flex items-center gap-1">
+                {/* Mode Switcher Icons */}
+                <div className="flex items-center bg-gray-100 dark:bg-zinc-800 rounded-md p-1 mr-2 border border-gray-200 dark:border-zinc-700">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setAppMode('car');
+                      setSingleLayer(null);
+                    }}
+                    className={cn(
+                      "p-1.5 h-7 w-7",
+                      appMode === 'car' ? "bg-white dark:bg-zinc-600 shadow-sm text-black dark:text-white" : "text-gray-400 hover:text-gray-600"
+                    )}
+                    title={t.carWrapMode}
+                  >
+                    <CarFront size={16} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setAppMode('plate');
+                      setSidebarMode('studio');
+                      setIs3DView(false);
+                      setSingleLayer(null);
+                    }}
+                    className={cn(
+                      "p-1.5 h-7 w-7",
+                      appMode === 'plate' ? "bg-white dark:bg-zinc-600 shadow-sm text-black dark:text-white" : "text-gray-400 hover:text-gray-600"
+                    )}
+                    title={t.licensePlateMode}
+                  >
+                    <CreditCard size={16} />
+                  </Button>
+                </div>
+
+                <div className="h-4 w-px bg-gray-200 dark:bg-zinc-700 mx-1"></div>
+
                 <Button variant="ghost" size="sm" onClick={toggleLanguage} className="px-2" title="Switch Language">
                   <Globe size={18} strokeWidth={1} />
                 </Button>
@@ -315,31 +354,7 @@ function App() {
               </div>
             }
           >
-            {/* App Mode Toggle (Car vs Plate) */}
-            <div className="flex border border-foreground divide-x divide-foreground mb-4">
-              <button
-                onClick={() => setAppMode('car')}
-                className={cn(
-                  "flex-1 py-2 text-xs font-bold uppercase tracking-widest transition-colors",
-                  appMode === 'car' ? "bg-foreground text-background" : "bg-transparent text-foreground hover:bg-gray-100"
-                )}
-              >
-                Car Wrap
-              </button>
-              <button
-                onClick={() => {
-                  setAppMode('plate');
-                  setSidebarMode('studio');
-                  setIs3DView(false);
-                }}
-                className={cn(
-                  "flex-1 py-2 text-xs font-bold uppercase tracking-widest transition-colors",
-                  appMode === 'plate' ? "bg-foreground text-background" : "bg-transparent text-foreground hover:bg-gray-100"
-                )}
-              >
-                License Plate
-              </button>
-            </div>
+            {/* Mode Toggle at the Top */}
 
             {/* Mode Toggle at the Top */}
             <div className="flex border border-foreground divide-x divide-foreground mb-6">
@@ -369,18 +384,20 @@ function App() {
             {(sidebarMode === 'community' || sidebarMode === 'garage') ? (
               <div className="flex flex-col h-full -mx-4 overflow-hidden">
                 {/* Added Model Selection for Community Mode as requested */}
-                <div className="px-4 mb-4">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1 block">{t.modelSelection}</label>
-                  <Select
-                    value={currentModelName}
-                    onChange={(e) => setCurrentModelName(e.target.value)}
-                  >
-                    {Object.keys(CAR_MODELS).map(model => (
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      <option key={model} value={model}>{(t as any)[model] || model}</option>
-                    ))}
-                  </Select>
-                </div>
+                {appMode === 'car' && (
+                  <div className="px-4 mb-4">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1 block">{t.modelSelection}</label>
+                    <Select
+                      value={currentModelName}
+                      onChange={(e) => setCurrentModelName(e.target.value)}
+                    >
+                      {Object.keys(CAR_MODELS).map(model => (
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        <option key={model} value={model}>{(t as any)[model] || model}</option>
+                      ))}
+                    </Select>
+                  </div>
+                )}
 
                 <div className="px-4 mb-4">
                   <Button
@@ -388,7 +405,7 @@ function App() {
                     fullWidth
                     className="bg-blue-600 hover:bg-blue-700 text-white border-0"
                   >
-                    <Plus size={16} className="mr-1" /> {t.shareYourWrap}
+                    <Plus size={16} className="mr-1" /> {appMode === 'car' ? t.shareYourWrap : t.shareYourPlate}
                   </Button>
                 </div>
 
@@ -400,7 +417,10 @@ function App() {
                       setSingleLayer(url);
                       setUploadMode('single'); // Switch to single mode
                       setIsWrapVisible(true); // Force wrap visibility when loading a new wrap
-                      // Don't switch back to studio, let them browse
+                      setSidebarMode('studio'); // Switch to editor view
+                      if (appMode === 'plate') {
+                        setIs3DView(false);
+                      }
                     }}
                     language={language}
                     viewMode={sidebarMode === 'garage' ? 'garage' : 'all'}
@@ -714,41 +734,55 @@ function App() {
                 )}
 
                 {/* Section: AI Generation */}
-                <SidebarSection title={t.aiGeneration} icon={<Sparkles />}>
-                  <div className="space-y-3">
-                    {/* Provider Selection */}
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{t.modelProvider}</label>
-                      <Select
-                        value={aiProvider}
-                        onChange={(e) => setAiProvider(e.target.value as 'puter' | 'openai' | 'gemini')}
-                      >
-                        <option value="puter">{t.computerAI}</option>
-                        <option value="openai">{t.openai}</option>
-                        <option value="gemini">Gemini (Google)</option>
-                      </Select>
-                    </div>
+                {appMode === 'car' && (
+                  <SidebarSection title={t.aiGeneration} icon={<Sparkles />}>
+                    <div className="space-y-3">
+                      {/* Provider Selection */}
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{t.modelProvider}</label>
+                        <Select
+                          value={aiProvider}
+                          onChange={(e) => setAiProvider(e.target.value as 'puter' | 'openai' | 'gemini')}
+                        >
+                          <option value="puter">{t.computerAI}</option>
+                          <option value="openai">{t.openai}</option>
+                          <option value="gemini">Gemini (Google)</option>
+                        </Select>
+                      </div>
 
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{t.prompt}</label>
-                      <input
-                        type="text"
-                        value={aiPrompt}
-                        onChange={(e) => setAiPrompt(e.target.value)}
-                        className="w-full text-sm border-b border-gray-300 focus:border-black outline-none py-1 bg-transparent placeholder:text-gray-300 transition-colors"
-                        placeholder={t.prompt}
-                      />
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{t.prompt}</label>
+                        <textarea
+                          placeholder={t.prompt}
+                          value={aiPrompt}
+                          onChange={(e) => setAiPrompt(e.target.value)}
+                          className="w-full text-xs p-2 rounded border border-gray-300 focus:border-black focus:ring-1 focus:ring-black outline-none resize-none h-20 bg-white"
+                        />
+                      </div>
+
+                      <Button
+                        onClick={handleGenerateImage}
+                        disabled={isGenerating || !aiPrompt || (aiProvider === 'puter' && !isPuterLoaded)}
+                        fullWidth
+                        size="sm"
+                        className={cn("bg-gradient-to-r from-indigo-500 to-purple-600 border-0 text-white hover:from-indigo-600 hover:to-purple-700 transition-all duration-300 shadow-sm", isGenerating ? "opacity-75 cursor-wait" : "")}
+                      >
+                        {isGenerating ? (
+                          <><Wand2 size={14} className="mr-2 animate-spin" /> {t.generating}</>
+                        ) : (
+                          <><Wand2 size={14} className="mr-2" /> {t.generate}</>
+                        )}
+                      </Button>
+
+                      {aiError && (
+                        <div className="flex items-center gap-2 text-[10px] text-red-500 bg-red-50 p-2 rounded">
+                          <AlertCircle size={12} />
+                          <span>{aiError}</span>
+                        </div>
+                      )}
                     </div>
-                    <Button
-                      onClick={handleGenerateImage}
-                      disabled={isGenerating || !aiPrompt || (aiProvider === 'puter' && !isPuterLoaded)}
-                      fullWidth
-                      size="sm"
-                    >
-                      {isGenerating ? t.generating : (aiProvider === 'puter' && !isPuterLoaded ? t.connecting : t.generate)}
-                    </Button>
-                  </div>
-                </SidebarSection>
+                  </SidebarSection>
+                )}
 
                 {/* Section 3: Instructions */}
                 <SidebarSection title={t.controls} icon={<RotateCw />}>
@@ -812,6 +846,7 @@ function App() {
             onShareSuccess={() => setGalleryRefreshTrigger(prev => prev + 1)}
             imageUrl={shareImageBlob}
             language={language}
+            type={appMode}
           />
         </div >
       </AuthProvider>

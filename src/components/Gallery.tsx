@@ -226,7 +226,7 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                     <input
                         type="text"
-                        placeholder={t.searchWraps}
+                        placeholder={type === 'plate' ? t.searchPlates : t.searchWraps}
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         className="w-full bg-gray-100 dark:bg-zinc-800 dark:text-white border-none rounded-lg pl-9 pr-4 py-2 text-sm focus:ring-2 focus:ring-black/5 dark:focus:ring-white/10"
@@ -259,7 +259,7 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
                         </div>
                     ) : filteredWraps.length === 0 ? (
                         <div className="col-span-2 text-center py-8 text-gray-400 text-sm">
-                            {t.noWrapsFound}
+                            {type === 'plate' ? t.noPlatesFound : t.noWrapsFound}
                         </div>
                     ) : (
                         filteredWraps.map(wrap => (
