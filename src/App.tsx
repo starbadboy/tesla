@@ -22,7 +22,7 @@ import { ThemeToggle } from './components/ThemeToggle';
 function App() {
   const [currentModelName, setCurrentModelName] = useState("Model 3 (2024 Base)");
   const [appMode, setAppMode] = useState<'car' | 'plate'>('car');
-  const [plateSize, setPlateSize] = useState<'420x100' | '420x200'>('420x100');
+  const [plateSize, setPlateSize] = useState<'420x100' | '420x200'>('420x200');
   const [uploadMode, setUploadMode] = useState<'single' | 'multi'>('single');
   const [singleLayer, setSingleLayer] = useState<string | null>(null);
   const [language, setLanguage] = useState<'en' | 'zh'>(() => {
