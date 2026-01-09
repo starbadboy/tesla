@@ -368,6 +368,15 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
                                             </button>
                                         </div>
                                     )}
+
+                                    {/* Quick View / Comments Overlay Button */}
+                                    <button
+                                        onClick={(e) => handleOpenComments(e, wrap)}
+                                        className="absolute bottom-2 right-2 p-2 bg-white/90 dark:bg-zinc-800/90 backdrop-blur-sm text-black dark:text-white rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-all hover:scale-105 z-10"
+                                        title="View Details & Comments"
+                                    >
+                                        <MessageCircle size={14} />
+                                    </button>
                                 </div>
 
                                 <div className="p-3">
@@ -377,37 +386,28 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
                                     </p>
 
                                     {/* Clean Action Row */}
-                                    <div className="flex items-center justify-between mt-2 gap-1">
+                                    <div className="flex items-center justify-between mt-3">
                                         {/* Like Button */}
                                         <button
                                             onClick={(e) => handleLike(e, wrap._id)}
-                                            className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md transition-colors ${wrap.likes > 0
-                                                ? 'bg-red-50 dark:bg-red-900/20 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30'
-                                                : 'bg-gray-50 dark:bg-zinc-800 text-gray-500 hover:bg-gray-100 dark:hover:bg-zinc-700 hover:text-black dark:hover:text-white'
+                                            className={`flex items-center gap-1 py-1 px-1.5 rounded-md transition-colors ${wrap.likes > 0
+                                                ? 'text-red-600 dark:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'
+                                                : 'text-gray-400 dark:text-zinc-500 hover:text-black dark:hover:text-white hover:bg-gray-100 dark:hover:bg-zinc-800'
                                                 }`}
                                             title={t.like}
                                         >
-                                            <Heart size={12} className={wrap.likes > 0 ? "fill-current" : ""} />
-                                            <span className="text-[10px] font-bold">{wrap.likes}</span>
+                                            <Heart size={14} className={wrap.likes > 0 ? "fill-current" : ""} />
+                                            <span className="text-xs font-medium">{wrap.likes}</span>
                                         </button>
 
-                                        {/* Comment/Message Button */}
-                                        <button
-                                            onClick={(e) => handleOpenComments(e, wrap)}
-                                            className="flex-none w-8 flex items-center justify-center py-1.5 rounded-md bg-gray-50 dark:bg-zinc-800 text-gray-500 hover:bg-gray-100 dark:hover:bg-zinc-700 hover:text-black dark:hover:text-white transition-colors"
-                                            title="Comments"
-                                        >
-                                            <MessageCircle size={12} />
-                                        </button>
-
-                                        {/* Download Button */}
+                                        {/* Download Button - Now has more space */}
                                         <button
                                             onClick={(e) => handleDownload(e, wrap)}
-                                            className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md bg-gray-50 dark:bg-zinc-800 text-gray-500 hover:bg-gray-100 dark:hover:bg-zinc-700 hover:text-black dark:hover:text-white transition-colors"
+                                            className="flex items-center gap-1 py-1 px-1.5 rounded-md text-gray-400 dark:text-zinc-500 hover:text-black dark:hover:text-white hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
                                             title={t.download}
                                         >
-                                            <Download size={12} />
-                                            <span className="text-[10px] font-bold">{wrap.downloads}</span>
+                                            <Download size={14} />
+                                            <span className="text-xs font-medium">{wrap.downloads ?? 0}</span>
                                         </button>
                                     </div>
                                 </div>
