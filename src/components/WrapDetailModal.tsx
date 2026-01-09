@@ -158,13 +158,13 @@ export function WrapDetailModal({ isOpen, onClose, wrap, onLoadWrap }: WrapDetai
                             <h2 className="font-bold text-lg leading-tight dark:text-white">{wrap.name}</h2>
                             <p className="text-xs text-gray-500 mt-1">by <span className="font-semibold text-black dark:text-white">{wrap.author}</span></p>
                         </div>
-                        <button onClick={onClose} className="text-gray-400 hover:text-black">
+                        <button onClick={onClose} className="text-gray-400 hover:text-black dark:hover:text-white transition-colors">
                             <X size={20} />
                         </button>
                     </div>
 
                     {/* Stats Row */}
-                    <div className="flex px-4 py-3 gap-4 border-b border-gray-100 text-xs text-gray-600 font-medium">
+                    <div className="flex px-4 py-3 gap-4 border-b border-gray-100 dark:border-zinc-800 text-xs text-gray-600 dark:text-zinc-400 font-medium">
                         <div className="flex items-center gap-1">
                             <Heart size={14} className={wrap.likes > 0 ? "fill-red-500 text-red-500" : ""} />
                             {wrap.likes} Likes
@@ -178,7 +178,7 @@ export function WrapDetailModal({ isOpen, onClose, wrap, onLoadWrap }: WrapDetai
                     {/* Comments List */}
                     <div className="flex-1 overflow-y-auto p-4 custom-scrollbar bg-gray-50 dark:bg-zinc-950 flex flex-col gap-3" ref={commentListRef}>
                         {comments.length === 0 ? (
-                            <div className="text-center py-8 text-gray-400 text-sm">
+                            <div className="text-center py-8 text-gray-400 dark:text-zinc-600 text-sm">
                                 No comments yet. Be the first to say something!
                             </div>
                         ) : (
