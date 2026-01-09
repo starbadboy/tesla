@@ -1,6 +1,6 @@
 // Imports updated
 import { useState, useEffect } from 'react';
-import { Download, Heart, Search, Trash2, MessageCircle, ChevronDown } from 'lucide-react';
+import { Download, Heart, Search, Trash2, MessageCircle, ChevronDown, Flame, Sparkles } from 'lucide-react';
 import { TRANSLATIONS } from '../translations';
 import { useAuth } from '../contexts/AuthContext';
 import { compressBlob } from '../utils/imageProcessor';
@@ -14,6 +14,9 @@ export interface Wrap {
     models: string[];
     likes: number;
     downloads: number;
+    createdAt?: string; // Should be populated now
+    forceNew?: boolean | null;
+    forceHot?: boolean | null;
 }
 
 export interface GalleryProps {
@@ -158,6 +161,45 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
         onLoadWrap(url);
     }
 
+    const isRecent = (dateStr?: string) => {
+        if (!dateStr) return false;
+        const date = new Date(dateStr);
+        if (isNaN(date.getTime())) return false;
+        return (Date.now() - date.getTime()) < 24 * 60 * 60 * 1000;
+    };
+
+    const handleUpdateTags = async (e: React.MouseEvent, wrapId: string, field: 'forceNew' | 'forceHot', currentValue: boolean | null | undefined) => {
+        e.stopPropagation();
+
+        // Cycle: null (Auto) -> true (Force On) -> false (Force Off) -> null (Auto)
+        let nextValue: boolean | null = null;
+        if (currentValue === null || currentValue === undefined) nextValue = true;
+        else if (currentValue === true) nextValue = false;
+        else nextValue = null;
+
+        try {
+            const token = localStorage.getItem('token');
+            const body: any = {};
+            body[field] = nextValue;
+
+            const res = await fetch(`/api/wraps/${wrapId}/tags`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(body)
+            });
+
+            if (res.ok) {
+                const updatedWrap = await res.json();
+                setWraps(prev => prev.map(w => w._id === wrapId ? { ...w, ...updatedWrap } : w));
+            }
+        } catch (error) {
+            console.error("Failed to update tags", error);
+        }
+    };
+
     const handleDelete = async (e: React.MouseEvent, id: string) => {
         e.stopPropagation();
         if (!confirm(t.confirmDelete)) return;
@@ -276,15 +318,55 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
                                     />
                                     <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity" />
 
-                                    {/* Owner/Admin Delete Button Overlay on Image (Cleaner) */}
+                                    {/* Badges for New/Hot */}
+                                    <div className="absolute top-2 left-2 flex gap-1 pointer-events-none z-10">
+                                        {(wrap.forceNew === true || (wrap.forceNew !== false && isRecent(wrap.createdAt))) && (
+                                            <div className="bg-red-600/90 text-white px-1.5 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 shadow-sm backdrop-blur-sm">
+                                                <Sparkles size={10} /> NEW
+                                            </div>
+                                        )}
+                                        {(wrap.forceHot === true || (wrap.forceHot !== false && (wrap.likes + wrap.downloads) > 30)) && (
+                                            <div className="bg-orange-500/90 text-white px-1.5 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 shadow-sm backdrop-blur-sm">
+                                                <Flame size={10} /> HOT
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Owner/Admin Action Overlay */}
                                     {((viewMode === 'garage' && garageTab === 'my-uploads') || (user && user.isAdmin)) && (
-                                        <button
-                                            onClick={(e) => handleDelete(e, wrap._id)}
-                                            className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow-sm"
-                                            title={t.delete}
-                                        >
-                                            <Trash2 size={14} />
-                                        </button>
+                                        <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                            {user?.isAdmin && (
+                                                <>
+                                                    <button
+                                                        onClick={(e) => handleUpdateTags(e, wrap._id, 'forceNew', wrap.forceNew)}
+                                                        className={`p-1.5 rounded-full shadow-sm text-white transition-colors ${wrap.forceNew === true ? 'bg-red-600 ring-1 ring-white' :
+                                                            wrap.forceNew === false ? 'bg-gray-500/50' :
+                                                                'bg-red-400/80 hover:bg-red-500'
+                                                            }`}
+                                                        title={`New Tag: ${wrap.forceNew === true ? 'Forced ON' : wrap.forceNew === false ? 'Forced OFF' : 'Auto'}`}
+                                                    >
+                                                        <Sparkles size={12} />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => handleUpdateTags(e, wrap._id, 'forceHot', wrap.forceHot)}
+                                                        className={`p-1.5 rounded-full shadow-sm text-white transition-colors ${wrap.forceHot === true ? 'bg-orange-600 ring-1 ring-white' :
+                                                            wrap.forceHot === false ? 'bg-gray-500/50' :
+                                                                'bg-orange-400/80 hover:bg-orange-500'
+                                                            }`}
+                                                        title={`Hot Tag: ${wrap.forceHot === true ? 'Forced ON' : wrap.forceHot === false ? 'Forced OFF' : 'Auto'}`}
+                                                    >
+                                                        <Flame size={12} />
+                                                    </button>
+                                                </>
+                                            )}
+                                            <button
+                                                onClick={(e) => handleDelete(e, wrap._id)}
+                                                className="p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 shadow-sm"
+                                                title={t.delete}
+                                            >
+                                                <Trash2 size={12} />
+                                            </button>
+                                        </div>
                                     )}
                                 </div>
 

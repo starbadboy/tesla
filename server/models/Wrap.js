@@ -41,6 +41,14 @@ const WrapSchema = new mongoose.Schema({
     createdAt: {
         type: Date,
         default: Date.now
+    },
+    forceNew: {
+        type: Boolean,
+        default: null
+    },
+    forceHot: {
+        type: Boolean,
+        default: null
     }
 });
 

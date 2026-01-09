@@ -292,6 +292,29 @@ app.get('/api/user/garage', async (req, res) => {
     }
 });
 
+// PUT /api/wraps/:id/tags - Admin update tags (forceNew/forceHot)
+app.put('/api/wraps/:id/tags', async (req, res) => {
+    try {
+        // Ensure user is admin
+        if (!req.user || !req.user.isAdmin) {
+            return res.status(403).json({ error: 'Require Admin Permission' });
+        }
+
+        const { forceNew, forceHot } = req.body;
+        const wrap = await Wrap.findByIdAndUpdate(
+            req.params.id,
+            { forceNew, forceHot },
+            { new: true } // Return updated doc
+        );
+
+        if (!wrap) return res.status(404).json({ error: 'Wrap not found' });
+        res.json(wrap);
+    } catch (err) {
+        console.error("Update tags error:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // DELETE /api/wraps/:id - Delete a wrap
 app.delete('/api/wraps/:id', async (req, res) => {
     try {
