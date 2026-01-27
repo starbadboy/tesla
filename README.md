@@ -3,7 +3,7 @@
 A premium web-based application for designing and visualizing custom car wraps for Tesla vehicles.
 
 ![Tesla Wrap Studio Preview](public/preview.png)
-
+ 
 ## Features
 
 -   **Interactive Design Canvas**: specialized 2D editor for precise wrap placement and customization.
