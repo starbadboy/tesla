@@ -15,7 +15,23 @@ const authRoutes = require('./routes/auth');
 const jwt = require('jsonwebtoken');
 const User = require('./models/User');
 
+const cron = require('node-cron');
+const { scrapeAndSave } = require('./scripts/daily_scraper');
+
 const app = express();
+
+
+// Schedule Daily Scrape at Midnight (00:00)
+// Format: sec min hour day month day-of-week
+// node-cron: second(optional), minute, hour, day of month, month, day of week
+cron.schedule('0 0 * * *', () => {
+    scrapeAndSave();
+});
+
+// Run once on startup for testing/updating (Optional, can be removed in prod if not desired)
+// setTimeout(() => {
+//    scrapeAndSave();
+// }, 5000);
 const PORT = process.env.PORT || 5001;
 // MongoDB URI
 const mongoUrl = process.env.MONGO_URL || 'test-rul';
@@ -206,6 +222,24 @@ app.post('/api/wraps', upload.single('image'), async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
+// POST /api/admin/scrape - Manual trigger for scraper
+app.post('/api/admin/scrape', async (req, res) => {
+    try {
+        // Optional: Check admin permissions here if stricter security needed
+        // if (!req.user || !req.user.isAdmin) return res.status(403).json({ error: 'Admin only' });
+
+        console.log('Manual scrape triggered via API');
+        // Run asynchronously to not block response? 
+        // Or await to give feedback? Await is better for testing.
+        await scrapeAndSave();
+        res.json({ message: 'Scrape completed successfully' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
 
 // POST /api/wraps/:id/like - Like a wrap
 app.post('/api/wraps/:id/like', async (req, res) => {
