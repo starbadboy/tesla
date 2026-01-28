@@ -6,6 +6,11 @@ const Wrap = require('../models/Wrap');
 // Configuration
 const API_URL = 'https://www.teslaskin.de5.net/api/skins';
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '../uploads');
+const DOWNLOAD_TIMEOUT = 30000; // 30 seconds timeout for downloads
+const API_TIMEOUT = 10000; // 10 seconds timeout for API metadata
+
+// Scraper State Lock
+let isScraping = false;
 
 // Ensure upload directory exists
 if (!fs.existsSync(UPLOAD_DIR)) {
@@ -13,12 +18,6 @@ if (!fs.existsSync(UPLOAD_DIR)) {
 }
 
 // Map external models to our internal model names
-// External keys observed from API:
-// model-y, model-3-2024-base, model-3, model-y-2025-premium, model-y-l, cybertruck, model-3-2024-performance
-// Internal keys from constants.ts:
-// "Cybertruck", "Model 3 (2024 Base)", "Model 3 (2024 Performance)", "Model 3 (Classic)", 
-// "Model Y (2025 Base)", "Model Y (2025 Performance)", "Model Y (2025 Long Range)", "Model Y L", "Model Y"
-
 const MODEL_MAPPING = {
     // Model 3
     'model-3': 'Model 3 (Classic)',
@@ -28,7 +27,7 @@ const MODEL_MAPPING = {
     // Model Y
     'model-y': 'Model Y',
     'model-y-l': 'Model Y L',
-    'model-y-2025-premium': 'Model Y (2025 Long Range)', // Assumed mapping based on "premium" -> Long Range/Premium
+    'model-y-2025-premium': 'Model Y (2025 Long Range)',
     'model-y-2025-base': 'Model Y (2025 Base)',
     'model-y-2025-performance': 'Model Y (2025 Performance)',
 
@@ -59,46 +58,86 @@ async function downloadImage(url, filename) {
     const filePath = path.join(UPLOAD_DIR, filename);
     const writer = fs.createWriteStream(filePath);
 
-    // Add User-Agent to avoid blocking
-    const response = await axios({
-        url,
-        method: 'GET',
-        responseType: 'stream',
-        headers: {
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        }
-    });
+    // Create a cancel token or simple timeout configuration
+    const source = axios.CancelToken.source();
 
-    response.data.pipe(writer);
+    // Safety timeout to abort request if it hangs
+    const timeoutId = setTimeout(() => {
+        source.cancel('Download timeout');
+    }, DOWNLOAD_TIMEOUT);
 
-    return new Promise((resolve, reject) => {
-        writer.on('finish', resolve);
-        writer.on('error', reject);
-    });
+    try {
+        // Add User-Agent to avoid blocking
+        const response = await axios({
+            url,
+            method: 'GET',
+            responseType: 'stream',
+            timeout: DOWNLOAD_TIMEOUT, // Axios built-in timeout
+            cancelToken: source.token,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            }
+        });
+
+        clearTimeout(timeoutId); // Clear safety timeout on response start
+
+        response.data.pipe(writer);
+
+        return new Promise((resolve, reject) => {
+            writer.on('finish', resolve);
+            writer.on('error', (err) => {
+                writer.close();
+                // Try to delete partial file
+                if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+                reject(err);
+            });
+
+            // Handle stream errors from the response side too
+            response.data.on('error', (err) => {
+                writer.close();
+                if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+                reject(err);
+            });
+        });
+    } catch (err) {
+        clearTimeout(timeoutId);
+        writer.close();
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        throw err;
+    }
 }
 
 async function scrapeAndSave() {
+    if (isScraping) {
+        console.log('Skipping scrape: Previous job still running.');
+        return;
+    }
+
+    isScraping = true;
     console.log('Job: Starting daily wrap scrape...');
+
     try {
-        const response = await axios.get(API_URL);
+        const response = await axios.get(API_URL, {
+            timeout: API_TIMEOUT
+        });
         const skins = response.data; // Array of objects
 
         console.log(`Job: Fetched ${skins.length} skins from API.`);
 
         let newCount = 0;
-        // Process newest first (array seems to be newest first based on timestamp)
-        // We can just iterate.
+
+        // LIMIT: Only process recent ones to check for updates, or process all?
+        // If we process 2000 items every day, checking DB for each, it's ~2000 queries.
+        // MongoDB handles that fine, but if optimization is needed, we could fetch all existing names first.
+        // For now, let's just stick to the timeout fix as that's the main resource drain suspect.
 
         for (const skin of skins) {
-            // Check if wrap already exists
-            // Unique key: name + author 
-            // OR checks against external ID if we stored it (we don't currently have externalId field)
-            // Let's stick to name + author for now to avoid duplicates.
-
-            const existing = await Wrap.findOne({
+            // Optimization: Minimal DB query
+            const existing = await Wrap.exists({
                 name: skin.name,
                 author: skin.author
             });
+
 
             if (existing) {
                 continue;
@@ -107,12 +146,9 @@ async function scrapeAndSave() {
             console.log(`Job: Found new skin: ${skin.name} by ${skin.author} (${skin.model})`);
 
             // Download Image
-            // The image URL is relative: /api/image/...
             const imageUrl = `https://www.teslaskin.de5.net${skin.image}`;
 
             // Generate a filename
-            // Use timestamp + random + sanitized name
-            // skin.image usually doesn't have extension in this API, it's a hash. Default to .png
             const ext = '.png';
             const sanitizedName = skin.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
             const filename = `scraped-${Date.now()}-${sanitizedName}${ext}`;
@@ -139,7 +175,8 @@ async function scrapeAndSave() {
                 newCount++;
 
             } catch (imgErr) {
-                console.error(`Job: Failed to download image for ${skin.name}:`, imgErr.message);
+                console.error(`Job: Failed to download/save ${skin.name}:`, imgErr.message);
+                // Continue to next item even if one fails
             }
         }
 
@@ -147,6 +184,9 @@ async function scrapeAndSave() {
 
     } catch (err) {
         console.error('Job: Scrape failed:', err.message);
+    } finally {
+        isScraping = false;
+        // console.log('Job: Lock released.');
     }
 }
 
