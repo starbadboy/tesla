@@ -67,7 +67,12 @@ const authenticateOptional = (req, res, next) => {
 
 app.use(authenticateOptional);
 
-app.use('/uploads', express.static(process.env.UPLOAD_DIR ? path.resolve(process.env.UPLOAD_DIR) : path.join(__dirname, 'uploads')));
+const staticOptions = {
+    maxAge: '7d',   // Cache for 7 days
+    immutable: true // Content is immutable (filenames are unique/timestamped)
+};
+
+app.use('/uploads', express.static(process.env.UPLOAD_DIR ? path.resolve(process.env.UPLOAD_DIR) : path.join(__dirname, 'uploads'), staticOptions));
 app.use('/api/auth', authRoutes);
 const commentRoutes = require('./routes/comments');
 app.use('/api', commentRoutes);
