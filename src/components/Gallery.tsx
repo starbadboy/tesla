@@ -17,6 +17,7 @@ export interface Wrap {
     createdAt?: string; // Should be populated now
     forceNew?: boolean | null;
     forceHot?: boolean | null;
+    user?: string | { _id: string };
 }
 
 export interface GalleryProps {
@@ -423,6 +424,10 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
                 onClose={() => setIsDetailOpen(false)}
                 wrap={selectedWrap}
                 onLoadWrap={onLoadWrap}
+                onUpdate={(updatedWrap: Wrap) => {
+                    setWraps(prev => prev.map(w => w._id === updatedWrap._id ? { ...w, ...updatedWrap } : w));
+                    setSelectedWrap(prev => prev && prev._id === updatedWrap._id ? { ...prev, ...updatedWrap } : prev);
+                }}
             />
         </div>
     );

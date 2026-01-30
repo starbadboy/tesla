@@ -331,6 +331,49 @@ app.get('/api/user/garage', async (req, res) => {
     }
 });
 
+// PUT /api/wraps/:id - Admin update wrap details
+app.put('/api/wraps/:id', async (req, res) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        const wrap = await Wrap.findById(req.params.id);
+        if (!wrap) {
+            return res.status(404).json({ error: 'Wrap not found' });
+        }
+
+        // Check ownership or admin status
+        if (wrap.user && wrap.user.toString() !== req.user.id && !req.user.isAdmin) {
+            return res.status(403).json({ error: 'You do not have permission to edit this wrap' });
+        }
+
+        // Allow admins (and owners) to update name, models, etc.
+        const { name, models } = req.body;
+
+        if (name) wrap.name = name;
+        if (models) {
+            // Ensure models is an array
+            let parsedModels = [];
+            if (Array.isArray(models)) {
+                parsedModels = models;
+            } else if (typeof models === 'string') {
+                // Try to split by comma if string? Or expect JSON?
+                // Let's assume frontend sends array, but if string comes in (e.g. "Model 3, Model Y")
+                parsedModels = models.split(',').map(s => s.trim()).filter(s => s);
+            }
+            wrap.models = parsedModels;
+        }
+
+        const updatedWrap = await wrap.save();
+        res.json(updatedWrap);
+
+    } catch (err) {
+        console.error("Update wrap error:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // PUT /api/wraps/:id/tags - Admin update tags (forceNew/forceHot)
 app.put('/api/wraps/:id/tags', async (req, res) => {
     try {

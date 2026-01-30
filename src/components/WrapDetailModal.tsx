@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, Heart, Download, Send, Trash2, User } from 'lucide-react';
+import { X, Heart, Download, Send, Trash2, User, Pencil, Save } from 'lucide-react';
 import { Button } from './ui/Button';
 import { useAuth } from '../contexts/AuthContext';
 import { type Wrap } from './Gallery'; // Assume Wrap is exported from Gallery
@@ -18,23 +18,73 @@ interface WrapDetailModalProps {
     onClose: () => void;
     wrap: Wrap | null;
     onLoadWrap: (url: string) => void;
+    onUpdate?: (updatedWrap: Wrap) => void;
 }
 
-export function WrapDetailModal({ isOpen, onClose, wrap, onLoadWrap }: WrapDetailModalProps) {
+export function WrapDetailModal({ isOpen, onClose, wrap, onLoadWrap, onUpdate }: WrapDetailModalProps) {
     const [comments, setComments] = useState<Comment[]>([]);
     const [newComment, setNewComment] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { user, token } = useAuth();
     const commentListRef = useRef<HTMLDivElement>(null);
 
+    // Edit Mode State
+    const [isEditing, setIsEditing] = useState(false);
+    const [editName, setEditName] = useState('');
+    const [editModels, setEditModels] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
+
     useEffect(() => {
         if (isOpen && wrap) {
             fetchComments();
+            // Reset edit state when opening
+            setIsEditing(false);
+            setEditName(wrap.name);
+            setEditModels(wrap.models.join(', '));
         } else {
             setComments([]);
             setNewComment('');
         }
     }, [isOpen, wrap]);
+
+    const handleSave = async () => {
+        if (!wrap || !token) return;
+
+        setIsSaving(true);
+        try {
+            const modelsArray = editModels.split(',').map(s => s.trim()).filter(s => s);
+
+            const res = await fetch(`/api/wraps/${wrap._id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    name: editName,
+                    models: modelsArray
+                })
+            });
+
+            if (res.ok) {
+                const updatedWrap = await res.json();
+                setIsEditing(false);
+                if (onUpdate) {
+                    onUpdate(updatedWrap);
+                }
+                // Update local edit state in case we stay open? 
+                // Actually if onUpdate updates parent state, parent renders with new wrap prop, 
+                // causing useEffect to run and reset state anyway.
+            } else {
+                alert('Failed to update wrap');
+            }
+        } catch (error) {
+            console.error("Failed to update wrap", error);
+            alert('Failed to update wrap');
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     const fetchComments = async () => {
         if (!wrap) return;
@@ -154,9 +204,67 @@ export function WrapDetailModal({ isOpen, onClose, wrap, onLoadWrap }: WrapDetai
                 <div className="w-full md:w-1/3 flex flex-col bg-white dark:bg-zinc-900 border-l border-gray-200 dark:border-zinc-800">
                     {/* Header */}
                     <div className="p-4 border-b border-gray-100 dark:border-zinc-800 flex justify-between items-start">
-                        <div>
-                            <h2 className="font-bold text-lg leading-tight dark:text-white">{wrap.name}</h2>
-                            <p className="text-xs text-gray-500 mt-1">by <span className="font-semibold text-black dark:text-white">{wrap.author}</span></p>
+                        <div className="flex-1 mr-4">
+                            {isEditing ? (
+                                <div className="space-y-2">
+                                    <div>
+                                        <label className="text-[10px] uppercase text-gray-500 font-bold">Name</label>
+                                        <input
+                                            type="text"
+                                            value={editName}
+                                            onChange={(e) => setEditName(e.target.value)}
+                                            className="w-full text-sm border rounded px-2 py-1 bg-gray-50 dark:bg-zinc-800 dark:text-white"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] uppercase text-gray-500 font-bold">Models (comma separated)</label>
+                                        <input
+                                            type="text"
+                                            value={editModels}
+                                            onChange={(e) => setEditModels(e.target.value)}
+                                            className="w-full text-sm border rounded px-2 py-1 bg-gray-50 dark:bg-zinc-800 dark:text-white"
+                                            placeholder="Model 3, Model Y"
+                                        />
+                                    </div>
+                                    <div className="flex gap-2 mt-2">
+                                        <Button
+                                            onClick={handleSave}
+                                            disabled={isSaving}
+                                            size="sm"
+                                            className="text-xs py-1 h-auto"
+                                        >
+                                            <Save size={12} className="mr-1" /> Save
+                                        </Button>
+                                        <Button
+                                            onClick={() => setIsEditing(false)}
+                                            variant="outline"
+                                            size="sm"
+                                            className="text-xs py-1 h-auto"
+                                        >
+                                            Cancel
+                                        </Button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="flex items-center gap-2">
+                                        <h2 className="font-bold text-lg leading-tight dark:text-white">{wrap.name}</h2>
+                                        {(user?.isAdmin || user?.id === wrap.user || user?.id === (wrap.user as any)?._id) && (
+                                            <button
+                                                onClick={() => setIsEditing(true)}
+                                                className="text-gray-400 hover:text-black dark:hover:text-white transition-colors"
+                                                title="Edit Details"
+                                            >
+                                                <Pencil size={14} />
+                                            </button>
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-1">by <span className="font-semibold text-black dark:text-white">{wrap.author}</span></p>
+                                    <p className="text-[10px] text-gray-400 mt-1">
+                                        Models: {wrap.models.length > 0 ? wrap.models.join(', ') : 'Universal'}
+                                    </p>
+                                </>
+                            )}
                         </div>
                         <button onClick={onClose} className="text-gray-400 hover:text-black dark:hover:text-white transition-colors">
                             <X size={20} />
