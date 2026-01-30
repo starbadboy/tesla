@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, Heart, Download, Send, Trash2, User, Pencil, Save } from 'lucide-react';
+import { X, Heart, Download, Send, Trash2, User, Pencil, Save, ChevronDown } from 'lucide-react';
 import { Button } from './ui/Button';
 import { useAuth } from '../contexts/AuthContext';
 import { type Wrap } from './Gallery'; // Assume Wrap is exported from Gallery
+import { CAR_MODELS } from '../constants';
 
 interface Comment {
     _id: string;
@@ -29,9 +30,11 @@ export function WrapDetailModal({ isOpen, onClose, wrap, onLoadWrap, onUpdate }:
     const commentListRef = useRef<HTMLDivElement>(null);
 
     // Edit Mode State
+    // Edit Mode State
     const [isEditing, setIsEditing] = useState(false);
     const [editName, setEditName] = useState('');
-    const [editModels, setEditModels] = useState('');
+    const [editModels, setEditModels] = useState<string[]>([]);
+    const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
@@ -40,7 +43,8 @@ export function WrapDetailModal({ isOpen, onClose, wrap, onLoadWrap, onUpdate }:
             // Reset edit state when opening
             setIsEditing(false);
             setEditName(wrap.name);
-            setEditModels(wrap.models.join(', '));
+            setEditModels(wrap.models || []);
+            setIsModelDropdownOpen(false);
         } else {
             setComments([]);
             setNewComment('');
@@ -52,8 +56,6 @@ export function WrapDetailModal({ isOpen, onClose, wrap, onLoadWrap, onUpdate }:
 
         setIsSaving(true);
         try {
-            const modelsArray = editModels.split(',').map(s => s.trim()).filter(s => s);
-
             const res = await fetch(`/api/wraps/${wrap._id}`, {
                 method: 'PUT',
                 headers: {
@@ -62,7 +64,7 @@ export function WrapDetailModal({ isOpen, onClose, wrap, onLoadWrap, onUpdate }:
                 },
                 body: JSON.stringify({
                     name: editName,
-                    models: modelsArray
+                    models: editModels
                 })
             });
 
@@ -216,15 +218,39 @@ export function WrapDetailModal({ isOpen, onClose, wrap, onLoadWrap, onUpdate }:
                                             className="w-full text-sm border rounded px-2 py-1 bg-gray-50 dark:bg-zinc-800 dark:text-white"
                                         />
                                     </div>
-                                    <div>
-                                        <label className="text-[10px] uppercase text-gray-500 font-bold">Models (comma separated)</label>
-                                        <input
-                                            type="text"
-                                            value={editModels}
-                                            onChange={(e) => setEditModels(e.target.value)}
-                                            className="w-full text-sm border rounded px-2 py-1 bg-gray-50 dark:bg-zinc-800 dark:text-white"
-                                            placeholder="Model 3, Model Y"
-                                        />
+                                    <div className="relative">
+                                        <label className="text-[10px] uppercase text-gray-500 font-bold">Models</label>
+                                        <button
+                                            onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
+                                            className="w-full text-sm border rounded px-2 py-1 bg-gray-50 dark:bg-zinc-800 dark:text-white flex items-center justify-between text-left h-8"
+                                        >
+                                            <span className="truncate">
+                                                {editModels.length > 0 ? editModels.join(', ') : <span className="text-gray-400">Select Models</span>}
+                                            </span>
+                                            <ChevronDown size={14} className="text-gray-400 shrink-0 ml-1" />
+                                        </button>
+
+                                        {isModelDropdownOpen && (
+                                            <div className="absolute top-full left-0 w-full mt-1 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-md shadow-lg max-h-48 overflow-y-auto z-50">
+                                                {Object.keys(CAR_MODELS).map(modelKey => (
+                                                    <label key={modelKey} className="flex items-center gap-2 p-2 hover:bg-gray-50 dark:hover:bg-zinc-700 cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={editModels.includes(modelKey)}
+                                                            onChange={(e) => {
+                                                                if (e.target.checked) {
+                                                                    setEditModels([...editModels, modelKey]);
+                                                                } else {
+                                                                    setEditModels(editModels.filter(m => m !== modelKey));
+                                                                }
+                                                            }}
+                                                            className="rounded border-gray-300 text-black focus:ring-black"
+                                                        />
+                                                        <span className="text-xs dark:text-white">{modelKey}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="flex gap-2 mt-2">
                                         <Button

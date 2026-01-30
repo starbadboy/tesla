@@ -21,7 +21,7 @@ export const Sidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
                 {...props}
             >
                 {/* Header */}
-                <div className="p-8 border-b border-foreground flex items-center justify-between sticky top-0 bg-background z-10">
+                <div className="p-8 border-b border-foreground flex items-center justify-between sticky top-0 bg-background z-50">
                     <div className="flex items-center gap-3">
                         {icon && <span className="text-foreground">{icon}</span>}
                         {title && (
