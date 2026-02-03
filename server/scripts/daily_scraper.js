@@ -4,7 +4,7 @@ const path = require('path');
 const Wrap = require('../models/Wrap');
 
 // Configuration
-const API_URL = 'https://www.tesla-skin.com//api/skins';
+const API_URL = 'https://www.tesla-skin.com/api/skins';
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '../uploads');
 const DOWNLOAD_TIMEOUT = 30000; // 30 seconds timeout for downloads
 const API_TIMEOUT = 10000; // 10 seconds timeout for API metadata
@@ -146,7 +146,7 @@ async function scrapeAndSave() {
             console.log(`Job: Found new skin: ${skin.name} by ${skin.author} (${skin.model})`);
 
             // Download Image
-            const imageUrl = `https://www.teslaskin.de5.net${skin.image}`;
+            const imageUrl = `https://www.tesla-skin.com${skin.image}`;
 
             // Generate a filename
             const ext = '.png';
