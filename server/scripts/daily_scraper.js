@@ -27,8 +27,7 @@ const MODEL_MAPPING = {
     // Model Y
     'model-y': 'Model Y',
     'model-y-l': 'Model Y L',
-    'model-y-2025-premium': 'Model Y (2025 Long Range)',
-    'model-y-2025-base': 'Model Y (2025 Base)',
+    'model-y-2025-premium': 'Model Y (2025 Base)',
     'model-y-2025-performance': 'Model Y (2025 Performance)',
 
     // Cybertruck
