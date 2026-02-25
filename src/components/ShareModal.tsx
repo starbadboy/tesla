@@ -231,7 +231,7 @@ export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl, language
                         )}
 
                         <p className="text-[10px] text-gray-400 dark:text-zinc-600 text-center pt-2">
-                            {type === 'car' ? t.maxSize : t.maxSizePlate}
+                            {type === 'car' ? t.maxSize : type === 'sound' ? t.maxSizeSound : t.maxSizePlate}
                         </p>
 
                         <div className="grid grid-cols-2 gap-3 pt-2">
