@@ -319,56 +319,69 @@ function App() {
             actions={
               <div className="flex items-center gap-1">
                 {/* Mode Switcher Icons */}
-                <div className="flex items-center bg-gray-100 dark:bg-zinc-800 rounded-md p-1 mr-2 border border-gray-200 dark:border-zinc-700">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setAppMode('car');
-                      setSingleLayer(null);
-                    }}
-                    className={cn(
-                      "p-1.5 h-7 w-7",
-                      appMode === 'car' ? "bg-white dark:bg-zinc-600 shadow-sm text-black dark:text-white" : "text-gray-400 hover:text-gray-600"
-                    )}
-                    title={t.carWrapMode}
-                  >
-                    <CarFront size={16} />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setAppMode('plate');
-                      setSidebarMode('studio');
-                      setIs3DView(false);
-                      setSingleLayer(null);
-                    }}
-                    className={cn(
-                      "p-1.5 h-7 w-7",
-                      appMode === 'plate' ? "bg-white dark:bg-zinc-600 shadow-sm text-black dark:text-white" : "text-gray-400 hover:text-gray-600"
-                    )}
-                    title={t.licensePlateMode}
-                  >
-                    <CreditCard size={16} />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setAppMode('sound');
-                      setSidebarMode('community');
-                      setIs3DView(false);
-                      setSingleLayer(null);
-                    }}
-                    className={cn(
-                      "p-1.5 h-7 w-7",
-                      appMode === 'sound' ? "bg-white dark:bg-zinc-600 shadow-sm text-black dark:text-white" : "text-gray-400 hover:text-gray-600"
-                    )}
-                    title={t.soundMode}
-                  >
-                    <Bell size={16} />
-                  </Button>
+                <div className="flex items-center bg-gray-100 dark:bg-zinc-800 rounded-md p-1 mr-2 border border-gray-200 dark:border-zinc-700 gap-1">
+                  <div className="relative group">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setAppMode('car');
+                        setSidebarMode('community');
+                        setSingleLayer(null);
+                      }}
+                      className={cn(
+                        "p-1.5 h-7 w-7",
+                        appMode === 'car' ? "bg-white dark:bg-zinc-600 shadow-sm text-black dark:text-white" : "text-gray-400 hover:text-gray-600"
+                      )}
+                    >
+                      <CarFront size={16} />
+                    </Button>
+                    <div className="absolute top-full mt-2 hidden group-hover:block bg-gray-800 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap z-50 pointer-events-none left-1/2 -translate-x-1/2">
+                      {t.carWrapMode}
+                    </div>
+                  </div>
+                  <div className="relative group">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setAppMode('plate');
+                        setSidebarMode('community');
+                        setIs3DView(false);
+                        setSingleLayer(null);
+                      }}
+                      className={cn(
+                        "p-1.5 h-7 w-7",
+                        appMode === 'plate' ? "bg-white dark:bg-zinc-600 shadow-sm text-black dark:text-white" : "text-gray-400 hover:text-gray-600"
+                      )}
+                    >
+                      <CreditCard size={16} />
+                    </Button>
+                    <div className="absolute top-full mt-2 hidden group-hover:block bg-gray-800 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap z-50 pointer-events-none left-1/2 -translate-x-1/2">
+                      {t.licensePlateMode}
+                    </div>
+                  </div>
+                  <div className="relative group">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setAppMode('sound');
+                        setSidebarMode('community');
+                        setIs3DView(false);
+                        setSingleLayer(null);
+                      }}
+                      className={cn(
+                        "p-1.5 h-7 w-7",
+                        appMode === 'sound' ? "bg-white dark:bg-zinc-600 shadow-sm text-black dark:text-white" : "text-gray-400 hover:text-gray-600"
+                      )}
+                    >
+                      <Bell size={16} />
+                    </Button>
+                    <div className="absolute top-full mt-2 hidden group-hover:block bg-gray-800 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap z-50 pointer-events-none left-1/2 -translate-x-1/2">
+                      {t.soundMode}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="h-4 w-px bg-gray-200 dark:bg-zinc-700 mx-1"></div>
