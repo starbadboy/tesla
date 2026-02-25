@@ -191,7 +191,7 @@ export function WrapDetailModal({ isOpen, onClose, wrap, onLoadWrap, onUpdate }:
                     <div className="absolute bottom-4 right-4 flex gap-2">
                         <Button
                             onClick={() => {
-                                onLoadWrap(wrap.imageUrl);
+                                if (wrap.imageUrl) onLoadWrap(wrap.imageUrl);
                                 onClose();
                             }}
                             className="bg-white/90 hover:bg-white text-black text-xs"
@@ -287,7 +287,7 @@ export function WrapDetailModal({ isOpen, onClose, wrap, onLoadWrap, onUpdate }:
                                     </div>
                                     <p className="text-xs text-gray-500 mt-1">by <span className="font-semibold text-black dark:text-white">{wrap.author}</span></p>
                                     <p className="text-[10px] text-gray-400 mt-1">
-                                        Models: {wrap.models.length > 0 ? wrap.models.join(', ') : 'Universal'}
+                                        Models: {wrap.models && wrap.models.length > 0 ? wrap.models.join(', ') : 'Universal'}
                                     </p>
                                 </>
                             )}

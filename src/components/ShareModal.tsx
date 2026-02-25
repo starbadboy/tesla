@@ -58,7 +58,7 @@ export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl, language
         // - Single upload/Canvas: requires 'name'
         // - Bulk upload: doesn't require 'name' (uses filenames)
         const isBulk = uploadedFiles.length > 1;
-        if ((!isBulk && !name) || (!imageUrl && uploadedFiles.length === 0)) return;
+        if ((!isBulk && !name) || (!imageUrl && uploadedFiles.length === 0 && type !== 'sound') || (type === 'sound' && uploadedFiles.length === 0)) return;
 
         // If car, require model. If plate, model is optional (or we set default).
         if (type === 'car' && !selectedModel) {
@@ -240,7 +240,7 @@ export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl, language
                             </Button>
                             <Button
                                 onClick={handleSubmit}
-                                disabled={(!isBulk && !name) || isSubmitting || (type === 'car' && !selectedModel)}
+                                disabled={(!isBulk && !name) || isSubmitting || (type === 'car' && !selectedModel) || (type === 'sound' && uploadedFiles.length === 0)}
                                 fullWidth
                                 className="bg-blue-600 hover:bg-blue-700 text-white border-0 dark:bg-blue-600 dark:hover:bg-blue-700"
                             >

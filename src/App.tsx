@@ -83,12 +83,12 @@ function App() {
   const [brushColor, setBrushColor] = useState('#000000');
   const [brushSize, setBrushSize] = useState(5);
 
-  const [is3DView, setIs3DView] = useState(false);
+  const [is3DView, setIs3DView] = useState(true);
 
   // Share State
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [shareImageBlob, setShareImageBlob] = useState<string | null>(null);
-  const [sidebarMode, setSidebarMode] = useState<'studio' | 'community' | 'garage'>('studio'); // 'studio' | 'community' | 'garage'
+  const [sidebarMode, setSidebarMode] = useState<'studio' | 'community' | 'garage'>('community'); // 'studio' | 'community' | 'garage'
   const [isWrapVisible, setIsWrapVisible] = useState(true); // Control wrap visibility for 3D view
   const [galleryRefreshTrigger, setGalleryRefreshTrigger] = useState(0); // Increment to refresh gallery
 
@@ -197,6 +197,12 @@ function App() {
   };
 
   const handleOpenShareModal = async () => {
+    if (appMode === 'sound') {
+      setShareImageBlob(null);
+      setIsShareModalOpen(true);
+      return;
+    }
+
     if (canvasRef.current) {
       const blob = await canvasRef.current.getExportBlob();
       if (blob) {
@@ -534,237 +540,241 @@ function App() {
 
 
                 {/* Gallery / Community Section or integrated into Texture Layers */}
-                <SidebarSection title="Wraps" icon={<Layers />}>
-                  {/* Existing Studio/Upload UI */}
-                  {/* Mode Toggle */}
-                  <div className="flex border border-foreground divide-x divide-foreground mb-4">
-                    <button
-                      onClick={() => setUploadMode('single')}
-                      className={cn(
-                        "flex-1 py-3 text-xs font-bold uppercase tracking-widest transition-colors",
-                        uploadMode === 'single' ? "bg-foreground text-background" : "bg-transparent text-foreground hover:bg-gray-100"
-                      )}
-                    >
-                      {t.standard}
-                    </button>
-                    <button
-                      onClick={() => setUploadMode('multi')}
-                      className={cn(
-                        "flex-1 py-3 text-xs font-bold uppercase tracking-widest transition-colors",
-                        uploadMode === 'multi' ? "bg-foreground text-background" : "bg-transparent text-foreground hover:bg-gray-100"
-                      )}
-                    >
-                      {t.pro}
-                    </button>
-                  </div>
+                {appMode !== 'sound' && (
+                  <>
+                    <SidebarSection title="Wraps" icon={<Layers />}>
+                      {/* Existing Studio/Upload UI */}
+                      {/* Mode Toggle */}
+                      <div className="flex border border-foreground divide-x divide-foreground mb-4">
+                        <button
+                          onClick={() => setUploadMode('single')}
+                          className={cn(
+                            "flex-1 py-3 text-xs font-bold uppercase tracking-widest transition-colors",
+                            uploadMode === 'single' ? "bg-foreground text-background" : "bg-transparent text-foreground hover:bg-gray-100"
+                          )}
+                        >
+                          {t.standard}
+                        </button>
+                        <button
+                          onClick={() => setUploadMode('multi')}
+                          className={cn(
+                            "flex-1 py-3 text-xs font-bold uppercase tracking-widest transition-colors",
+                            uploadMode === 'multi' ? "bg-foreground text-background" : "bg-transparent text-foreground hover:bg-gray-100"
+                          )}
+                        >
+                          {t.pro}
+                        </button>
+                      </div>
 
-                  {uploadMode === 'single' ? (
-                    // Single Mode UI
-                    <div className="space-y-4">
-                      {singleLayer ? (
-                        <div className="relative group border border-foreground">
-                          <img src={singleLayer} className="w-full h-32 object-cover grayscale group-hover:grayscale-0 transition-all duration-300" />
-                          <button
-                            onClick={handleDeleteSingle}
-                            className="absolute inset-0 bg-white/90 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-200"
-                          >
-                            <Trash2 size={24} strokeWidth={1} className="text-black" />
-                          </button>
-                        </div>
-                      ) : (
-                        <label className="cursor-pointer flex flex-col items-center justify-center gap-2 p-12 border-2 border-dashed border-gray-300 hover:border-foreground transition-all duration-300 group">
-                          <Upload size={24} strokeWidth={1} className="text-gray-400 group-hover:text-foreground transition-colors" />
-                          <span className="text-xs font-bold uppercase tracking-widest text-gray-400 group-hover:text-foreground transition-colors">{t.importWrap}</span>
-                          <input type="file" className="hidden" accept="image/*" onChange={handleSingleUpload} />
-                        </label>
-                      )}
-                    </div>
-                  ) : (
-                    // Multi Mode Grid UI
-                    <div className="grid grid-cols-2 gap-4">
-                      {Object.keys(multiLayers).map(part => (
-                        <div key={part} className="space-y-1">
-                          <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{part}</span>
-                          {multiLayers[part] ? (
-                            <div className="relative group border border-foreground aspect-square">
-                              <img src={multiLayers[part]!} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-300" />
+                      {uploadMode === 'single' ? (
+                        // Single Mode UI
+                        <div className="space-y-4">
+                          {singleLayer ? (
+                            <div className="relative group border border-foreground">
+                              <img src={singleLayer} className="w-full h-32 object-cover grayscale group-hover:grayscale-0 transition-all duration-300" />
                               <button
-                                onClick={() => handleDeleteMulti(part)}
+                                onClick={handleDeleteSingle}
                                 className="absolute inset-0 bg-white/90 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-200"
                               >
-                                <Trash2 size={20} strokeWidth={1} className="text-black" />
+                                <Trash2 size={24} strokeWidth={1} className="text-black" />
                               </button>
                             </div>
                           ) : (
-                            <label className="cursor-pointer flex flex-col items-center justify-center aspect-square border-2 border-dashed border-gray-300 hover:border-foreground transition-all duration-300 group">
-                              <Upload size={16} strokeWidth={1} className="mb-1 text-gray-400 group-hover:text-foreground" />
-                              <input
-                                type="file"
-                                className="hidden"
-                                accept="image/*"
-                                onChange={(e) => handleMultiUpload(part, e)}
-                              />
+                            <label className="cursor-pointer flex flex-col items-center justify-center gap-2 p-12 border-2 border-dashed border-gray-300 hover:border-foreground transition-all duration-300 group">
+                              <Upload size={24} strokeWidth={1} className="text-gray-400 group-hover:text-foreground transition-colors" />
+                              <span className="text-xs font-bold uppercase tracking-widest text-gray-400 group-hover:text-foreground transition-colors">{t.importWrap}</span>
+                              <input type="file" className="hidden" accept="image/*" onChange={handleSingleUpload} />
                             </label>
                           )}
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </SidebarSection>
+                      ) : (
+                        // Multi Mode Grid UI
+                        <div className="grid grid-cols-2 gap-4">
+                          {Object.keys(multiLayers).map(part => (
+                            <div key={part} className="space-y-1">
+                              <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{part}</span>
+                              {multiLayers[part] ? (
+                                <div className="relative group border border-foreground aspect-square">
+                                  <img src={multiLayers[part]!} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-300" />
+                                  <button
+                                    onClick={() => handleDeleteMulti(part)}
+                                    className="absolute inset-0 bg-white/90 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-200"
+                                  >
+                                    <Trash2 size={20} strokeWidth={1} className="text-black" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <label className="cursor-pointer flex flex-col items-center justify-center aspect-square border-2 border-dashed border-gray-300 hover:border-foreground transition-all duration-300 group">
+                                  <Upload size={16} strokeWidth={1} className="mb-1 text-gray-400 group-hover:text-foreground" />
+                                  <input
+                                    type="file"
+                                    className="hidden"
+                                    accept="image/*"
+                                    onChange={(e) => handleMultiUpload(part, e)}
+                                  />
+                                </label>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </SidebarSection>
 
-                <SidebarSection title={t.drawing} icon={<PenTool />}>
-                  <div className="space-y-4">
-                    {/* Mode Toggle */}
-                    <div className="flex border border-foreground divide-x divide-foreground">
-                      <button
-                        onClick={() => setInteractionMode('select')}
-                        className={cn(
-                          "flex-1 py-3 text-xs font-bold uppercase tracking-widest transition-colors",
-                          interactionMode === 'select' ? "bg-foreground text-background" : "bg-transparent text-foreground hover:bg-gray-100"
-                        )}
-                      >
-                        {t.selectMode}
-                      </button>
-                      <button
-                        onClick={() => setInteractionMode('draw')}
-                        className={cn(
-                          "flex-1 py-3 text-xs font-bold uppercase tracking-widest transition-colors",
-                          interactionMode === 'draw' ? "bg-foreground text-background" : "bg-transparent text-foreground hover:bg-gray-100"
-                        )}
-                      >
-                        {t.drawMode}
-                      </button>
-                    </div>
+                    <SidebarSection title={t.drawing} icon={<PenTool />}>
+                      <div className="space-y-4">
+                        {/* Mode Toggle */}
+                        <div className="flex border border-foreground divide-x divide-foreground">
+                          <button
+                            onClick={() => setInteractionMode('select')}
+                            className={cn(
+                              "flex-1 py-3 text-xs font-bold uppercase tracking-widest transition-colors",
+                              interactionMode === 'select' ? "bg-foreground text-background" : "bg-transparent text-foreground hover:bg-gray-100"
+                            )}
+                          >
+                            {t.selectMode}
+                          </button>
+                          <button
+                            onClick={() => setInteractionMode('draw')}
+                            className={cn(
+                              "flex-1 py-3 text-xs font-bold uppercase tracking-widest transition-colors",
+                              interactionMode === 'draw' ? "bg-foreground text-background" : "bg-transparent text-foreground hover:bg-gray-100"
+                            )}
+                          >
+                            {t.drawMode}
+                          </button>
+                        </div>
 
-                    {interactionMode === 'draw' && (
-                      <>
-                        {/* Brush Color */}
-                        <div className="space-y-2">
-                          <div className="flex justify-between items-center text-xs font-bold uppercase tracking-widest text-gray-500">
-                            <span>{t.brushColor}</span>
-                          </div>
-                          <div className="flex gap-2">
-                            {['#000000', '#FFFFFF', '#FF0000', '#00FF00', '#0000FF', '#FFFF00'].map(color => (
-                              <button
-                                key={color}
-                                onClick={() => setBrushColor(color)}
-                                className={cn(
-                                  "w-6 h-6 rounded-full border border-gray-300",
-                                  brushColor === color ? "ring-2 ring-offset-2 ring-foreground" : ""
-                                )}
-                                style={{ backgroundColor: color }}
+                        {interactionMode === 'draw' && (
+                          <>
+                            {/* Brush Color */}
+                            <div className="space-y-2">
+                              <div className="flex justify-between items-center text-xs font-bold uppercase tracking-widest text-gray-500">
+                                <span>{t.brushColor}</span>
+                              </div>
+                              <div className="flex gap-2">
+                                {['#000000', '#FFFFFF', '#FF0000', '#00FF00', '#0000FF', '#FFFF00'].map(color => (
+                                  <button
+                                    key={color}
+                                    onClick={() => setBrushColor(color)}
+                                    className={cn(
+                                      "w-6 h-6 rounded-full border border-gray-300",
+                                      brushColor === color ? "ring-2 ring-offset-2 ring-foreground" : ""
+                                    )}
+                                    style={{ backgroundColor: color }}
+                                  />
+                                ))}
+                                <input
+                                  type="color"
+                                  value={brushColor}
+                                  onChange={(e) => setBrushColor(e.target.value)}
+                                  className="w-6 h-6 rounded-full overflow-hidden border-0 p-0"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Brush Size */}
+                            <div className="space-y-2">
+                              <div className="flex justify-between items-center text-xs font-bold uppercase tracking-widest text-gray-500">
+                                <span>{t.brushSize}</span>
+                                <span>{brushSize}px</span>
+                              </div>
+                              <input
+                                type="range"
+                                min="1"
+                                max="50"
+                                value={brushSize}
+                                onChange={(e) => setBrushSize(parseInt(e.target.value))}
+                                className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-foreground"
                               />
-                            ))}
+                            </div>
+                          </>
+                        )}
+
+                        <Button
+                          onClick={handleClearDrawing}
+                          variant="outline"
+                          fullWidth
+                          size="sm"
+                        >
+                          <Eraser size={16} className="mr-2" />
+                          {t.clearDrawing}
+                        </Button>
+                      </div>
+                    </SidebarSection>
+
+                    {/* Section: Properties */}
+                    {selectedLayerId && selectedTransform && (
+                      <SidebarSection title={t.properties} icon={<Settings />}>
+                        <div className="space-y-6">
+                          {/* Opacity */}
+                          <div className="space-y-2">
+                            <div className="flex justify-between items-center text-xs font-bold uppercase tracking-widest text-gray-500">
+                              <span className="flex items-center gap-1"><Eye size={12} /> {t.opacity}</span>
+                              <span>{Math.round(selectedTransform.opacity * 100)}%</span>
+                            </div>
                             <input
-                              type="color"
-                              value={brushColor}
-                              onChange={(e) => setBrushColor(e.target.value)}
-                              className="w-6 h-6 rounded-full overflow-hidden border-0 p-0"
+                              type="range"
+                              min="0"
+                              max="1"
+                              step="0.01"
+                              value={selectedTransform.opacity}
+                              onChange={(e) => updateSelectedProperty({ opacity: parseFloat(e.target.value) })}
+                              className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-foreground"
+                            />
+                          </div>
+
+                          {/* Rotation */}
+                          <div className="space-y-2">
+                            <div className="flex justify-between items-center text-xs font-bold uppercase tracking-widest text-gray-500">
+                              <span className="flex items-center gap-1"><RotateCw size={12} /> {t.rotation}</span>
+                              <span>{Math.round(selectedTransform.rotation)}°</span>
+                            </div>
+                            <input
+                              type="range"
+                              min="0"
+                              max="360"
+                              value={(selectedTransform.rotation % 360 + 360) % 360}
+                              onChange={(e) => updateSelectedProperty({ rotation: parseFloat(e.target.value) })}
+                              className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-foreground"
+                            />
+                          </div>
+
+                          {/* Scale */}
+                          <div className="space-y-2">
+                            <div className="flex justify-between items-center text-xs font-bold uppercase tracking-widest text-gray-500">
+                              <span className="flex items-center gap-1"><Maximize size={12} /> {t.scale}</span>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => setUniformScale(!uniformScale)}
+                                  className="p-1 hover:bg-gray-100 rounded text-foreground transition-colors"
+                                  title={t.uniformScale}
+                                >
+                                  {uniformScale ? <Lock size={12} /> : <Unlock size={12} />}
+                                </button>
+                                <span>{Math.round(selectedTransform.scaleX * 100)}%</span>
+                              </div>
+                            </div>
+                            <input
+                              type="range"
+                              min="0.1"
+                              max="3"
+                              step="0.01"
+                              value={selectedTransform.scaleX}
+                              onChange={(e) => {
+                                const val = parseFloat(e.target.value);
+                                if (uniformScale) {
+                                  updateSelectedProperty({ scaleX: val, scaleY: val });
+                                } else {
+                                  updateSelectedProperty({ scaleX: val });
+                                }
+                              }}
+                              className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-foreground"
                             />
                           </div>
                         </div>
-
-                        {/* Brush Size */}
-                        <div className="space-y-2">
-                          <div className="flex justify-between items-center text-xs font-bold uppercase tracking-widest text-gray-500">
-                            <span>{t.brushSize}</span>
-                            <span>{brushSize}px</span>
-                          </div>
-                          <input
-                            type="range"
-                            min="1"
-                            max="50"
-                            value={brushSize}
-                            onChange={(e) => setBrushSize(parseInt(e.target.value))}
-                            className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-foreground"
-                          />
-                        </div>
-                      </>
+                      </SidebarSection>
                     )}
-
-                    <Button
-                      onClick={handleClearDrawing}
-                      variant="outline"
-                      fullWidth
-                      size="sm"
-                    >
-                      <Eraser size={16} className="mr-2" />
-                      {t.clearDrawing}
-                    </Button>
-                  </div>
-                </SidebarSection>
-
-                {/* Section: Properties */}
-                {selectedLayerId && selectedTransform && (
-                  <SidebarSection title={t.properties} icon={<Settings />}>
-                    <div className="space-y-6">
-                      {/* Opacity */}
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center text-xs font-bold uppercase tracking-widest text-gray-500">
-                          <span className="flex items-center gap-1"><Eye size={12} /> {t.opacity}</span>
-                          <span>{Math.round(selectedTransform.opacity * 100)}%</span>
-                        </div>
-                        <input
-                          type="range"
-                          min="0"
-                          max="1"
-                          step="0.01"
-                          value={selectedTransform.opacity}
-                          onChange={(e) => updateSelectedProperty({ opacity: parseFloat(e.target.value) })}
-                          className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-foreground"
-                        />
-                      </div>
-
-                      {/* Rotation */}
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center text-xs font-bold uppercase tracking-widest text-gray-500">
-                          <span className="flex items-center gap-1"><RotateCw size={12} /> {t.rotation}</span>
-                          <span>{Math.round(selectedTransform.rotation)}°</span>
-                        </div>
-                        <input
-                          type="range"
-                          min="0"
-                          max="360"
-                          value={(selectedTransform.rotation % 360 + 360) % 360}
-                          onChange={(e) => updateSelectedProperty({ rotation: parseFloat(e.target.value) })}
-                          className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-foreground"
-                        />
-                      </div>
-
-                      {/* Scale */}
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center text-xs font-bold uppercase tracking-widest text-gray-500">
-                          <span className="flex items-center gap-1"><Maximize size={12} /> {t.scale}</span>
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => setUniformScale(!uniformScale)}
-                              className="p-1 hover:bg-gray-100 rounded text-foreground transition-colors"
-                              title={t.uniformScale}
-                            >
-                              {uniformScale ? <Lock size={12} /> : <Unlock size={12} />}
-                            </button>
-                            <span>{Math.round(selectedTransform.scaleX * 100)}%</span>
-                          </div>
-                        </div>
-                        <input
-                          type="range"
-                          min="0.1"
-                          max="3"
-                          step="0.01"
-                          value={selectedTransform.scaleX}
-                          onChange={(e) => {
-                            const val = parseFloat(e.target.value);
-                            if (uniformScale) {
-                              updateSelectedProperty({ scaleX: val, scaleY: val });
-                            } else {
-                              updateSelectedProperty({ scaleX: val });
-                            }
-                          }}
-                          className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-foreground"
-                        />
-                      </div>
-                    </div>
-                  </SidebarSection>
+                  </>
                 )}
 
                 {/* Section: AI Generation */}
@@ -819,19 +829,21 @@ function App() {
                 )}
 
                 {/* Section 3: Instructions */}
-                <SidebarSection title={t.controls} icon={<RotateCw />}>
-                  <ul className="space-y-2">
-                    {appMode === 'car' ? t.controlSteps.map((step, i) => (
-                      <li key={i} className="text-sm font-serif text-gray-600 pl-4 border-l border-foreground/20">
-                        {step}
-                      </li>
-                    )) : (
-                      <li className="text-sm font-serif text-gray-600 pl-4 border-l border-foreground/20">
-                        Use mouse/touch to draw. Select objects to transform.
-                      </li>
-                    )}
-                  </ul>
-                </SidebarSection>
+                {appMode !== 'sound' && (
+                  <SidebarSection title={t.controls} icon={<RotateCw />}>
+                    <ul className="space-y-2">
+                      {appMode === 'car' ? t.controlSteps.map((step, i) => (
+                        <li key={i} className="text-sm font-serif text-gray-600 pl-4 border-l border-foreground/20">
+                          {step}
+                        </li>
+                      )) : (
+                        <li className="text-sm font-serif text-gray-600 pl-4 border-l border-foreground/20">
+                          Use mouse/touch to draw. Select objects to transform.
+                        </li>
+                      )}
+                    </ul>
+                  </SidebarSection>
+                )}
 
                 {/* Section 4: Installation */}
                 <SidebarSection title={t.installation} icon={<HelpCircle />}>
@@ -867,17 +879,19 @@ function App() {
               </>
             )}
             {/* Footer actions */}
-            <div className="pt-6 mt-auto">
-              <Button
-                onClick={handleExport}
-                fullWidth
-                size="lg"
-                className="group"
-              >
-                <Download size={20} strokeWidth={1.5} className="mr-2 group-hover:scale-110 transition-transform" />
-                {t.export}
-              </Button>
-            </div>
+            {appMode !== 'sound' && (
+              <div className="pt-6 mt-auto">
+                <Button
+                  onClick={handleExport}
+                  fullWidth
+                  size="lg"
+                  className="group"
+                >
+                  <Download size={20} strokeWidth={1.5} className="mr-2 group-hover:scale-110 transition-transform" />
+                  {t.export}
+                </Button>
+              </div>
+            )}
           </Sidebar>
 
           <ShareModal
