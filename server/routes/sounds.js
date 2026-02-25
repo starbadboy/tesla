@@ -140,4 +140,43 @@ router.post('/:id/download', async (req, res) => {
     }
 });
 
+// DELETE /api/sounds/:id - Delete a sound
+router.delete('/:id', async (req, res) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        const sound = await Sound.findById(req.params.id);
+        if (!sound) {
+            return res.status(404).json({ error: 'Sound not found' });
+        }
+
+        // Check ownership or admin status
+        if (sound.user && sound.user.toString() !== req.user.id && !req.user.isAdmin) {
+            return res.status(403).json({ error: 'You do not have permission to delete this sound' });
+        }
+
+        if (!sound.user && !req.user.isAdmin) {
+            return res.status(403).json({ error: 'Cannot delete anonymous sounds' });
+        }
+
+        // Delete the file from filesystem
+        if (sound.audioUrl && sound.audioUrl.startsWith('/uploads/sounds/')) {
+            const filename = sound.audioUrl.split('/uploads/sounds/')[1];
+            const filePath = path.join(uploadsDir, filename);
+            if (fs.existsSync(filePath)) {
+                fs.unlinkSync(filePath);
+            }
+        }
+
+        await Sound.findByIdAndDelete(req.params.id);
+        res.json({ message: 'Sound deleted successfully' });
+
+    } catch (err) {
+        console.error("Delete error:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;
