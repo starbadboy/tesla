@@ -12,7 +12,7 @@ interface ShareModalProps {
     onShareSuccess?: () => void; // Called after successful share to refresh data
     imageUrl: string | null; // The generated wrap image (blob URL or base64)
     language?: 'en' | 'zh';
-    type?: 'car' | 'plate';
+    type?: 'car' | 'plate' | 'sound';
 }
 
 export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl, language = 'en', type = 'car' }: ShareModalProps) {
@@ -80,14 +80,19 @@ export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl, language
                 // For plates, we can send empty models or 'Universal'? Let's send empty if not selected.
                 formData.append('models', JSON.stringify(selectedModel ? [selectedModel] : []));
                 formData.append('type', type);
-                formData.append('image', file);
+                if (type === 'sound') {
+                    formData.append('audio', file);
+                } else {
+                    formData.append('image', file);
+                }
 
                 const headers: Record<string, string> = {};
                 if (token) {
                     headers['Authorization'] = `Bearer ${token}`;
                 }
 
-                const apiResponse = await fetch('/api/wraps', {
+                const uploadUrl = type === 'sound' ? '/api/sounds' : '/api/wraps';
+                const apiResponse = await fetch(uploadUrl, {
                     method: 'POST',
                     body: formData,
                     headers // Fetch will parse headers object
@@ -143,7 +148,7 @@ export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl, language
                     <div className="space-y-4">
                         <div>
                             <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-zinc-400 mb-1">
-                                {type === 'car' ? t.wrapName : (t as any).plateName} *
+                                {type === 'car' ? t.wrapName : type === 'sound' ? t.soundName : t.plateName} *
                             </label>
                             <input
                                 type="text"
@@ -172,11 +177,11 @@ export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl, language
 
                         <div>
                             <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-zinc-400 mb-1">
-                                {t.uploadImageOptional}
+                                {type === 'sound' ? "Upload Audio" : t.uploadImageOptional}
                             </label>
                             <input
                                 type="file"
-                                accept="image/png, image/jpeg, image/jpg"
+                                accept={type === 'sound' ? "audio/wav, audio/mpeg, audio/*" : "image/png, image/jpeg, image/jpg"}
                                 onChange={handleFileChange}
                                 multiple
                                 className="w-full text-sm text-gray-500 dark:text-zinc-400
@@ -226,7 +231,7 @@ export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl, language
                         )}
 
                         <p className="text-[10px] text-gray-400 dark:text-zinc-600 text-center pt-2">
-                            {type === 'car' ? t.maxSize : (t as any).maxSizePlate}
+                            {type === 'car' ? t.maxSize : t.maxSizePlate}
                         </p>
 
                         <div className="grid grid-cols-2 gap-3 pt-2">
@@ -245,7 +250,7 @@ export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl, language
                                         {t.sharing}
                                     </>
                                 ) : (
-                                    type === 'car' ? t.submitWraps : (t as any).submitPlates
+                                    type === 'car' ? t.submitWraps : type === 'sound' ? t.submitSounds : t.submitPlates
                                 )}
                             </Button>
                         </div>

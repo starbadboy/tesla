@@ -75,7 +75,9 @@ const staticOptions = {
 app.use('/uploads', express.static(process.env.UPLOAD_DIR ? path.resolve(process.env.UPLOAD_DIR) : path.join(__dirname, 'uploads'), staticOptions));
 app.use('/api/auth', authRoutes);
 const commentRoutes = require('./routes/comments');
+const soundRoutes = require('./routes/sounds');
 app.use('/api', commentRoutes);
+app.use('/api/sounds', soundRoutes);
 
 // Ensure uploads directory exists
 const uploadsDir = process.env.UPLOAD_DIR

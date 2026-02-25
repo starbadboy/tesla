@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import { DesignCanvas, type DesignCanvasHandle, type LayerTransform } from './components/DesignCanvas';
 import { CAR_MODELS, CAR_3D_MODELS } from './constants';
-import { Upload, Download, Trash2, Layers, RotateCw, Globe, Menu, HelpCircle, Sparkles, Settings, Eye, Maximize, Lock, Unlock, PenTool, Eraser, CarFront, CreditCard, Wand2, AlertCircle } from 'lucide-react';
+import { Upload, Download, Trash2, Layers, RotateCw, Globe, Menu, HelpCircle, Sparkles, Settings, Eye, Maximize, Lock, Unlock, PenTool, Eraser, CarFront, CreditCard, Wand2, AlertCircle, Bell } from 'lucide-react';
 import { TRANSLATIONS } from './translations';
 import { Sidebar, SidebarSection } from './components/Layout/Sidebar';
 import { Button } from './components/ui/Button';
@@ -21,7 +21,7 @@ import { ThemeToggle } from './components/ThemeToggle';
 
 function App() {
   const [currentModelName, setCurrentModelName] = useState("Model 3 (2024 Base)");
-  const [appMode, setAppMode] = useState<'car' | 'plate'>('car');
+  const [appMode, setAppMode] = useState<'car' | 'plate' | 'sound'>('car');
   const [plateSize, setPlateSize] = useState<'420x100' | '420x200'>('420x200');
   const [uploadMode, setUploadMode] = useState<'single' | 'multi'>('single');
   const [singleLayer, setSingleLayer] = useState<string | null>(null);
@@ -263,35 +263,44 @@ function App() {
           <div className="flex-none h-[50vh] w-full md:h-full md:w-auto md:flex-1 relative flex items-center justify-center bg-gray-50 dark:bg-zinc-900 p-6 md:p-12 border-b-4 md:border-b-0 border-foreground">
             <BuyMeCoffee />
             <div className="w-full h-full border border-foreground relative bg-white dark:bg-zinc-900 overflow-hidden">
-              <>
-                <div className={cn("w-full h-full transition-opacity duration-300", effectiveIs3DView ? "absolute top-0 left-0 opacity-0 pointer-events-none z-0" : "relative z-10")}>
-                  <DesignCanvas
-                    ref={canvasRef}
-                    modelPath={currentModelPath}
-                    layers={activeLayers}
-                    transforms={layerTransforms}
-                    onTransformChange={handleTransformChange}
-                    selectedId={selectedLayerId}
-                    onSelect={setSelectedLayerId}
-                    onExport={() => { }}
-                    mode={interactionMode}
-                    brushColor={brushColor}
-                    brushSize={brushSize}
-                    canvasType={appMode === 'plate' ? 'plate' : 'car'}
-                    plateSize={plateSize}
-                  />
+              {appMode === 'sound' ? (
+                <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 dark:text-zinc-600 gap-6">
+                  <div className="animate-pulse p-10 bg-gray-50 dark:bg-zinc-800 rounded-full border border-gray-100 dark:border-zinc-700 shadow-sm">
+                    <Bell size={64} strokeWidth={1} />
+                  </div>
+                  <p className="font-serif tracking-widest uppercase text-xs bg-gray-100 dark:bg-zinc-800 px-4 py-2 rounded-full border border-gray-200 dark:border-zinc-700">Custom Lock Sounds</p>
                 </div>
-                <div className={cn("w-full h-full absolute top-0 left-0 transition-opacity duration-300", (effectiveIs3DView && appMode === 'car') ? "opacity-100 z-10" : "opacity-0 pointer-events-none z-0")}>
-                  <ThreeDView
-                    stageRef={canvasRef}
-                    modelPath={CAR_3D_MODELS[currentModelName]}
-                    isActive={effectiveIs3DView}
-                    showTexture={isWrapVisible}
-                    onToggleWrap={setIsWrapVisible}
-                    language={language}
-                  />
-                </div>
-              </>
+              ) : (
+                <>
+                  <div className={cn("w-full h-full transition-opacity duration-300", effectiveIs3DView ? "absolute top-0 left-0 opacity-0 pointer-events-none z-0" : "relative z-10")}>
+                    <DesignCanvas
+                      ref={canvasRef}
+                      modelPath={currentModelPath}
+                      layers={activeLayers}
+                      transforms={layerTransforms}
+                      onTransformChange={handleTransformChange}
+                      selectedId={selectedLayerId}
+                      onSelect={setSelectedLayerId}
+                      onExport={() => { }}
+                      mode={interactionMode}
+                      brushColor={brushColor}
+                      brushSize={brushSize}
+                      canvasType={appMode === 'plate' ? 'plate' : 'car'}
+                      plateSize={plateSize}
+                    />
+                  </div>
+                  <div className={cn("w-full h-full absolute top-0 left-0 transition-opacity duration-300", (effectiveIs3DView && appMode === 'car') ? "opacity-100 z-10" : "opacity-0 pointer-events-none z-0")}>
+                    <ThreeDView
+                      stageRef={canvasRef}
+                      modelPath={CAR_3D_MODELS[currentModelName]}
+                      isActive={effectiveIs3DView}
+                      showTexture={isWrapVisible}
+                      onToggleWrap={setIsWrapVisible}
+                      language={language}
+                    />
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -336,6 +345,23 @@ function App() {
                     title={t.licensePlateMode}
                   >
                     <CreditCard size={16} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setAppMode('sound');
+                      setSidebarMode('community');
+                      setIs3DView(false);
+                      setSingleLayer(null);
+                    }}
+                    className={cn(
+                      "p-1.5 h-7 w-7",
+                      appMode === 'sound' ? "bg-white dark:bg-zinc-600 shadow-sm text-black dark:text-white" : "text-gray-400 hover:text-gray-600"
+                    )}
+                    title={t.soundMode}
+                  >
+                    <Bell size={16} />
                   </Button>
                 </div>
 
@@ -411,7 +437,7 @@ function App() {
                     fullWidth
                     className="bg-blue-600 hover:bg-blue-700 text-white border-0"
                   >
-                    <Plus size={16} className="mr-1" /> {appMode === 'car' ? t.shareYourWrap : t.shareYourPlate}
+                    <Plus size={16} className="mr-1" /> {appMode === 'car' ? t.shareYourWrap : appMode === 'plate' ? t.shareYourPlate : t.shareYourSound}
                   </Button>
                 </div>
 
@@ -810,11 +836,17 @@ function App() {
                 {/* Section 4: Installation */}
                 <SidebarSection title={t.installation} icon={<HelpCircle />}>
                   <ul className="space-y-2">
-                    {appMode === 'car' ? t.installSteps.map((step, i) => (
+                    {appMode === 'car' && t.installSteps.map((step, i) => (
                       <li key={i} className="text-sm font-serif text-gray-600 pl-4 border-l border-foreground/20">
                         {step}
                       </li>
-                    )) : (
+                    ))}
+                    {appMode === 'sound' && (t as any).soundInstallSteps.map((step: string, i: number) => (
+                      <li key={i} className="text-sm font-serif text-gray-600 pl-4 border-l border-foreground/20">
+                        {step}
+                      </li>
+                    ))}
+                    {appMode === 'plate' && (
                       <>
                         <li className="text-sm font-serif text-gray-600 pl-4 border-l border-foreground/20">
                           1. Create a folder named "LicensePlate" on your USB drive.

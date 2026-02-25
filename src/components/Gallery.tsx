@@ -10,8 +10,9 @@ export interface Wrap {
     _id: string;
     name: string;
     author: string;
-    imageUrl: string;
-    models: string[];
+    imageUrl?: string;
+    audioUrl?: string;
+    models?: string[];
     likes: number;
     downloads: number;
     createdAt?: string; // Should be populated now
@@ -26,7 +27,7 @@ export interface GalleryProps {
     refreshTrigger?: number; // Increment this to trigger a refetch of community wraps
     language?: 'en' | 'zh';
     viewMode?: 'all' | 'garage';
-    type?: 'car' | 'plate';
+    type?: 'car' | 'plate' | 'sound';
 }
 
 type SortOption = 'popular' | 'downloads' | 'newest';
@@ -48,7 +49,7 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
         const fetchWraps = async () => {
             setLoading(true);
             try {
-                let endpoint = `/api/wraps?sort=${sortBy}&type=${type}`;
+                let endpoint = type === 'sound' ? `/api/sounds?sort=${sortBy}` : `/api/wraps?sort=${sortBy}&type=${type}`;
                 if (viewMode === 'garage') {
                     // For garage, we probably want to filter by type too? Or show everything?
                     // User might want to see both. But for now let's keep it simple or user might get confused.
@@ -108,7 +109,8 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
                 headers['Authorization'] = `Bearer ${token}`;
             }
 
-            const res = await fetch(`/api/wraps/${id}/like`, {
+            const likeUrl = type === 'sound' ? `/api/sounds/${id}/like` : `/api/wraps/${id}/like`;
+            const res = await fetch(likeUrl, {
                 method: 'POST',
                 headers
             });
@@ -125,21 +127,26 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
         e.stopPropagation();
         try {
             // 1. Track stats
-            await fetch(`/api/wraps/${wrap._id}/download`, { method: 'POST' });
+            const downloadUrl = type === 'sound' ? `/api/sounds/${wrap._id}/download` : `/api/wraps/${wrap._id}/download`;
+            await fetch(downloadUrl, { method: 'POST' });
             setWraps(prev => prev.map(w => w._id === wrap._id ? { ...w, downloads: w.downloads + 1 } : w));
 
             // 2. Trigger download
-            const imageUrl = wrap.imageUrl;
-            const response = await fetch(imageUrl);
+            const mediaUrl = type === 'sound' ? wrap.audioUrl! : wrap.imageUrl!;
+            const response = await fetch(mediaUrl);
             const blob = await response.blob();
 
-            // Compress if needed
-            const compressedBlob = await compressBlob(blob, 1);
+            let finalBlob = blob;
+            // Compress if image
+            if (type !== 'sound') {
+                finalBlob = await compressBlob(blob, 1);
+            }
 
-            const url = window.URL.createObjectURL(compressedBlob);
+            const url = window.URL.createObjectURL(finalBlob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `${wrap.name.replace(/\s+/g, '_')}_wrap.png`;
+            const ext = type === 'sound' ? mediaUrl.split('.').pop() : 'png';
+            a.download = `${wrap.name.replace(/\s+/g, '_')}_${type}.${ext}`;
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
@@ -156,10 +163,11 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
     };
 
     const handleLoad = (wrap: Wrap) => {
-        // Fix image URL to include host if relative
-        // Proxy handles /uploads path
-        const url = wrap.imageUrl;
-        onLoadWrap(url);
+        if (type === 'sound' && wrap.audioUrl) {
+            onLoadWrap(wrap.audioUrl);
+        } else if (wrap.imageUrl) {
+            onLoadWrap(wrap.imageUrl);
+        }
     }
 
     const isRecent = (dateStr?: string) => {
@@ -207,7 +215,8 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
 
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(`/api/wraps/${id}`, {
+            const deleteUrl = type === 'sound' ? `/api/sounds/${id}` : `/api/wraps/${id}`;
+            const res = await fetch(deleteUrl, {
                 method: 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${token}`
@@ -227,18 +236,16 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
     };
 
     const communityWrapsByModel = wraps.filter(w => {
+        if (type === 'sound') return true;
         if (!selectedModel) return true;
-        // If wrap has no specific models, treat as generic/universal? 
-        // Or strictly match? User said "only show selected models".
-        // Let's assume strict match or if models array is empty (Universal)
-        if (w.models.length === 0) return true;
+        if (!w.models || w.models.length === 0) return true;
         return w.models.includes(selectedModel);
     });
 
     const filteredWraps = communityWrapsByModel.filter(w => {
         const matchesSearch = w.name.toLowerCase().includes(search.toLowerCase()) ||
             w.author.toLowerCase().includes(search.toLowerCase()) ||
-            w.models.some(m => m.toLowerCase().includes(search.toLowerCase()));
+            (w.models && w.models.some(m => m.toLowerCase().includes(search.toLowerCase())));
 
         return matchesSearch;
     });
@@ -269,7 +276,7 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                     <input
                         type="text"
-                        placeholder={type === 'plate' ? t.searchPlates : t.searchWraps}
+                        placeholder={type === 'sound' ? t.searchSounds : type === 'plate' ? t.searchPlates : t.searchWraps}
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         className="w-full bg-gray-100 dark:bg-zinc-800 dark:text-white border-none rounded-lg pl-9 pr-4 py-2 text-sm focus:ring-2 focus:ring-black/5 dark:focus:ring-white/10"
@@ -302,7 +309,7 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
                         </div>
                     ) : filteredWraps.length === 0 ? (
                         <div className="col-span-2 text-center py-8 text-gray-400 text-sm">
-                            {type === 'plate' ? t.noPlatesFound : t.noWrapsFound}
+                            {type === 'sound' ? t.noSoundsFound : type === 'plate' ? t.noPlatesFound : t.noWrapsFound}
                         </div>
                     ) : (
                         filteredWraps.map(wrap => (
@@ -312,13 +319,19 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
                                 onClick={() => handleLoad(wrap)}
                             >
                                 <div className="aspect-square bg-gray-50 dark:bg-black relative overflow-hidden">
-                                    <img
-                                        src={wrap.imageUrl}
-                                        alt={wrap.name}
-                                        loading="lazy"
-                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                    />
-                                    <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    {type === 'sound' ? (
+                                        <div className="w-full h-full flex items-center justify-center bg-zinc-800 text-zinc-400">
+                                            <audio controls src={wrap.audioUrl} className="w-11/12 mt-8" onClick={(e) => e.stopPropagation()} />
+                                        </div>
+                                    ) : (
+                                        <img
+                                            src={wrap.imageUrl}
+                                            alt={wrap.name}
+                                            loading="lazy"
+                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                        />
+                                    )}
+                                    <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
 
                                     {/* Badges for New/Hot */}
                                     <div className="absolute top-2 left-2 flex gap-1 pointer-events-none z-10">
@@ -372,19 +385,21 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
                                     )}
 
                                     {/* Quick View / Comments Overlay Button */}
-                                    <button
-                                        onClick={(e) => handleOpenComments(e, wrap)}
-                                        className="absolute bottom-2 right-2 p-2 bg-white/90 dark:bg-zinc-800/90 backdrop-blur-sm text-black dark:text-white rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-all hover:scale-105 z-10"
-                                        title="View Details & Comments"
-                                    >
-                                        <MessageCircle size={14} />
-                                    </button>
+                                    {type !== 'sound' && (
+                                        <button
+                                            onClick={(e) => handleOpenComments(e, wrap)}
+                                            className="absolute bottom-2 right-2 p-2 bg-white/90 dark:bg-zinc-800/90 backdrop-blur-sm text-black dark:text-white rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-all hover:scale-105 z-10"
+                                            title="View Details & Comments"
+                                        >
+                                            <MessageCircle size={14} />
+                                        </button>
+                                    )}
                                 </div>
 
                                 <div className="p-3">
                                     <h3 className="font-bold text-xs truncate mb-0.5 dark:text-white">{wrap.name}</h3>
                                     <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-3 truncate">
-                                        {wrap.models.length > 0 ? wrap.models.join(', ') : t.universal} • {t.by} {wrap.author}
+                                        {(!wrap.models || wrap.models.length === 0) ? t.universal : wrap.models.join(', ')} • {t.by} {wrap.author}
                                     </p>
 
                                     {/* Clean Action Row */}
