@@ -132,7 +132,11 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
             setWraps(prev => prev.map(w => w._id === wrap._id ? { ...w, downloads: w.downloads + 1 } : w));
 
             // 2. Trigger download
-            const mediaUrl = type === 'sound' ? wrap.audioUrl! : wrap.imageUrl!;
+            let mediaUrl = type === 'sound' ? wrap.audioUrl! : wrap.imageUrl!;
+            // Proxy R2 CDN URLs to avoid CORS issues
+            if (mediaUrl.includes('.r2.dev/')) {
+                mediaUrl = `/api/proxy-image?url=${encodeURIComponent(mediaUrl)}`;
+            }
             const response = await fetch(mediaUrl);
             const blob = await response.blob();
 

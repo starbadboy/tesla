@@ -464,16 +464,27 @@ function App() {
                   <Gallery
                     selectedModel={currentModelName}
                     refreshTrigger={galleryRefreshTrigger}
-                    onLoadWrap={(url) => {
-                      setSingleLayer(url);
+                    onLoadWrap={async (url) => {
                       setUploadMode('single'); // Switch to single mode
                       setIsWrapVisible(true); // Force wrap visibility when loading a new wrap
-                      if (appMode !== 'car') {
-                        // setSidebarMode('studio'); // Switch to editor view
-                      }
                       if (appMode === 'plate') {
                         setIs3DView(false);
                       }
+
+                      // Proxy R2 CDN images to avoid CORS issues on canvas
+                      if (url.includes('.r2.dev/')) {
+                        try {
+                          const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(url)}`;
+                          const resp = await fetch(proxyUrl);
+                          const blob = await resp.blob();
+                          const blobUrl = URL.createObjectURL(blob);
+                          setSingleLayer(blobUrl);
+                          return;
+                        } catch (e) {
+                          console.error('Failed to proxy image, falling back to direct URL', e);
+                        }
+                      }
+                      setSingleLayer(url);
                     }}
                     language={language}
                     viewMode={sidebarMode === 'garage' ? 'garage' : 'all'}

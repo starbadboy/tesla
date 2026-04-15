@@ -5,7 +5,9 @@ const path = require('path');
 const fs = require('fs');
 const Sound = require('../models/Sound');
 const User = require('../models/User');
+const { uploadToR2, deleteFromR2, getR2KeyFromUrl, getMimeType } = require('../utils/r2');
 
+// Legacy local uploads dir (kept for fallback/migration)
 const uploadsDir = process.env.UPLOAD_DIR
     ? path.resolve(process.env.UPLOAD_DIR, 'sounds')
     : path.join(__dirname, '../uploads/sounds');
@@ -14,17 +16,8 @@ if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-// Multer Storage Configuration
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, uploadsDir);
-    },
-    filename: (req, file, cb) => {
-        cb(null, Date.now() + '-' + file.originalname.replace(/\s+/g, '-'));
-    }
-});
-
-const upload = multer({ storage: storage });
+// Multer Memory Storage (files go to R2, not disk)
+const upload = multer({ storage: multer.memoryStorage() });
 
 // GET /api/sounds - List all sounds
 router.get('/', async (req, res) => {
@@ -68,11 +61,17 @@ router.post('/', upload.single('audio'), async (req, res) => {
 
         const { name, author, category } = req.body;
 
+        // Upload to Cloudflare R2
+        const sanitizedName = req.file.originalname.replace(/\s+/g, '-');
+        const r2Key = `sounds/${Date.now()}-${sanitizedName}`;
+        const contentType = req.file.mimetype || getMimeType(sanitizedName);
+        const audioUrl = await uploadToR2(req.file.buffer, r2Key, contentType);
+
         let soundData = {
             name,
             author,
             category,
-            audioUrl: `/uploads/sounds/${req.file.filename}`,
+            audioUrl, // Now an R2 public URL
         };
 
         if (req.user) {
@@ -161,8 +160,12 @@ router.delete('/:id', async (req, res) => {
             return res.status(403).json({ error: 'Cannot delete anonymous sounds' });
         }
 
-        // Delete the file from filesystem
-        if (sound.audioUrl && sound.audioUrl.startsWith('/uploads/sounds/')) {
+        // Delete from R2 or local filesystem
+        const r2Key = getR2KeyFromUrl(sound.audioUrl);
+        if (r2Key) {
+            try { await deleteFromR2(r2Key); } catch (e) { console.error('R2 delete error:', e.message); }
+        } else if (sound.audioUrl && sound.audioUrl.startsWith('/uploads/sounds/')) {
+            // Legacy: delete from local filesystem
             const filename = sound.audioUrl.split('/uploads/sounds/')[1];
             const filePath = path.join(uploadsDir, filename);
             if (fs.existsSync(filePath)) {

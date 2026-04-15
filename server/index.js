@@ -7,6 +7,7 @@ const bodyParser = require('body-parser');
 const multer = require('multer');
 
 const fs = require('fs');
+const { uploadToR2, deleteFromR2, getR2KeyFromUrl, getMimeType } = require('./utils/r2');
 
 const Wrap = require('./models/Wrap');
 const OpenAI = require('openai');
@@ -90,17 +91,8 @@ if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-// Multer Storage Configuration
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, uploadsDir);
-    },
-    filename: (req, file, cb) => {
-        cb(null, Date.now() + '-' + file.originalname.replace(/\\s+/g, '-'));
-    }
-});
-
-const upload = multer({ storage: storage });
+// Multer Memory Storage (files go to R2, not disk)
+const upload = multer({ storage: multer.memoryStorage() });
 
 console.log("Attempting to connect to MongoDB...");
 console.log("Mongo URL (masked):", mongoUrl.includes('@') ? mongoUrl.split('@')[1] : "No credentials found");
@@ -183,29 +175,25 @@ app.post('/api/wraps', upload.single('image'), async (req, res) => {
             return res.status(400).json({ error: 'No image file uploaded' });
         }
 
-
         const { name, author, models, type } = req.body;
 
-        // If user is logged in, override author with username and set user ID
+        // Upload to Cloudflare R2
+        const sanitizedName = req.file.originalname.replace(/\s+/g, '-');
+        const r2Key = `wraps/${Date.now()}-${sanitizedName}`;
+        const contentType = req.file.mimetype || getMimeType(sanitizedName);
+        const imageUrl = await uploadToR2(req.file.buffer, r2Key, contentType);
+
         let wrapData = {
             name,
-            author, // Default to provided author (which might be filled by frontend with username)
-            imageUrl: `/uploads/${req.file.filename}`,
+            author,
+            imageUrl, // Now an R2 public URL
             type: type || 'car'
         };
 
         if (req.user) {
             wrapData.user = req.user.id;
-            wrapData.author = req.user.username; // Enforce username as author for execution consistency
+            wrapData.author = req.user.username;
         }
-
-        // Construct public URL for the image (assuming server is reachable)
-        // In production/railway, this might need adjustment if using object storage, 
-        // but for simple hosting, serving static files works if persistence is handled.
-        // Railway ephemeral file system warning: Uploads will disappear on restart unless using a volume or external storage (S3/Cloudinary).
-        // For this MVP, we will stick to local filesystem, but be aware of ephemeral nature.
-        // For this MVP, we will stick to local filesystem, but be aware of ephemeral nature.
-        // const imageUrl = `/uploads/${req.file.filename}`; // MOVED UP
 
         // Parse models JSON string if sent as string from FormData
         let parsedModels = [];
@@ -226,6 +214,7 @@ app.post('/api/wraps', upload.single('image'), async (req, res) => {
         const savedWrap = await newWrap.save();
         res.status(201).json(savedWrap);
     } catch (err) {
+        console.error('Upload wrap error:', err);
         res.status(500).json({ error: err.message });
     }
 });
@@ -247,6 +236,44 @@ app.post('/api/admin/scrape', async (req, res) => {
 });
 
 
+
+// GET /api/proxy-image - Proxy R2 images to avoid CORS issues on canvas
+const axios = require('axios');
+app.get('/api/proxy-image', async (req, res) => {
+    try {
+        const { url } = req.query;
+        if (!url) {
+            return res.status(400).json({ error: 'Missing url parameter' });
+        }
+
+        // Only allow proxying from our own R2 bucket for security
+        const allowedOrigins = [
+            process.env.R2_PUBLIC_URL || '',
+            'https://pub-1b6bcb54b4164c7a8f42cf1ab65c9a83.r2.dev', // Legacy R2 URLs still in DB
+        ];
+        if (!allowedOrigins.some(origin => origin && url.startsWith(origin))) {
+            return res.status(403).json({ error: 'URL not allowed' });
+        }
+
+        const response = await axios({
+            url,
+            method: 'GET',
+            responseType: 'arraybuffer',
+            timeout: 15000,
+        });
+
+        const contentType = response.headers['content-type'] || 'image/png';
+        res.set({
+            'Content-Type': contentType,
+            'Cache-Control': 'public, max-age=604800, immutable',
+            'Access-Control-Allow-Origin': '*',
+        });
+        res.send(Buffer.from(response.data));
+    } catch (err) {
+        console.error('Proxy image error:', err.message);
+        res.status(500).json({ error: 'Failed to proxy image' });
+    }
+});
 
 // POST /api/wraps/:id/like - Like a wrap
 app.post('/api/wraps/:id/like', async (req, res) => {
@@ -422,9 +449,12 @@ app.delete('/api/wraps/:id', async (req, res) => {
             return res.status(403).json({ error: 'Cannot delete anonymous wraps' });
         }
 
-        // Delete the file from filesystem (optional but good practice)
-        // Extract filename from usage: /uploads/filename.png
-        if (wrap.imageUrl && wrap.imageUrl.startsWith('/uploads/')) {
+        // Delete the file from R2 or local filesystem
+        const r2Key = getR2KeyFromUrl(wrap.imageUrl);
+        if (r2Key) {
+            try { await deleteFromR2(r2Key); } catch (e) { console.error('R2 delete error:', e.message); }
+        } else if (wrap.imageUrl && wrap.imageUrl.startsWith('/uploads/')) {
+            // Legacy: delete from local filesystem
             const filename = wrap.imageUrl.split('/uploads/')[1];
             const filePath = path.join(uploadsDir, filename);
             if (fs.existsSync(filePath)) {

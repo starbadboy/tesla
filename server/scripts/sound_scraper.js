@@ -1,22 +1,15 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
-const fs = require('fs');
 const path = require('path');
 const mongoose = require('mongoose');
 const Sound = require('../models/Sound');
+const { uploadToR2, getMimeType } = require('../utils/r2');
 
 // Load environment variables securely based on execution context
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 
 const url = 'https://www.notateslaapp.com/tesla-custom-lock-sounds/';
-const uploadsDir = process.env.UPLOAD_DIR
-    ? path.resolve(process.env.UPLOAD_DIR, 'sounds')
-    : path.join(__dirname, '../uploads/sounds');
-
-if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
-}
 
 async function scrapeSounds() {
     console.log('Connecting to DB...');
@@ -95,32 +88,23 @@ async function scrapeSounds() {
             try {
                 const res = await axios({
                     url: downloadLink,
-                    responseType: 'stream',
+                    responseType: 'arraybuffer', // Download as buffer
                     headers: { 'User-Agent': 'Mozilla/5.0' },
                     timeout: 15000
                 });
 
                 const urlObj = new URL(downloadLink);
                 const origFilename = path.basename(urlObj.pathname) || `${nameText.replace(/[^a-z0-9]/gi, '_')}.wav`;
-                const filename = `${Date.now()}-${origFilename}`;
-                const filePath = path.join(uploadsDir, filename);
+                const r2Key = `sounds/${Date.now()}-${origFilename}`;
+                const contentType = res.headers['content-type'] || getMimeType(origFilename);
 
-                const writer = fs.createWriteStream(filePath);
-                res.data.pipe(writer);
-
-                await new Promise((resolve, reject) => {
-                    writer.on('finish', resolve);
-                    writer.on('error', (err) => {
-                        writer.close();
-                        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-                        reject(err);
-                    });
-                });
+                const buffer = Buffer.from(res.data);
+                const publicUrl = await uploadToR2(buffer, r2Key, contentType);
 
                 const newSound = new Sound({
                     name: nameText,
                     category: category,
-                    audioUrl: `/uploads/sounds/${filename}`,
+                    audioUrl: publicUrl, // R2 public URL
                     author: 'TeslaApp Community'
                 });
                 await newSound.save();
