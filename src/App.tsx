@@ -130,13 +130,13 @@ function App() {
     faqScript.textContent = JSON.stringify(faqJsonLd);
   }, [language, seo]);
 
-  // Reset wraps when switching models
+  // Reset wraps when switching models or app mode
   useEffect(() => {
     setSingleLayer(null);
     setLayerTransforms({});
     setSelectedLayerId(null);
     setIsWrapVisible(false);
-  }, [currentModelName]);
+  }, [currentModelName, appMode]);
 
   const currentModelPath = CAR_MODELS[currentModelName];
 

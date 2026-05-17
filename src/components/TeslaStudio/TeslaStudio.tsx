@@ -224,10 +224,15 @@ function TopRail({
           onClick={() => setMenuOpen(open => !open)}
           type="button"
           disabled={appMode !== 'car'}
+          title={appMode !== 'car' ? `${appMode === 'plate' ? 'License plate' : 'Lock sound'} mode — no car model needed` : ''}
         >
-          <span className="tsl-model-badge" style={{ background: ACCENT.hex }}>{model.badge}</span>
-          <span className="tsl-model-name">{model.displayName}</span>
-          <IconChevDown size={14} />
+          <span className="tsl-model-badge" style={{ background: ACCENT.hex }}>
+            {appMode === 'plate' ? 'PLATE' : appMode === 'sound' ? 'SOUND' : model.badge}
+          </span>
+          <span className="tsl-model-name">
+            {appMode === 'plate' ? 'License Plate Template' : appMode === 'sound' ? 'Tesla Lock Sound' : model.displayName}
+          </span>
+          {appMode === 'car' && <IconChevDown size={14} />}
         </button>
         {menuOpen && appMode === 'car' && (
           <div className="tsl-model-menu" onMouseLeave={() => setMenuOpen(false)}>
@@ -303,7 +308,27 @@ function Stage({
   view, onView, has3D, language, appMode, activeLayers, layerTransforms,
   onTransformChange, selectedLayerId, onSelect,
 }: StageProps) {
-  const showThreeD = view === '3d' && has3D && appMode === 'car';
+  const isCar = appMode === 'car';
+  const showThreeD = isCar && view === '3d' && has3D;
+
+  const modeLabel =
+    appMode === 'plate'
+      ? 'LICENSE PLATE · 2D'
+      : appMode === 'sound'
+        ? 'LOCK SOUND · AUDIO'
+        : `CAR · ${has3D ? '3D-READY' : '2D-ONLY'}`;
+
+  const envLabel = appMode === 'car' ? 'ENV·STUDIO' : appMode === 'plate' ? 'PLATE TEMPLATE' : 'SOUND WORKBENCH';
+  const envValue = appMode === 'car'
+    ? 'LUX 04.82 / RH 42%'
+    : appMode === 'plate'
+      ? '420 × 200 · CUSTOM'
+      : '44.1 kHz · WAV/MP3';
+
+  const surfaceLabel = appMode === 'car' ? 'SURFACE AREA' : appMode === 'plate' ? 'PRINT AREA' : 'CHANNELS';
+  const surfaceValue = appMode === 'car' ? '14.6 m² · 7 PANELS' : appMode === 'plate' ? '0.084 m² · 1 PANEL' : 'STEREO · 2 CH';
+
+  const renderValue = appMode === 'car' ? 'PBR · DRACO · 60fps' : appMode === 'plate' ? 'PRINT · 300 DPI' : 'PCM · 16-BIT';
 
   return (
     <div className="tsl-stage">
@@ -312,22 +337,22 @@ function Stage({
       <div className="tsl-stage-vignette" />
 
       <div className="tsl-hud-tl">
-        <div className="tsl-tick-label">ENV·STUDIO</div>
-        <div className="tsl-mono tsl-tick-val">LUX 04.82 / RH 42%</div>
+        <div className="tsl-tick-label">{envLabel}</div>
+        <div className="tsl-mono tsl-tick-val">{envValue}</div>
       </div>
       <div className="tsl-hud-tr">
         <div className="tsl-tick-label">MODE</div>
-        <div className="tsl-mono tsl-tick-val">{appMode.toUpperCase()} · {has3D ? '3D-READY' : '2D-ONLY'}</div>
+        <div className="tsl-mono tsl-tick-val">{modeLabel}</div>
       </div>
       <div className="tsl-hud-bl">
-        <div className="tsl-tick-label">SURFACE AREA</div>
-        <div className="tsl-mono tsl-tick-val">14.6 m² · 7 PANELS</div>
+        <div className="tsl-tick-label">{surfaceLabel}</div>
+        <div className="tsl-mono tsl-tick-val">{surfaceValue}</div>
       </div>
       <div className="tsl-hud-br">
         <div className="tsl-tick-label">RENDER</div>
         <div className="tsl-mono tsl-tick-val">
           <span className="tsl-dot" style={{ background: ACCENT.hex, color: ACCENT.hex }} />
-          PBR · DRACO · 60fps
+          {renderValue}
         </div>
       </div>
 
@@ -370,12 +395,14 @@ function Stage({
         />
       </div>
 
-      <div className="tsl-plinth">
-        <svg viewBox="0 0 600 80" preserveAspectRatio="none">
-          <ellipse cx="300" cy="40" rx="290" ry="32" fill="none" stroke="currentColor" strokeOpacity=".3" strokeDasharray="2 6" />
-          <ellipse cx="300" cy="40" rx="220" ry="24" fill="none" stroke="currentColor" strokeOpacity=".15" strokeDasharray="2 6" />
-        </svg>
-      </div>
+      {isCar && (
+        <div className="tsl-plinth">
+          <svg viewBox="0 0 600 80" preserveAspectRatio="none">
+            <ellipse cx="300" cy="40" rx="290" ry="32" fill="none" stroke="currentColor" strokeOpacity=".3" strokeDasharray="2 6" />
+            <ellipse cx="300" cy="40" rx="220" ry="24" fill="none" stroke="currentColor" strokeOpacity=".15" strokeDasharray="2 6" />
+          </svg>
+        </div>
+      )}
 
       <div className="tsl-viewer-ctrl">
         <button
@@ -383,21 +410,27 @@ function Stage({
           className={`tsl-seg ${view === '2d' ? 'is-active' : ''}`}
           onClick={() => onView('2d')}
         >
-          <IconGrid size={13} /> 2D CANVAS
+          <IconGrid size={13} /> {appMode === 'plate' ? 'PLATE CANVAS' : appMode === 'sound' ? 'SOUND BOARD' : '2D CANVAS'}
         </button>
-        <button
-          type="button"
-          className={`tsl-seg ${view === '3d' ? 'is-active' : ''}`}
-          onClick={() => onView('3d')}
-          disabled={!has3D || appMode !== 'car'}
-          title={!has3D ? 'No 3D model for this car yet' : ''}
-        >
-          <IconTarget size={13} /> 3D PREVIEW
-        </button>
-        <div className="tsl-seg-divider" />
-        <button type="button" className="tsl-seg" onClick={() => onToggleWrap(!isWrapVisible)}>
-          <IconEye size={13} /> {isWrapVisible ? 'WRAP ON' : 'BASE PAINT'}
-        </button>
+        {isCar && (
+          <button
+            type="button"
+            className={`tsl-seg ${view === '3d' ? 'is-active' : ''}`}
+            onClick={() => onView('3d')}
+            disabled={!has3D}
+            title={!has3D ? 'No 3D model for this car yet' : ''}
+          >
+            <IconTarget size={13} /> 3D PREVIEW
+          </button>
+        )}
+        {appMode !== 'sound' && (
+          <>
+            <div className="tsl-seg-divider" />
+            <button type="button" className="tsl-seg" onClick={() => onToggleWrap(!isWrapVisible)}>
+              <IconEye size={13} /> {isWrapVisible ? (appMode === 'plate' ? 'ART ON' : 'WRAP ON') : (appMode === 'plate' ? 'PLATE ONLY' : 'BASE PAINT')}
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
