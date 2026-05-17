@@ -18,6 +18,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { UserMenu } from './components/Auth/UserMenu';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ThemeToggle } from './components/ThemeToggle';
+import { SEO_COPY, SITE_IMAGE, SITE_URL } from './seo';
 
 function App() {
   const [currentModelName, setCurrentModelName] = useState("Model 3 (2024 Base)");
@@ -93,6 +94,7 @@ function App() {
   const [galleryRefreshTrigger, setGalleryRefreshTrigger] = useState(0); // Increment to refresh gallery
 
   const t = TRANSLATIONS[language];
+  const seo = SEO_COPY[language];
 
   useEffect(() => {
     // Check for Puter.js availability
@@ -107,6 +109,73 @@ function App() {
     return () => clearInterval(interval);
 
   }, []);
+
+  useEffect(() => {
+    document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
+    document.title = seo.title;
+
+    const upsertMeta = (selector: string, attribute: 'content' | 'href', value: string, create: () => HTMLElement) => {
+      let element = document.head.querySelector<HTMLElement>(selector);
+      if (!element) {
+        element = create();
+        document.head.appendChild(element);
+      }
+      element.setAttribute(attribute, value);
+    };
+
+    upsertMeta('meta[name="description"]', 'content', seo.description, () => {
+      const meta = document.createElement('meta');
+      meta.setAttribute('name', 'description');
+      return meta;
+    });
+    upsertMeta('meta[property="og:title"]', 'content', seo.title, () => {
+      const meta = document.createElement('meta');
+      meta.setAttribute('property', 'og:title');
+      return meta;
+    });
+    upsertMeta('meta[property="og:description"]', 'content', seo.description, () => {
+      const meta = document.createElement('meta');
+      meta.setAttribute('property', 'og:description');
+      return meta;
+    });
+    upsertMeta('meta[name="twitter:title"]', 'content', seo.title, () => {
+      const meta = document.createElement('meta');
+      meta.setAttribute('name', 'twitter:title');
+      return meta;
+    });
+    upsertMeta('meta[name="twitter:description"]', 'content', seo.description, () => {
+      const meta = document.createElement('meta');
+      meta.setAttribute('name', 'twitter:description');
+      return meta;
+    });
+    upsertMeta('link[rel="canonical"]', 'href', SITE_URL, () => {
+      const link = document.createElement('link');
+      link.setAttribute('rel', 'canonical');
+      return link;
+    });
+
+    const faqJsonLd = {
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: seo.faq.map(item => ({
+        '@type': 'Question',
+        name: item.question,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: item.answer
+        }
+      }))
+    };
+    const scriptId = 'faq-json-ld';
+    let faqScript = document.getElementById(scriptId);
+    if (!faqScript) {
+      faqScript = document.createElement('script');
+      faqScript.id = scriptId;
+      faqScript.setAttribute('type', 'application/ld+json');
+      document.head.appendChild(faqScript);
+    }
+    faqScript.textContent = JSON.stringify(faqJsonLd);
+  }, [language, seo]);
 
   // Reset wraps and state when switching models
   useEffect(() => {
@@ -263,7 +332,33 @@ function App() {
   return (
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
       <AuthProvider>
-        <div className="flex flex-col md:flex-row min-h-screen md:h-screen w-full md:w-screen bg-background font-serif md:overflow-hidden">
+        <main
+          className="flex flex-col md:flex-row min-h-screen md:h-screen w-full md:w-screen bg-background font-serif md:overflow-hidden"
+          aria-label={seo.heading}
+        >
+          <section className="sr-only" aria-labelledby="seo-heading">
+            <h1 id="seo-heading">{seo.heading}</h1>
+            <p>{seo.intro}</p>
+            <h2>Features</h2>
+            <ul>
+              {seo.features.map(feature => (
+                <li key={feature}>{feature}</li>
+              ))}
+            </ul>
+            <h2>Supported Tesla design tools</h2>
+            <p>
+              Tesla Wrap Studio supports Tesla wrap design, 3D wrap preview, AI wrap pattern generation,
+              community wrap sharing, custom license plate artwork, and custom Tesla lock sound sharing.
+            </p>
+            <img src={SITE_IMAGE} alt="Tesla Wrap Studio 3D wrap preview" />
+            <h2>Frequently asked questions</h2>
+            {seo.faq.map(item => (
+              <article key={item.question}>
+                <h3>{item.question}</h3>
+                <p>{item.answer}</p>
+              </article>
+            ))}
+          </section>
           {/* Main Canvas Area */}
           {/* Framed by whitespace as per design spec "Dramatic Negative Space" */}
           <div className="flex-none h-[50vh] w-full md:h-full md:w-auto md:flex-1 relative flex items-center justify-center bg-gray-50 dark:bg-zinc-900 p-6 md:p-12 border-b-4 md:border-b-0 border-foreground">
@@ -926,7 +1021,7 @@ function App() {
             language={language}
             type={appMode}
           />
-        </div >
+        </main>
       </AuthProvider>
     </ThemeProvider>
   )
