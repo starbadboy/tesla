@@ -18,6 +18,7 @@ const User = require('./models/User');
 
 const cron = require('node-cron');
 const { scrapeAndSave } = require('./scripts/daily_scraper');
+const { scrapeTeslaWrapGallery } = require('./scripts/teslawrapgallery_scraper');
 
 const app = express();
 
@@ -26,7 +27,13 @@ const app = express();
 // Format: sec min hour day month day-of-week
 // node-cron: second(optional), minute, hour, day of month, month, day of week
 cron.schedule('0 0 * * *', () => {
-    scrapeAndSave();
+    scrapeAndSave().catch(err => {
+        console.error('Daily scrape failed:', err);
+    });
+
+    scrapeTeslaWrapGallery().catch(err => {
+        console.error('TeslaWrapGallery daily scrape failed:', err);
+    });
 });
 
 // Run once on startup for testing/updating (Optional, can be removed in prod if not desired)

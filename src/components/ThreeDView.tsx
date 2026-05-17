@@ -1,6 +1,6 @@
 
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, useGLTF, Html, Environment } from '@react-three/drei';
+import { OrbitControls, useGLTF, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { TRANSLATIONS } from '../translations';
@@ -26,6 +26,7 @@ interface ThreeDViewProps {
 // Simplified Car that applies texture to specific material
 const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true }: { stageRef: React.RefObject<DesignCanvasHandle | null>, modelPath: string, showTexture?: boolean, isActive?: boolean }) => {
     const { scene } = useGLTF(modelPath);
+    const modelFile = modelPath.split('/').pop() || '';
 
     // Create the texture instance once and keep it consistent
     const texture = useMemo(() => {
@@ -91,6 +92,9 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true 
 
                 // Identify parts to paint vs parts to keep as is (glass, lights, wheels)
                 const name = mesh.name.toLowerCase();
+                const materialName = (Array.isArray(mesh.material) ? mesh.material[0]?.name : mesh.material?.name || '').toLowerCase();
+                const parentName = mesh.parent?.name.toLowerCase() || '';
+                const isPlaidVariant = modelFile === 'ModelS_Plaid_2025.glb' || modelFile === 'ModelX_2021.glb';
                 // DEBUG: Log mesh names to find glass
                 // DEBUG: Log mesh names and material names to find glass
                 if (!(window as unknown as Record<string, boolean>)['logged_meshes_' + name]) {
@@ -98,7 +102,7 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true 
                     // console.log('Found mesh:', name, 'Material:', matName);
                     (window as unknown as Record<string, boolean>)['logged_meshes_' + name] = true;
                 }
-                const isGlass = name.includes('glass') || name.includes('window') || name.includes('windshield');
+                const isGlass = materialName.includes('glass');
                 const isLight = name.includes('light') || name.includes('lamp');
                 const isWheel = name.includes('wheel') || name.includes('tire') || name.includes('rim') || name.includes('kolo');
                 const isInterior = name.includes('interior') || name.includes('seat');
@@ -121,100 +125,40 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true 
                     return;
                 }
 
+                if (isPlaidVariant && (parentName === 'fascia_front' || parentName === 'fascia_rear')) {
+                    mesh.visible = false;
+                    return;
+                }
+
+                if (!isPlaidVariant && (parentName === 'fascia_front_p3' || parentName === 'fascia_rear_p3')) {
+                    mesh.visible = false;
+                    return;
+                }
+
+                const shouldHideHelper =
+                    parentName.includes('projection') ||
+                    name.includes('projection') ||
+                    parentName.includes('plates') ||
+                    name.includes('plate_eu') ||
+                    name.includes('plate_us') ||
+                    parentName.includes('sensor') ||
+                    name.includes('sensor');
+
+                if (shouldHideHelper) {
+                    mesh.visible = false;
+                    return;
+                }
+
                 if (isGlass) {
-                    // DEBUG: Log all glass mesh names to identify patterns
-                    console.log('🪟 GLASS MESH FOUND:', name);
-
-                    // Determine if this is a FRONT window (windshield/front side) vs OTHER windows
-                    // Front windows: transparent. Other windows (rear, roof): dark/opaque
-
-                    // === FRONT GLASS PATTERNS (should be TRANSPARENT) ===
-                    // Common naming conventions across Tesla models (Model S, 3, X, Y, Cybertruck)
-                    const isFrontWindshield =
-                        name.includes('windshield') ||
-                        name.includes('windscreen') ||
-                        name.includes('voorruit') ||           // Dutch for windshield
-                        name.includes('frontglass') ||
-                        name.includes('front_glass') ||
-                        name.includes('glass_front') ||
-                        (name.includes('glass') && name.includes('front') && !name.includes('rear'));
-
-                    // Front side windows (driver/passenger door windows)
-                    const isFrontSideWindow =
-                        (name.includes('window') && name.includes('front')) ||
-                        (name.includes('glass') && name.includes('door') && name.includes('front')) ||
-                        name.includes('door_f_glass') ||
-                        name.includes('door_front_glass') ||
-                        name.includes('front_door_glass') ||
-                        name.includes('a_pillar_glass') ||
-                        name.includes('front_side_glass') ||
-                        name.includes('front_side_window') ||
-                        // Pattern: glass_fl (front left), glass_fr (front right)
-                        (name.includes('glass') && (name.includes('_fl') || name.includes('_fr') || name.includes('fl_') || name.includes('fr_')));
-
-                    const isFrontWindow = isFrontWindshield || isFrontSideWindow;
-
-                    // === REAR/ROOF GLASS PATTERNS (should be DARK/OPAQUE) ===
-                    const isRearOrRoofGlass =
-                        name.includes('rear') ||
-                        name.includes('back') ||
-                        name.includes('roof') ||
-                        name.includes('top') ||
-                        name.includes('quarter') ||
-                        name.includes('c_pillar') ||
-                        name.includes('b_pillar') ||
-                        name.includes('achter') ||             // Dutch for rear
-                        name.includes('panoram') ||            // Panoramic roof
-                        name.includes('sunroof') ||
-                        name.includes('skylight') ||
-                        // Pattern: glass_rl (rear left), glass_rr (rear right)
-                        (name.includes('glass') && (name.includes('_rl') || name.includes('_rr') || name.includes('rl_') || name.includes('rr_')));
-
-                    // Log classification for debugging
-                    if (isFrontWindow && !isRearOrRoofGlass) {
-                        console.log('  → Classified as FRONT (transparent):', name);
-                    } else {
-                        console.log('  → Classified as REAR/ROOF (dark):', name);
-                    }
-
-                    if (isFrontWindow && !isRearOrRoofGlass) {
-                        // Front windshield and front side windows - TRANSPARENT glass
-                        const m = new THREE.MeshPhysicalMaterial({
-                            color: 0x88ccff,             // Slight blue tint like real automotive glass
-                            transparent: true,
-                            opacity: 0.25,               // Very transparent for front
-                            roughness: 0.0,              // Perfectly smooth
-                            metalness: 0.0,
-                            transmission: 0.85,          // High light transmission
-                            thickness: 0.5,
-                            envMapIntensity: 1.5,
-                            clearcoat: 1.0,
-                            clearcoatRoughness: 0.0,
-                            ior: 1.5,                    // Glass refraction index
-                            side: THREE.DoubleSide,
-                            depthWrite: false,           // Better transparency blending
-                        });
-                        mesh.material = m;
-                        mesh.renderOrder = 1;            // Render after opaque objects
-                    } else {
-                        // Rear windows, roof glass, other glass - DARK/OPAQUE (privacy glass)
-                        const m = new THREE.MeshPhysicalMaterial({
-                            color: 0x0a0a0a,             // Very dark, almost black
-                            transparent: true,
-                            opacity: 0.92,               // Almost fully opaque
-                            roughness: 0.05,
-                            metalness: 0.1,
-                            transmission: 0.05,          // Very low light transmission
-                            thickness: 1.0,
-                            envMapIntensity: 0.6,
-                            clearcoat: 0.8,
-                            clearcoatRoughness: 0.1,
-                            side: THREE.FrontSide,
-                            depthWrite: true,
-                        });
-                        mesh.material = m;
-                    }
-                    mesh.castShadow = true;
+                    const glassMaterial = new THREE.MeshStandardMaterial({
+                        color: 0x222222,
+                        metalness: 0.9,
+                        roughness: 0.1,
+                        transparent: true,
+                        opacity: 0.5,
+                    });
+                    glassMaterial.name = 'Glass';
+                    mesh.material = glassMaterial;
                 } else if (isWheel) {
                     const m = new THREE.MeshStandardMaterial({
                         color: 0x111111,
@@ -257,7 +201,7 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true 
                 }
             }
         });
-    }, [scene]);
+    }, [scene, modelFile]);
 
     // Apply texture to meshes
     useEffect(() => {
@@ -271,9 +215,10 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true 
             if ((child as THREE.Mesh).isMesh) {
                 const mesh = child as THREE.Mesh;
                 const name = mesh.name.toLowerCase();
+                const materialName = (Array.isArray(mesh.material) ? mesh.material[0]?.name : mesh.material?.name || '').toLowerCase();
 
                 // Smart detection logic...
-                const isGlass = name.includes('glass') || name.includes('window') || name.includes('windshield');
+                const isGlass = materialName.includes('glass');
                 const isLight = name.includes('light') || name.includes('lamp') || name.includes('led');
                 const isWheel = name.includes('wheel') || name.includes('tire') || name.includes('rim') || name.includes('kolo') || name.includes('caliper') || name.includes('brake');
                 const isInterior = name.includes('interior') || name.includes('seat') || name.includes('steering') || name.includes('screen') || name.includes('floor') || name.includes('dashboard');
@@ -431,8 +376,11 @@ export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive =
                     shadows
                     camera={{ position: [-8, 2, -9], fov: 45, near: 0.01, far: 2000 }}
                     gl={{
-                        toneMapping: THREE.NoToneMapping, // FIX: Use NoToneMapping for accurate color matching with 2D overlay
+                        toneMapping: THREE.ACESFilmicToneMapping,
                         outputColorSpace: THREE.SRGBColorSpace,
+                    }}
+                    onCreated={({ gl }) => {
+                        gl.toneMappingExposure = 1.6;
                     }}
                 >
                     <color attach="background" args={[isDark ? '#1a1a1a' : '#d0d0d0']} />
@@ -448,19 +396,14 @@ export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive =
                         maxPolarAngle={Math.PI * 0.565} // ~101.5 degrees
                     />
 
-                    {/* Environment Map for realistic reflections (Critical for metallic look) */}
-                    <Environment preset="city" background={false} />
-
-
-
                     {/* Tesla Gallery Studio Lighting - 5 Light Setup */}
                     {/* Ambient: Base illumination */}
-                    <ambientLight intensity={0.3} color="#ffffff" />
+                    <ambientLight intensity={1.2} color="#ffffff" />
 
                     {/* Key Light: Main light from front-right-top */}
                     <directionalLight
                         position={[5, 8, 5]}
-                        intensity={0.3}
+                        intensity={1.8}
                         color="#ffffff"
                         castShadow
                         shadow-mapSize={[2048, 2048]}
@@ -474,21 +417,21 @@ export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive =
                     {/* Fill Light: Fills shadows from back-left */}
                     <directionalLight
                         position={[-5, 4, -3]}
-                        intensity={0.2}
+                        intensity={0.8}
                         color="#ffffff"
                     />
 
                     {/* Rim Light: Highlights on rear */}
                     <directionalLight
                         position={[0, 2, -8]}
-                        intensity={0.3}
+                        intensity={1.0}
                         color="#ffffff"
                     />
 
                     {/* Bottom Light: Subtle upward bounce light */}
                     <directionalLight
                         position={[0, -3, 0]}
-                        intensity={0.1}
+                        intensity={0.4}
                         color="#ffffff"
                     />
 
