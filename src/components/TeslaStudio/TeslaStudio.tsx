@@ -736,6 +736,7 @@ interface CommunityDockProps {
 function CommunityDock({ appMode, currentModelName, onLoadWrap, onShare, onBrowseAll, refreshTrigger }: CommunityDockProps) {
   const [items, setItems] = useState<DockWrap[]>([]);
   const [loading, setLoading] = useState(false);
+  const [scope, setScope] = useState<'model' | 'all'>('model');
 
   useEffect(() => {
     let cancelled = false;
@@ -753,7 +754,7 @@ function CommunityDock({ appMode, currentModelName, onLoadWrap, onShare, onBrows
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data = (await resp.json()) as DockWrap[];
         const list = Array.isArray(data) ? data : [];
-        if (!cancelled) setItems(list.slice(0, 16));
+        if (!cancelled) setItems(list);
       } catch {
         if (!cancelled) setItems([]);
       } finally {
@@ -762,7 +763,19 @@ function CommunityDock({ appMode, currentModelName, onLoadWrap, onShare, onBrows
     }
     load();
     return () => { cancelled = true; };
-  }, [appMode, currentModelName, refreshTrigger]);
+  }, [appMode, refreshTrigger]);
+
+  // Mirror Gallery's filter rule: keep universal wraps, plus wraps that
+  // explicitly include the current model.
+  const filtered = useMemo(() => {
+    if (appMode !== 'car' || scope === 'all' || !currentModelName) return items;
+    return items.filter(w => {
+      if (!w.models || w.models.length === 0) return true;
+      return w.models.includes(currentModelName);
+    });
+  }, [items, scope, currentModelName, appMode]);
+
+  const visible = filtered.slice(0, 24);
 
   return (
     <div className="tsl-dock">
@@ -774,6 +787,29 @@ function CommunityDock({ appMode, currentModelName, onLoadWrap, onShare, onBrows
             <span className="tsl-dot" style={{ background: ACCENT.hex, color: ACCENT.hex }} />
             LIVE
           </span>
+          {appMode === 'car' && (
+            <span className="tsl-dock-scope" role="tablist" aria-label="Community scope">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={scope === 'model'}
+                className={`tsl-seg ${scope === 'model' ? 'is-active' : ''}`}
+                onClick={() => setScope('model')}
+                title="Only wraps tagged for the current model"
+              >
+                THIS MODEL · {filtered.length}
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={scope === 'all'}
+                className={`tsl-seg ${scope === 'all' ? 'is-active' : ''}`}
+                onClick={() => setScope('all')}
+              >
+                ALL · {items.length}
+              </button>
+            </span>
+          )}
         </div>
         <div className="tsl-dock-actions">
           <button type="button" className="tsl-ghost-btn" onClick={onBrowseAll}>
@@ -790,12 +826,16 @@ function CommunityDock({ appMode, currentModelName, onLoadWrap, onShare, onBrows
         </div>
       </div>
       <div className="tsl-dock-strip">
-        {loading && items.length === 0 ? (
+        {loading && visible.length === 0 ? (
           <div className="tsl-dock-empty">Loading community wraps…</div>
-        ) : items.length === 0 ? (
-          <div className="tsl-dock-empty">No wraps yet — be the first to share.</div>
+        ) : visible.length === 0 ? (
+          <div className="tsl-dock-empty">
+            {scope === 'model' && appMode === 'car'
+              ? `No wraps tagged for ${currentModelName} yet — switch to ALL or share yours.`
+              : 'No wraps yet — be the first to share.'}
+          </div>
         ) : (
-          items.map(c => {
+          visible.map(c => {
             const media = appMode === 'sound' ? c.audioUrl : c.imageUrl;
             if (!media) return null;
             const modelLabel = c.models?.[0] ?? appMode;

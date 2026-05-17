@@ -777,6 +777,25 @@
 }
 .tsl-dock-actions { display: flex; gap: 8px; align-items: center; }
 
+.tsl-dock-scope {
+  display: inline-flex;
+  margin-left: 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px;
+  gap: 0;
+}
+.tsl-dock-scope .tsl-seg {
+  padding: 4px 10px;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+}
+.tsl-dock-scope .tsl-seg.is-active {
+  background: var(--accent);
+  color: white;
+}
+
 .tsl-dock-strip {
   display: flex;
   gap: 10px;
