@@ -154,6 +154,7 @@ export interface TeslaStudioProps {
 
   // Community
   onOpenGallery: () => void;
+  onLoadCommunityWrap: (url: string) => Promise<void> | void;
   communityRefreshTrigger?: number;
 
   // Children rendered as overlays (e.g. ShareModal, BuyMeCoffee, full Gallery modal)
@@ -727,7 +728,7 @@ interface DockWrap {
 interface CommunityDockProps {
   appMode: 'car' | 'plate' | 'sound';
   currentModelName: string;
-  onLoadWrap: (url: string) => void;
+  onLoadWrap: (url: string) => void | Promise<void>;
   onShare: () => void;
   onBrowseAll: () => void;
   refreshTrigger: number;
@@ -890,6 +891,7 @@ export function TeslaStudio(props: TeslaStudioProps) {
     canvasRef,
     onShare, onExport,
     onOpenGallery,
+    onLoadCommunityWrap,
     communityRefreshTrigger = 0,
     children,
   } = props;
@@ -1062,10 +1064,9 @@ export function TeslaStudio(props: TeslaStudioProps) {
       <CommunityDock
         appMode={appMode}
         currentModelName={currentModelName}
-        onLoadWrap={url => {
-          onSingleLayerChange(url);
-          onIsWrapVisibleChange(true);
+        onLoadWrap={async url => {
           setActivePresetId(null);
+          await onLoadCommunityWrap(url);
         }}
         onShare={onShare}
         onBrowseAll={onOpenGallery}

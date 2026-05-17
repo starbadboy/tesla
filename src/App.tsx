@@ -287,6 +287,7 @@ function App() {
           onShare={handleOpenShareModal}
           onExport={handleExport}
           onOpenGallery={() => setIsGalleryOpen(true)}
+          onLoadCommunityWrap={handleLoadCommunityWrap}
           communityRefreshTrigger={galleryRefreshTrigger}
         />
 
