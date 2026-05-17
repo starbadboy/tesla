@@ -6,7 +6,6 @@ import { generateImage } from './utils/gemini';
 
 import { ShareModal } from './components/ShareModal';
 import { Gallery } from './components/Gallery';
-import { BuyMeCoffee } from './components/BuyMeCoffee';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { SEO_COPY, SITE_IMAGE, SITE_URL } from './seo';
@@ -288,9 +287,8 @@ function App() {
           onShare={handleOpenShareModal}
           onExport={handleExport}
           onOpenGallery={() => setIsGalleryOpen(true)}
-        >
-          <BuyMeCoffee />
-        </TeslaStudio>
+          communityRefreshTrigger={galleryRefreshTrigger}
+        />
 
         {isGalleryOpen && (
           <div className="tsl-modal-backdrop" role="dialog" aria-modal="true">

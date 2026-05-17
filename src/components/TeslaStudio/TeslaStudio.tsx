@@ -154,6 +154,7 @@ export interface TeslaStudioProps {
 
   // Community
   onOpenGallery: () => void;
+  communityRefreshTrigger?: number;
 
   // Children rendered as overlays (e.g. ShareModal, BuyMeCoffee, full Gallery modal)
   children?: React.ReactNode;
@@ -682,11 +683,12 @@ function PropertiesPanel({
 // ============================================================
 interface DockWrap {
   _id: string;
-  imageUrl: string;
-  title?: string;
-  user?: { name?: string };
+  imageUrl?: string;
+  audioUrl?: string;
+  name?: string;
+  author?: string;
   likes?: number;
-  modelType?: string;
+  models?: string[];
 }
 
 interface CommunityDockProps {
@@ -695,9 +697,10 @@ interface CommunityDockProps {
   onLoadWrap: (url: string) => void;
   onShare: () => void;
   onBrowseAll: () => void;
+  refreshTrigger: number;
 }
 
-function CommunityDock({ appMode, currentModelName, onLoadWrap, onShare, onBrowseAll }: CommunityDockProps) {
+function CommunityDock({ appMode, currentModelName, onLoadWrap, onShare, onBrowseAll, refreshTrigger }: CommunityDockProps) {
   const [items, setItems] = useState<DockWrap[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -708,15 +711,16 @@ function CommunityDock({ appMode, currentModelName, onLoadWrap, onShare, onBrows
         setLoading(true);
         const endpoint =
           appMode === 'sound'
-            ? '/api/sounds?sort=hot'
-            : `/api/wraps?sort=hot&type=${appMode}`;
-        const resp = await fetch(endpoint);
+            ? '/api/sounds?sort=popular'
+            : `/api/wraps?sort=popular&type=${appMode}`;
+        const headers: Record<string, string> = {};
+        const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
+        if (token) headers.Authorization = `Bearer ${token}`;
+        const resp = await fetch(endpoint, { headers });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const data = (await resp.json()) as { wraps?: DockWrap[]; sounds?: DockWrap[] } | DockWrap[];
-        const list = Array.isArray(data)
-          ? data
-          : data.wraps ?? data.sounds ?? [];
-        if (!cancelled) setItems(list.slice(0, 12));
+        const data = (await resp.json()) as DockWrap[];
+        const list = Array.isArray(data) ? data : [];
+        if (!cancelled) setItems(list.slice(0, 16));
       } catch {
         if (!cancelled) setItems([]);
       } finally {
@@ -725,7 +729,7 @@ function CommunityDock({ appMode, currentModelName, onLoadWrap, onShare, onBrows
     }
     load();
     return () => { cancelled = true; };
-  }, [appMode, currentModelName]);
+  }, [appMode, currentModelName, refreshTrigger]);
 
   return (
     <div className="tsl-dock">
@@ -758,31 +762,37 @@ function CommunityDock({ appMode, currentModelName, onLoadWrap, onShare, onBrows
         ) : items.length === 0 ? (
           <div className="tsl-dock-empty">No wraps yet — be the first to share.</div>
         ) : (
-          items.map(c => (
-            <button
-              key={c._id}
-              type="button"
-              className="tsl-dock-card"
-              onClick={() => onLoadWrap(c.imageUrl)}
-            >
-              <div
-                className="tsl-dock-card-img"
-                style={{ backgroundImage: `url(${c.imageUrl})`, backgroundColor: '#111' }}
+          items.map(c => {
+            const media = appMode === 'sound' ? c.audioUrl : c.imageUrl;
+            if (!media) return null;
+            const modelLabel = c.models?.[0] ?? appMode;
+            return (
+              <button
+                key={c._id}
+                type="button"
+                className="tsl-dock-card"
+                onClick={() => onLoadWrap(media)}
+                title={c.name ?? 'Wrap'}
               >
-                <div className="tsl-dock-card-overlay">
-                  <span className="tsl-dock-card-likes">
-                    <IconHeart size={10} /> {(c.likes ?? 0).toLocaleString()}
-                  </span>
+                <div
+                  className="tsl-dock-card-img"
+                  style={{ backgroundImage: c.imageUrl ? `url(${c.imageUrl})` : undefined }}
+                >
+                  <div className="tsl-dock-card-overlay">
+                    <span className="tsl-dock-card-likes">
+                      <IconHeart size={10} /> {(c.likes ?? 0).toLocaleString()}
+                    </span>
+                  </div>
                 </div>
-              </div>
-              <div className="tsl-dock-card-meta">
-                <div className="tsl-dock-card-name">{c.title ?? 'Untitled wrap'}</div>
-                <div className="tsl-dock-card-sub tsl-mono">
-                  @{c.user?.name ?? 'anon'} · {c.modelType ?? appMode}
+                <div className="tsl-dock-card-meta">
+                  <div className="tsl-dock-card-name">{c.name ?? 'Untitled wrap'}</div>
+                  <div className="tsl-dock-card-sub tsl-mono">
+                    @{c.author ?? 'anon'} · {modelLabel}
+                  </div>
                 </div>
-              </div>
-            </button>
-          ))
+              </button>
+            );
+          })
         )}
       </div>
     </div>
@@ -807,6 +817,7 @@ export function TeslaStudio(props: TeslaStudioProps) {
     canvasRef,
     onShare, onExport,
     onOpenGallery,
+    communityRefreshTrigger = 0,
     children,
   } = props;
 
@@ -985,6 +996,7 @@ export function TeslaStudio(props: TeslaStudioProps) {
         }}
         onShare={onShare}
         onBrowseAll={onOpenGallery}
+        refreshTrigger={communityRefreshTrigger}
       />
 
       <div className="tsl-actionbar">

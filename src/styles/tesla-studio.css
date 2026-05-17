@@ -88,7 +88,7 @@
   color: var(--ink-1);
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: 56px 1fr 132px 48px;
+  grid-template-rows: 56px 1fr 168px 48px;
   overflow: hidden;
   z-index: 0;
 }
@@ -791,7 +791,7 @@
 
 .tsl-dock-card {
   flex-shrink: 0;
-  width: 180px;
+  width: 220px;
   padding: 0;
   background: var(--bg-2);
   border: 1px solid var(--line);
@@ -800,6 +800,7 @@
   overflow: hidden;
   text-align: left;
   transition: all .18s;
+  display: flex; flex-direction: column;
 }
 .tsl-dock-card:hover {
   border-color: var(--accent);
@@ -807,11 +808,12 @@
   box-shadow: 0 8px 24px rgba(0,0,0,0.4);
 }
 .tsl-dock-card-img {
-  width: 100%; aspect-ratio: 16/8;
+  width: 100%; aspect-ratio: 16/9;
   position: relative;
   overflow: hidden;
   background-size: cover;
   background-position: center;
+  background-color: #111;
 }
 .tsl-dock-card-overlay {
   position: absolute; inset: 0;
