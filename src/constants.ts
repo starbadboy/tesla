@@ -22,7 +22,7 @@ export const CAR_3D_MODELS: Record<string, string> = {
     "Model S Plaid (2025+)": `/models/models_2025_plaid/ModelS_Plaid_2025.glb`,
     "Model X (2021+)": `/models/modelx_2021/ModelX_2021.glb`,
     "Model 3 (2024 Base)": `${CDN_BASE}/models/model3_2024/Poppyseed.gltf`,
-    "Model 3 (2024 Performance)": "", // Not available
+    "Model 3 (2024 Performance)": `/models/model3_2024_performance/Model3_Performance_2024.glb`,
     "Model 3 (Classic)": `${CDN_BASE}/models/model3_classic/Model3_High.gltf`,
     "Model Y (2025 Base)": `${CDN_BASE}/models/modely_2025_standard/BayberryE41.gltf`,
     "Model Y (2025 Performance)": "", // Not available

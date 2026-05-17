@@ -232,8 +232,8 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true 
 
                     // Normalize attributes: Tesla models seem to load as 'uv1' for the wrap layer.
                     // We use a custom attribute 'wrapUv' to avoid collision with standard 'uv2' in shaders.
-                    if (mesh.geometry.attributes.uv1) {
-                        mesh.geometry.setAttribute('wrapUv', mesh.geometry.attributes.uv1);
+                    if (mesh.geometry.attributes.uv1 || mesh.geometry.attributes.uv) {
+                        mesh.geometry.setAttribute('wrapUv', mesh.geometry.attributes.uv1 || mesh.geometry.attributes.uv);
                     }
 
                     const newMat = new THREE.MeshPhysicalMaterial({
