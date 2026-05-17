@@ -302,12 +302,13 @@ interface StageProps {
   onTransformChange: (id: string, t: LayerTransform) => void;
   selectedLayerId: string | null;
   onSelect: (id: string | null) => void;
+  autoRotate: boolean;
 }
 
 function Stage({
   model3dPath, modelImagePath, canvasRef, isWrapVisible, onToggleWrap,
   view, onView, has3D, language, appMode, activeLayers, layerTransforms,
-  onTransformChange, selectedLayerId, onSelect,
+  onTransformChange, selectedLayerId, onSelect, autoRotate,
 }: StageProps) {
   const isCar = appMode === 'car';
   const showThreeD = isCar && view === '3d' && has3D;
@@ -370,6 +371,8 @@ function Stage({
             showTexture={isWrapVisible}
             onToggleWrap={onToggleWrap}
             language={language}
+            autoRotate={showThreeD && autoRotate}
+            autoRotateSpeed={0.6}
           />
         )}
       </div>
@@ -913,7 +916,7 @@ export function TeslaStudio(props: TeslaStudioProps) {
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(true);
   const [view, setView] = useState<'2d' | '3d'>('3d');
-  const [autoRotate, setAutoRotate] = useState(true);
+  const [autoRotate, setAutoRotate] = useState(false);
   const [activePresetId, setActivePresetId] = useState<string | null>(null);
   const [time, setTime] = useState('00:00');
 
@@ -1049,6 +1052,7 @@ export function TeslaStudio(props: TeslaStudioProps) {
           onTransformChange={handleTransformChange}
           selectedLayerId={selectedLayerId}
           onSelect={onSelectedLayerIdChange}
+          autoRotate={autoRotate}
         />
 
         <PropertiesPanel
@@ -1075,15 +1079,22 @@ export function TeslaStudio(props: TeslaStudioProps) {
 
       <div className="tsl-actionbar">
         <div className="tsl-actionbar-left">
-          <button
-            type="button"
-            className={`tsl-toggle ${autoRotate ? 'is-on' : ''}`}
-            onClick={() => setAutoRotate(v => !v)}
-            title="Auto-rotate (visual)"
-          >
-            <span className="tsl-toggle-dot" />
-            <span>AUTO-ROTATE</span>
-          </button>
+          {(() => {
+            const canAutoRotate = appMode === 'car' && view === '3d' && (currentModel?.has3D ?? false);
+            return (
+              <button
+                type="button"
+                className={`tsl-toggle ${autoRotate ? 'is-on' : ''}`}
+                onClick={() => setAutoRotate(v => !v)}
+                disabled={!canAutoRotate}
+                title={canAutoRotate ? 'Auto-rotate the 3D car' : 'Auto-rotate only applies to the 3D preview'}
+                style={!canAutoRotate ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
+              >
+                <span className="tsl-toggle-dot" />
+                <span>AUTO-ROTATE</span>
+              </button>
+            );
+          })()}
           <span className="tsl-dim tsl-mono" style={{ fontSize: 10 }}>v4.2.1 · synced to cloud</span>
         </div>
         <div className="tsl-actionbar-right">

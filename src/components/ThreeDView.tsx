@@ -21,6 +21,8 @@ interface ThreeDViewProps {
         removeWrap: string;
     };
     language?: 'en' | 'zh';
+    autoRotate?: boolean;
+    autoRotateSpeed?: number;
 }
 
 // Simplified Car that applies texture to specific material
@@ -339,7 +341,7 @@ const ErrorFallback = ({ error, language = 'en' }: { error?: Error, language?: '
     );
 };
 
-export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive = true, onToggleWrap, language = 'en' }: ThreeDViewProps) => {
+export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive = true, onToggleWrap, language = 'en', autoRotate = false, autoRotateSpeed = 1.0 }: ThreeDViewProps) => {
     // Determine if we have a valid model path
     const hasModel = modelPath && modelPath.length > 0;
     const t = TRANSLATIONS[language];
@@ -394,6 +396,8 @@ export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive =
                         maxDistance={15}
                         minPolarAngle={0}
                         maxPolarAngle={Math.PI * 0.565} // ~101.5 degrees
+                        autoRotate={autoRotate}
+                        autoRotateSpeed={autoRotateSpeed}
                     />
 
                     {/* Tesla Gallery Studio Lighting - 5 Light Setup */}
