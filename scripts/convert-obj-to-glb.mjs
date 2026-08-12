@@ -44,26 +44,14 @@ const object = new OBJLoader()
 
 object.name = 'Model3_Performance_2024';
 
-const flippedUvs = new WeakSet();
-
 object.traverse((child) => {
   if (!child.isMesh) return;
 
   child.castShadow = true;
   child.receiveShadow = true;
 
-  // OBJ measures v from the bottom, glTF from the top. Without the flip the wrap
-  // template lands upside down on the car (hood art on the bumper, mirrored text).
-  // Keyed on the attribute, since meshes can share one: flipping twice undoes it.
-  const uv = child.geometry?.attributes?.uv;
-  if (uv && !flippedUvs.has(uv)) {
-    for (let i = 0; i < uv.count; i++) uv.setY(i, 1 - uv.getY(i));
-    uv.needsUpdate = true;
-    flippedUvs.add(uv);
-  }
-
-  if (uv && !child.geometry.attributes.uv1) {
-    child.geometry.setAttribute('uv1', uv);
+  if (child.geometry?.attributes?.uv && !child.geometry.attributes.uv1) {
+    child.geometry.setAttribute('uv1', child.geometry.attributes.uv);
   }
 
   const materialName = Array.isArray(child.material)
