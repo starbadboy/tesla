@@ -29,11 +29,21 @@ interface ThreeDViewProps {
 const isPaintMaterial = (name?: string) => /paint/i.test(name ?? '');
 
 /**
- * "Paint"/"CarPaint"/"PaintFade" name a panel's painted skin. A panel whose only
- * paint-ish material is a narrow "PaintRough" strip keeps its skin under another name
- * (the classic Model 3 rear doors are all "Exterior"), so it must not count.
+ * Only a plain "Paint"/"CarPaint" names a panel's main skin. The "Fade" and "Rough"
+ * variants are small accents: the classic Model Y tailgate is 1950 verts of
+ * "ExteriorFade" skin next to a 52-vert "PaintFade", and the classic Model 3 rear
+ * doors are all "Exterior" beside a thin "PaintRough".
  */
-const isPrimaryPaint = (name?: string) => isPaintMaterial(name) && !/rough/i.test(name ?? '');
+const isPrimaryPaint = (name?: string) =>
+    isPaintMaterial(name) && !/rough|fade/i.test(name ?? '');
+
+/**
+ * How much of a panel the paint-named mesh must cover before its "Exterior" sibling
+ * is read as trim. Guards against models that name a sliver "Paint" while the real
+ * skin sits under another name — leaving a panel unwrapped is far worse than
+ * wrapping a strip of trim.
+ */
+const MIN_PAINT_SHARE = 0.2;
 
 /**
  * Tesla splits a panel across materials — "Paint" for the skin, "Exterior" for the
@@ -44,14 +54,25 @@ const isPrimaryPaint = (name?: string) => isPaintMaterial(name) && !/rough/i.tes
 const panelKeyOf = (mesh: THREE.Mesh) =>
     (/^mesh_\d+(_\d+)?$/.test(mesh.name) ? mesh.parent?.name : mesh.name) || mesh.name;
 
-/** Panels that name their painted skin explicitly — there "Exterior" is trim. */
+/** Panels whose painted skin is named as such — there "Exterior" is trim. */
 function paintedPanels(scene: { traverse(callback: (object: unknown) => void): void }): Set<string> {
-    const panels = new Set<string>();
+    const sizes = new Map<string, { biggest: number; paint: number }>();
     scene.traverse((child) => {
-        if (child instanceof THREE.Mesh && originalMaterials(child).some(m => isPrimaryPaint(m?.name))) {
-            panels.add(panelKeyOf(child));
-        }
+        if (!(child instanceof THREE.Mesh)) return;
+        const verts = child.geometry?.attributes.position?.count ?? 0;
+        const key = panelKeyOf(child);
+        const seen = sizes.get(key) ?? { biggest: 0, paint: 0 };
+        const isPaint = originalMaterials(child).some(m => isPrimaryPaint(m?.name));
+        sizes.set(key, {
+            biggest: Math.max(seen.biggest, verts),
+            paint: isPaint ? Math.max(seen.paint, verts) : seen.paint,
+        });
     });
+
+    const panels = new Set<string>();
+    for (const [key, { biggest, paint }] of sizes) {
+        if (paint > 0 && paint >= MIN_PAINT_SHARE * biggest) panels.add(key);
+    }
     return panels;
 }
 
