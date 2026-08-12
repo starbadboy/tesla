@@ -138,8 +138,9 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
     canvasType = 'car',
     plateSize = '420x100'
 }, ref) => {
-    const [overlays, setOverlays] = useState<{ mask: string | null, lines: string | null }>({ mask: null, lines: null });
+    const [overlays, setOverlays] = useState<{ mask: string | null, lines: string | null, trim: string | null }>({ mask: null, lines: null, trim: null });
     const [maskImage] = useImage(overlays.mask || '', 'anonymous');
+    const [trimImage] = useImage(overlays.trim || '', 'anonymous');
     const [linesImage] = useImage(overlays.lines || '', 'anonymous');
 
     // Drawing state
@@ -162,13 +163,17 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
             const stage = stageRef.current;
             if (!stage) return null;
 
-            // 1. Hide Overlays and UI
+            // 1. Hide Overlays and UI. The white backdrop goes too: for the 3D
+            // texture, anything the wrap art doesn't cover must stay transparent so
+            // the car keeps its factory paint there instead of turning white.
             const maskNode = stage.findOne('.maskImage');
             const linesNode = stage.findOne('.linesImage');
+            const bgNode = stage.findOne('.canvasBg');
             const transformers = stage.find('Transformer');
 
             if (maskNode) maskNode.hide();
             if (linesNode) linesNode.hide();
+            if (bgNode) bgNode.hide();
             transformers.forEach(t => t.hide());
 
             try {
@@ -191,38 +196,33 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
                 // Restore visibility
                 if (maskNode) maskNode.show();
                 if (linesNode) linesNode.show();
+                if (bgNode) bgNode.show();
                 transformers.forEach(t => t.show());
 
-                // 2. Apply mask to create transparency for areas outside the template
-                if (overlays.mask) {
-                    const resultCanvas = document.createElement('canvas');
-                    resultCanvas.width = baseCanvas.width;
-                    resultCanvas.height = baseCanvas.height;
-                    const ctx = resultCanvas.getContext('2d');
-                    if (!ctx) return baseCanvas;
+                // 2. Cut everything the wrap must not paint, so the car keeps its
+                // factory finish there: the space outside the template panels, plus
+                // the trim strips (B-pillar covers) the template lays out separately.
+                const cuts = [maskImage, trimImage].filter(Boolean) as HTMLImageElement[];
+                if (cuts.length === 0) return baseCanvas;
 
-                    // Draw the base design
-                    ctx.drawImage(baseCanvas, 0, 0);
+                const resultCanvas = document.createElement('canvas');
+                resultCanvas.width = baseCanvas.width;
+                resultCanvas.height = baseCanvas.height;
+                const ctx = resultCanvas.getContext('2d');
+                if (!ctx) return baseCanvas;
 
-                    // Create a temporary canvas to load the mask
-                    const maskImg = new Image();
-                    maskImg.crossOrigin = "Anonymous";
-
-                    // Check if mask is already loaded (from maskImage state)
-                    if (maskImage) {
-                        // Apply mask with destination-out to cut holes for exterior
-                        ctx.globalCompositeOperation = 'destination-out';
-                        ctx.drawImage(maskImage, 0, 0, resultCanvas.width, resultCanvas.height);
-                        return resultCanvas;
-                    }
+                ctx.drawImage(baseCanvas, 0, 0);
+                ctx.globalCompositeOperation = 'destination-out';
+                for (const cut of cuts) {
+                    ctx.drawImage(cut, 0, 0, resultCanvas.width, resultCanvas.height);
                 }
-
-                return baseCanvas;
+                return resultCanvas;
             } catch (e) {
                 console.error("Error generating texture canvas:", e);
                 // Restore visibility in case of error
                 if (maskNode) maskNode.show();
                 if (linesNode) linesNode.show();
+                if (bgNode) bgNode.show();
                 transformers.forEach(t => t.show());
                 return null;
             }
@@ -418,7 +418,7 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
     useEffect(() => {
         if (canvasType === 'plate') {
             setDimensions({ width: 420, height: 200 });
-            setOverlays({ mask: null, lines: null });
+            setOverlays({ mask: null, lines: null, trim: null });
             return;
         }
 
@@ -540,7 +540,7 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
                 ref={stageRef}
             >
                 <Layer>
-                    <Rect width={dimensions.width} height={dimensions.height} fill="#ffffff" />
+                    <Rect name="canvasBg" width={dimensions.width} height={dimensions.height} fill="#ffffff" />
 
                     {/* Visual guide for 420x100 recommendation in Plate Mode */}
 

@@ -3,7 +3,17 @@
  * Ports the Python PIL/Numpy logic to HTML5 Canvas
  */
 
-export const processTemplateMask = async (imageUrl: string, bgColor: string = '#2b2b2b'): Promise<{ mask: string, lines: string }> => {
+/**
+ * Trim pieces in a wrap template are long, narrow strips — the B-pillar covers sit
+ * between the door panels. They are laid out in the template, so the wrap art covers
+ * them and the 3D preview paints them; the car should keep its factory trim there.
+ * A strip counts as trim when its average thickness is under 2.5% of the template and
+ * it is at least 4x longer than it is wide, which leaves mirrors and panels alone.
+ */
+const TRIM_MAX_THICKNESS_RATIO = 0.025;
+const TRIM_MIN_ASPECT = 4;
+
+export const processTemplateMask = async (imageUrl: string, bgColor: string = '#2b2b2b'): Promise<{ mask: string, lines: string, trim: string }> => {
     return new Promise((resolve, reject) => {
         const img = new Image();
         img.crossOrigin = "Anonymous";
@@ -14,15 +24,19 @@ export const processTemplateMask = async (imageUrl: string, bgColor: string = '#
             // Prepare Canvases
             const canvasMask = document.createElement('canvas');
             const canvasLines = document.createElement('canvas');
+            const canvasTrim = document.createElement('canvas');
             canvasMask.width = width;
             canvasMask.height = height;
             canvasLines.width = width;
             canvasLines.height = height;
+            canvasTrim.width = width;
+            canvasTrim.height = height;
 
             const ctxMask = canvasMask.getContext('2d');
             const ctxLines = canvasLines.getContext('2d');
+            const ctxTrim = canvasTrim.getContext('2d');
 
-            if (!ctxMask || !ctxLines) {
+            if (!ctxMask || !ctxLines || !ctxTrim) {
                 reject(new Error("Could not get canvas context"));
                 return;
             }
@@ -125,7 +139,57 @@ export const processTemplateMask = async (imageUrl: string, bgColor: string = '#
                 }
             }
 
-            // 3. Reconstruct Images
+            // 3. Flag trim strips: label each panel of the template, then mark the
+            // long thin ones so the wrap gets cut there.
+            const trimImageData = ctxTrim.createImageData(width, height);
+            const trimData = trimImageData.data;
+            const visited = new Uint8Array(width * height);
+            const thicknessLimit = TRIM_MAX_THICKNESS_RATIO * Math.max(width, height);
+            const queue = new Int32Array(width * height);
+
+            for (let seed = 0; seed < width * height; seed++) {
+                if (exterior[seed] === 1 || visited[seed] === 1) continue;
+
+                let head = 0;
+                let tail = 0;
+                queue[tail++] = seed;
+                visited[seed] = 1;
+                let area = 0;
+                let minX = width, maxX = 0, minY = height, maxY = 0;
+
+                while (head < tail) {
+                    const idx = queue[head++];
+                    area++;
+                    const x = idx % width;
+                    const y = (idx - x) / width;
+                    if (x < minX) minX = x;
+                    if (x > maxX) maxX = x;
+                    if (y < minY) minY = y;
+                    if (y > maxY) maxY = y;
+
+                    if (x > 0 && exterior[idx - 1] === 0 && visited[idx - 1] === 0) { visited[idx - 1] = 1; queue[tail++] = idx - 1; }
+                    if (x < width - 1 && exterior[idx + 1] === 0 && visited[idx + 1] === 0) { visited[idx + 1] = 1; queue[tail++] = idx + 1; }
+                    if (y > 0 && exterior[idx - width] === 0 && visited[idx - width] === 0) { visited[idx - width] = 1; queue[tail++] = idx - width; }
+                    if (y < height - 1 && exterior[idx + width] === 0 && visited[idx + width] === 0) { visited[idx + width] = 1; queue[tail++] = idx + width; }
+                }
+
+                const boxW = maxX - minX + 1;
+                const boxH = maxY - minY + 1;
+                const longSide = Math.max(boxW, boxH);
+                const thickness = area / longSide;
+                const aspect = longSide / Math.max(1, Math.min(boxW, boxH));
+                if (thickness >= thicknessLimit || aspect <= TRIM_MIN_ASPECT) continue;
+
+                // Re-walk the component to paint it into the trim mask.
+                for (let i = 0; i < tail; i++) {
+                    const pixelIdx = queue[i] * 4;
+                    trimData[pixelIdx + 3] = 255;
+                }
+            }
+
+            ctxTrim.putImageData(trimImageData, 0, 0);
+
+            // 4. Reconstruct Images
             const bgR = parseInt(bgColor.slice(1, 3), 16);
             const bgG = parseInt(bgColor.slice(3, 5), 16);
             const bgB = parseInt(bgColor.slice(5, 7), 16);
@@ -159,7 +223,8 @@ export const processTemplateMask = async (imageUrl: string, bgColor: string = '#
 
             resolve({
                 mask: canvasMask.toDataURL(),
-                lines: canvasLines.toDataURL()
+                lines: canvasLines.toDataURL(),
+                trim: canvasTrim.toDataURL()
             });
         };
         img.onerror = (err) => reject(err);
