@@ -139,6 +139,20 @@ export const processTemplateMask = async (imageUrl: string, bgColor: string = '#
                 }
             }
 
+            // A template that yields almost no interior is not a panel layout — the
+            // Model S/X entries point at a blank white sheet. Masking with it would
+            // erase the whole wrap, so emit empty overlays and let the art through.
+            let exteriorCount = 0;
+            for (let i = 0; i < width * height; i++) if (exterior[i] === 1) exteriorCount++;
+            if (exteriorCount / (width * height) > 0.95) {
+                resolve({
+                    mask: canvasMask.toDataURL(),
+                    lines: canvasLines.toDataURL(),
+                    trim: canvasTrim.toDataURL(),
+                });
+                return;
+            }
+
             // 3. Flag trim strips: label each panel of the template, then mark the
             // long thin ones so the wrap gets cut there.
             const trimImageData = ctxTrim.createImageData(width, height);

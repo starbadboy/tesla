@@ -26,6 +26,41 @@ interface ThreeDViewProps {
     hideWrapToggle?: boolean;
 }
 
+/**
+ * Per-model overrides for the S/X GLBs, mirroring how teslawrapgallery.com maps them.
+ * Those assets carry no usable material naming for this purpose, so the site pins the
+ * mapping by mesh name instead of inferring it, and we follow the same lists.
+ */
+const UV0_WRAP_MESHES: Record<string, Set<string>> = {
+    'ModelS_2021.glb': new Set(['mesh_9_1', 'Hood_Hinge_1', 'Hood_Hinge_2']),
+    'ModelS_Plaid_2025.glb': new Set(['mesh_9_1', 'Hood_Hinge_1', 'Hood_Hinge_2']),
+    'ModelX_2021.glb': new Set(['mesh_7_1', 'mesh_8_1', 'Hood_Hinge_1', 'Hood_Hinge_2']),
+};
+
+/** Meshes that stay black trim on those models however the materials are named. */
+const FORCE_TRIM_MESHES: Record<string, Set<string>> = {
+    'ModelS_2021.glb': new Set([
+        'mesh_0', 'mesh_0_2', 'mesh_0_3',
+        'mesh_24_3', 'mesh_30_1', 'mesh_35_3', 'mesh_41_1',
+        'mesh_46', 'mesh_47', 'mesh_48', 'mesh_49_1',
+        'mesh_125_2', 'mesh_125_3',
+        'mesh_128_2', 'mesh_128_3', 'mesh_128_4',
+    ]),
+    'ModelS_Plaid_2025.glb': new Set([
+        'mesh_0', 'mesh_0_2', 'mesh_0_3',
+        'mesh_24_3', 'mesh_30_1', 'mesh_35_3', 'mesh_41_1',
+        'mesh_46', 'mesh_47', 'mesh_48', 'mesh_49_1',
+        'mesh_125_2', 'mesh_125_3',
+        'mesh_128_2', 'mesh_128_3', 'mesh_128_4',
+    ]),
+    'ModelX_2021.glb': new Set([
+        'mesh_0_2', 'mesh_0_5',
+        'mesh_23_1', 'mesh_30_1', 'mesh_37_1', 'mesh_45_1',
+        'mesh_126', 'mesh_126_1', 'mesh_126_2',
+        'mesh_129_1', 'mesh_129_2',
+    ]),
+};
+
 const isPaintMaterial = (name?: string) => /paint/i.test(name ?? '');
 
 /**
@@ -308,8 +343,12 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true 
                 const isTrim = name.includes('trim') || name.includes('chrome') || name.includes('badge') || name.includes('logo') || name.includes('lettering') || name.includes('license') || name.includes('plate') || name.includes('grille');
                 const isMisc = name.includes('camera') || name.includes('sensor') || name.includes('wiper') || name.includes('mirror_glass');
 
-                const wrapUv = mesh.geometry.attributes.uv1 ?? (modelHasWrapUv ? null : mesh.geometry.attributes.uv);
+                // A few S/X meshes carry the wrap layout in uv0, not the second set.
+                const wrapUv = UV0_WRAP_MESHES[modelFile]?.has(mesh.name)
+                    ? mesh.geometry.attributes.uv ?? mesh.geometry.attributes.uv1
+                    : mesh.geometry.attributes.uv1 ?? (modelHasWrapUv ? null : mesh.geometry.attributes.uv);
                 const shouldWrap = !isGlass && !isLight && !isWheel && !isInterior && !isTrim && !isMisc
+                    && !FORCE_TRIM_MESHES[modelFile]?.has(mesh.name)
                     && takesPaint(mesh) && !!wrapUv;
 
                 if (shouldWrap) {
