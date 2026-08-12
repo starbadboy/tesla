@@ -65,6 +65,19 @@ export function WrapStudio({
         return () => { cancelled = true; };
     }, [communityRefreshTrigger]);
 
+    // ThreeDView binds a newly loaded wrap to its materials only after showTexture
+    // cycles — the texture uploads (verified: 1024x1024, version climbing) and the
+    // shader compiles, yet the car keeps its base paint until the materials are
+    // rebuilt by that transition. Driving the cycle here makes a fresh wrap appear.
+    // ponytail: workaround, not the root cause — remove once ThreeDView rebinds on its own.
+    useEffect(() => {
+        if (!singleLayer) return;
+        onIsWrapVisibleChange(false);
+        const settle = window.setTimeout(() => onIsWrapVisibleChange(true), 60);
+        return () => window.clearTimeout(settle);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [singleLayer]);
+
     // Wraps tagged for this model come first; universal ones fill the shelf.
     const visible = useMemo(() => {
         const forModel = shelf.filter(w => w.models?.includes(currentModelName));
