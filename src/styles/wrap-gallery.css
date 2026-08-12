@@ -1,0 +1,336 @@
+/* ============================================================
+   WRAP GALLERY — full-page community browser
+   Ported from Claude Design handoff (Wrap Gallery.html).
+   Scoped to .wg-app so it doesn't bleed into other UI.
+   ============================================================ */
+
+.wg-app,
+.wg-app *,
+.wg-app *::before,
+.wg-app *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+.wg-app {
+  --wg-bg: #0c0c0e;
+  --wg-bg-head: rgba(12, 12, 14, 0.9);
+  --wg-surface: #141416;
+  --wg-surface-2: #161618;
+  --wg-thumb: #0f0f11;
+  --wg-line: #1e1e23;
+  --wg-line-2: #232328;
+  --wg-line-hover: #33333a;
+  --wg-ink-1: #f0f0f2;
+  --wg-ink-2: #e6e6e8;
+  --wg-ink-3: #9a9aa0;
+  --wg-ink-4: #8a8a90;
+  --wg-ink-5: #6a6a72;
+  --wg-av: #2a2a2f;
+  --wg-btn-ink: #0c0c0e;
+
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  overflow-y: auto;
+  background: var(--wg-bg);
+  color: var(--wg-ink-2);
+  font-family: 'Archivo', 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wg-app a { color: inherit; text-decoration: none; }
+.wg-app a:hover { color: var(--wg-ink-1); }
+.wg-app button { font-family: inherit; }
+
+/* ============ HEADER ============ */
+.wg-head {
+  position: sticky;
+  top: 0;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 40px;
+  background: var(--wg-bg-head);
+  backdrop-filter: blur(10px);
+  z-index: 10;
+}
+.wg-head .wg-wm { font: 700 15px 'Archivo', sans-serif; letter-spacing: .3em; color: var(--wg-ink-1); }
+.wg-head .wg-wm span { color: var(--wg-ink-4); font-weight: 400; }
+.wg-nav {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  font: 500 12.5px 'Archivo', sans-serif;
+  color: var(--wg-ink-3);
+}
+.wg-nav button { background: none; border: none; color: inherit; cursor: pointer; font: inherit; }
+.wg-nav button:hover { color: var(--wg-ink-1); }
+.wg-nav .wg-on { color: var(--wg-ink-1); }
+
+/* ============ LAYOUT ============ */
+.wg-wrap { max-width: 1440px; margin: 0 auto; padding: 36px 40px 80px; }
+.wg-wrap h1 { font: 700 34px 'Archivo', sans-serif; letter-spacing: -.01em; margin-bottom: 26px; color: var(--wg-ink-1); }
+
+.wg-bar { display: flex; gap: 14px; margin-bottom: 30px; flex-wrap: wrap; }
+.wg-search {
+  flex: 1;
+  min-width: 260px;
+  max-width: 460px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--wg-surface-2);
+  border: 1px solid var(--wg-line-2);
+  border-radius: 10px;
+  padding: 0 16px;
+  height: 46px;
+}
+.wg-search svg { flex: none; color: var(--wg-ink-5); }
+.wg-search input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--wg-ink-2);
+  font: 400 14px 'Archivo', sans-serif;
+}
+.wg-search input::placeholder { color: var(--wg-ink-5); }
+
+.wg-sel {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--wg-surface-2);
+  border: 1px solid var(--wg-line-2);
+  border-radius: 10px;
+  padding: 0 16px;
+  height: 46px;
+  color: var(--wg-ink-2);
+  white-space: nowrap;
+}
+.wg-sel > svg { color: var(--wg-ink-5); flex: none; }
+.wg-sel select {
+  appearance: none;
+  background: none;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  color: inherit;
+  font: 500 14px 'Archivo', sans-serif;
+  padding-right: 20px;
+}
+.wg-sel select option { background: var(--wg-surface); color: var(--wg-ink-2); }
+.wg-sel .wg-caret { position: absolute; right: 14px; pointer-events: none; color: var(--wg-ink-5); }
+
+.wg-note { font: 400 13px 'Archivo', sans-serif; color: var(--wg-ink-4); padding: 40px 0; }
+
+/* ============ GRID ============ */
+.wg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 18px; }
+.wg-card {
+  position: relative;
+  background: var(--wg-surface);
+  border: 1px solid var(--wg-line);
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  text-align: left;
+  padding: 0;
+  color: inherit;
+  transition: border-color .15s, transform .15s;
+}
+.wg-card:hover { border-color: var(--wg-line-hover); transform: translateY(-2px); }
+.wg-thumb {
+  aspect-ratio: 1 / 1.05;
+  background: var(--wg-thumb);
+  display: grid;
+  place-items: center;
+  padding: 10px;
+  overflow: hidden;
+}
+.wg-thumb img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.wg-thumb audio { width: 100%; }
+
+.wg-badges { position: absolute; top: 10px; left: 10px; display: flex; gap: 6px; pointer-events: none; }
+.wg-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 5px;
+  padding: 2px 6px;
+  font: 700 10px 'Archivo', sans-serif;
+  color: #fff;
+}
+.wg-badge.wg-new { background: rgba(220, 38, 38, .9); }
+.wg-badge.wg-hot { background: rgba(249, 115, 22, .9); }
+
+.wg-admin { position: absolute; top: 10px; right: 10px; display: flex; gap: 6px; opacity: 0; transition: opacity .15s; }
+.wg-card:hover .wg-admin { opacity: 1; }
+.wg-admin button {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  cursor: pointer;
+  background: rgba(60, 60, 68, .85);
+}
+.wg-admin button.is-on { outline: 1px solid #fff; }
+.wg-admin button.wg-new-btn { background: rgba(220, 38, 38, .85); }
+.wg-admin button.wg-hot-btn { background: rgba(249, 115, 22, .85); }
+.wg-admin button.wg-del-btn { background: rgba(220, 38, 38, .9); }
+.wg-admin button.is-off { background: rgba(90, 90, 98, .6); }
+
+.wg-meta { padding: 14px 16px; }
+.wg-meta .wg-nm { font: 600 14.5px 'Archivo', sans-serif; color: var(--wg-ink-1); }
+.wg-meta .wg-md {
+  font: 400 12px 'Archivo', sans-serif;
+  color: var(--wg-ink-4);
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wg-meta .wg-by {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font: 400 12px 'Archivo', sans-serif;
+  color: var(--wg-ink-3);
+  margin-top: 9px;
+}
+.wg-av {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--wg-av);
+  display: grid;
+  place-items: center;
+  font: 600 9px 'Archivo', sans-serif;
+  color: var(--wg-ink-2);
+  flex: none;
+}
+.wg-stats {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font: 400 12px 'Archivo', sans-serif;
+  color: var(--wg-ink-4);
+  margin-top: 11px;
+}
+.wg-stats span { display: inline-flex; align-items: center; gap: 4px; }
+.wg-stats .wg-b3d { margin-left: auto; font: 600 11.5px 'Archivo', sans-serif; color: var(--wg-ink-2); }
+
+/* ============ DETAIL ============ */
+.wg-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font: 500 14px 'Archivo', sans-serif;
+  color: var(--wg-ink-3);
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin-bottom: 26px;
+}
+.wg-back:hover { color: var(--wg-ink-1); }
+.wg-dwrap { display: grid; grid-template-columns: minmax(0, 560px) 1fr; gap: 56px; align-items: start; }
+@media (max-width: 900px) { .wg-dwrap { grid-template-columns: minmax(0, 1fr); gap: 32px; } }
+.wg-dimg {
+  background: var(--wg-surface);
+  border: 1px solid var(--wg-line);
+  border-radius: 14px;
+  padding: 26px;
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 260px;
+}
+.wg-dimg img { max-width: 100%; max-height: 640px; object-fit: contain; }
+.wg-view3d {
+  position: absolute;
+  right: 22px;
+  bottom: 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font: 600 13.5px 'Archivo', sans-serif;
+  background: var(--wg-ink-2);
+  color: var(--wg-btn-ink);
+  border: none;
+  border-radius: 9px;
+  padding: 13px 24px;
+  cursor: pointer;
+}
+.wg-view3d:hover { background: var(--wg-ink-1); }
+
+.wg-dinfo .wg-tag {
+  font: 600 12px 'Archivo', sans-serif;
+  color: var(--wg-ink-3);
+  letter-spacing: .06em;
+  margin-bottom: 12px;
+}
+.wg-dinfo h2 { font: 700 40px 'Archivo', sans-serif; letter-spacing: -.01em; margin-bottom: 18px; color: var(--wg-ink-1); }
+.wg-dinfo p { font: 400 14.5px/1.7 'Archivo', sans-serif; color: var(--wg-ink-3); max-width: 560px; margin-bottom: 28px; }
+.wg-drow { display: flex; gap: 12px; margin-bottom: 34px; flex-wrap: wrap; }
+.wg-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font: 500 14px 'Archivo', sans-serif;
+  color: var(--wg-ink-2);
+  background: var(--wg-surface-2);
+  border: 1px solid var(--wg-line-2);
+  border-radius: 9px;
+  padding: 12px 20px;
+  cursor: pointer;
+}
+.wg-ghost:hover { border-color: var(--wg-line-hover); }
+.wg-ghost.is-liked { color: #f05252; }
+.wg-dl {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font: 600 14px 'Archivo', sans-serif;
+  background: var(--wg-ink-2);
+  color: var(--wg-btn-ink);
+  border: none;
+  border-radius: 9px;
+  padding: 12px 26px;
+  cursor: pointer;
+}
+.wg-dl:hover { background: var(--wg-ink-1); }
+.wg-dl span { font-weight: 500; opacity: .55; }
+
+.wg-dcard { border: 1px solid var(--wg-line); border-radius: 12px; padding: 20px 22px; max-width: 560px; }
+.wg-dcard .wg-crow {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--wg-line);
+  margin-bottom: 14px;
+}
+.wg-dcard .wg-av2 {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--wg-av);
+  display: grid;
+  place-items: center;
+  font: 600 15px 'Archivo', sans-serif;
+  color: var(--wg-ink-2);
+}
+.wg-dcard .wg-lbl { font: 400 12px 'Archivo', sans-serif; color: var(--wg-ink-4); }
+.wg-dcard .wg-who { font: 600 14.5px 'Archivo', sans-serif; color: var(--wg-ink-1); }
+.wg-dcard .wg-date { display: flex; align-items: center; gap: 9px; font: 400 13px 'Archivo', sans-serif; color: var(--wg-ink-3); }
+
+@media (max-width: 640px) {
+  .wg-head { padding: 0 20px; gap: 14px; }
+  .wg-nav { gap: 18px; }
+  .wg-wrap { padding: 24px 20px 60px; }
+  .wg-wrap h1 { font-size: 26px; }
+  .wg-dinfo h2 { font-size: 30px; }
+}
