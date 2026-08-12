@@ -29,21 +29,17 @@ interface ThreeDViewProps {
 const isPaintMaterial = (name?: string) => /paint/i.test(name ?? '');
 
 /**
- * Only a plain "Paint"/"CarPaint" names a panel's main skin. The "Fade" and "Rough"
- * variants are small accents: the classic Model Y tailgate is 1950 verts of
- * "ExteriorFade" skin next to a 52-vert "PaintFade", and the classic Model 3 rear
- * doors are all "Exterior" beside a thin "PaintRough".
+ * Models where "Paint" really is the panel skin and "Exterior" really is the black
+ * trim beside it (B-pillar, window surrounds, roof rails, wheel arches), verified by
+ * rendering each one with the materials colour-coded.
+ *
+ * This cannot be inferred from the names: the Performance Model 3 was converted from
+ * OBJ/MTL in this repo and puts half its visible skin — the whole rear door and
+ * quarter — under "Exterior", so gating it there blanks real panels. Anything not
+ * listed keeps the old behaviour and wraps every panel whole. Add a model here only
+ * after looking at it; a bare panel is far worse than a wrapped strip of trim.
  */
-const isPrimaryPaint = (name?: string) =>
-    isPaintMaterial(name) && !/rough|fade/i.test(name ?? '');
-
-/**
- * How much of a panel the paint-named mesh must cover before its "Exterior" sibling
- * is read as trim. Guards against models that name a sliver "Paint" while the real
- * skin sits under another name — leaving a panel unwrapped is far worse than
- * wrapping a strip of trim.
- */
-const MIN_PAINT_SHARE = 0.2;
+const TRIM_IS_EXTERIOR_MATERIAL = new Set(['Poppyseed.gltf']);
 
 /**
  * Tesla splits a panel across materials — "Paint" for the skin, "Exterior" for the
@@ -54,25 +50,14 @@ const MIN_PAINT_SHARE = 0.2;
 const panelKeyOf = (mesh: THREE.Mesh) =>
     (/^mesh_\d+(_\d+)?$/.test(mesh.name) ? mesh.parent?.name : mesh.name) || mesh.name;
 
-/** Panels whose painted skin is named as such — there "Exterior" is trim. */
+/** Panels that name their painted skin — only consulted for models listed above. */
 function paintedPanels(scene: { traverse(callback: (object: unknown) => void): void }): Set<string> {
-    const sizes = new Map<string, { biggest: number; paint: number }>();
-    scene.traverse((child) => {
-        if (!(child instanceof THREE.Mesh)) return;
-        const verts = child.geometry?.attributes.position?.count ?? 0;
-        const key = panelKeyOf(child);
-        const seen = sizes.get(key) ?? { biggest: 0, paint: 0 };
-        const isPaint = originalMaterials(child).some(m => isPrimaryPaint(m?.name));
-        sizes.set(key, {
-            biggest: Math.max(seen.biggest, verts),
-            paint: isPaint ? Math.max(seen.paint, verts) : seen.paint,
-        });
-    });
-
     const panels = new Set<string>();
-    for (const [key, { biggest, paint }] of sizes) {
-        if (paint > 0 && paint >= MIN_PAINT_SHARE * biggest) panels.add(key);
-    }
+    scene.traverse((child) => {
+        if (child instanceof THREE.Mesh && originalMaterials(child).some(m => isPaintMaterial(m?.name))) {
+            panels.add(panelKeyOf(child));
+        }
+    });
     return panels;
 }
 
@@ -149,7 +134,11 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true 
     }, [isActive, textureActive, stageRef, texture, updateTexture]);
 
 
-    const painted = useMemo(() => paintedPanels(scene), [scene]);
+    const splitsTrim = TRIM_IS_EXTERIOR_MATERIAL.has(modelFile);
+    const painted = useMemo(
+        () => (splitsTrim ? paintedPanels(scene) : new Set<string>()),
+        [scene, splitsTrim],
+    );
 
     /** True when the mesh is a panel's painted skin rather than the trim beside it. */
     const takesPaint = useCallback((mesh: THREE.Mesh) => {
