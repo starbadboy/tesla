@@ -16,6 +16,8 @@ export interface WrapStudioProps {
     onModelChange: (name: string) => void;
     /** Wrap texture currently loaded into the canvas, if any. */
     singleLayer: string | null;
+    /** Name of that wrap, whichever surface loaded it. */
+    loadedWrapName?: string | null;
     isWrapVisible: boolean;
     onIsWrapVisibleChange: (v: boolean) => void;
     canvasRef: RefObject<DesignCanvasHandle | null>;
@@ -26,7 +28,7 @@ export interface WrapStudioProps {
     onShare: () => void;
     onExport: () => void;
     onOpenGallery: () => void;
-    onLoadCommunityWrap: (url: string) => void | Promise<void>;
+    onLoadCommunityWrap: (url: string, wrap?: { model?: string; name?: string }) => void | Promise<void>;
     communityRefreshTrigger?: number;
     children?: ReactNode;
 }
@@ -36,7 +38,7 @@ const SHELF_SIZE = 6;
 export function WrapStudio({
     language, onToggleLanguage,
     currentModelName, onModelChange,
-    singleLayer, isWrapVisible, onIsWrapVisibleChange,
+    singleLayer, loadedWrapName, isWrapVisible, onIsWrapVisibleChange,
     canvasRef, layerTransforms, onLayerTransformsChange,
     selectedLayerId, onSelectedLayerIdChange,
     onShare, onExport, onOpenGallery, onLoadCommunityWrap,
@@ -74,14 +76,14 @@ export function WrapStudio({
         if (!wrap.imageUrl) return;
         setActiveWrap(wrap);
         onIsWrapVisibleChange(true);
-        await onLoadCommunityWrap(wrap.imageUrl);
+        await onLoadCommunityWrap(wrap.imageUrl, { name: wrap.name, model: wrap.models?.[0] });
     };
 
     const subtitle = !singleLayer
         ? (language === 'zh' ? '未载入车衣 · 从下方选择' : 'No wrap loaded · pick one below')
         : !isWrapVisible
             ? `${t.basePaint} · Midnight`
-            : `${activeWrap?.name ?? t.importWrap} · ${language === 'zh' ? '全车贴膜' : 'Full wrap'}`;
+            : `${loadedWrapName ?? activeWrap?.name ?? t.importWrap} · ${language === 'zh' ? '全车贴膜' : 'Full wrap'}`;
 
     return (
         <div className="ws-app">

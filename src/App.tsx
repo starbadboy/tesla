@@ -13,6 +13,7 @@ function App() {
   const [currentModelName, setCurrentModelName] = useState('Model 3 (2024 Base)');
 
   const [singleLayer, setSingleLayer] = useState<string | null>(null);
+  const [loadedWrapName, setLoadedWrapName] = useState<string | null>(null);
   const [language, setLanguage] = useState<'en' | 'zh'>(() => {
     if (typeof navigator !== 'undefined') {
       const browserLang = navigator.language || navigator.languages?.[0];
@@ -106,13 +107,18 @@ function App() {
     faqScript.textContent = JSON.stringify(faqJsonLd);
   }, [language, seo]);
 
-  // Reset the wrap when switching models
-  useEffect(() => {
+  // Switching the car by hand drops the wrap: templates are per-model, so the
+  // current texture would land on the wrong panels. Loading a wrap for another
+  // model switches the car without this reset — see handleLoadCommunityWrap.
+  const handleModelChange = (name: string) => {
+    if (name === currentModelName) return;
+    setCurrentModelName(name);
+    setLoadedWrapName(null);
     setSingleLayer(null);
     setLayerTransforms({});
     setSelectedLayerId(null);
     setIsWrapVisible(false);
-  }, [currentModelName]);
+  };
 
   const handleExport = () => {
     canvasRef.current?.exportImage();
@@ -133,7 +139,15 @@ function App() {
     setLanguage(prev => (prev === 'en' ? 'zh' : 'en'));
   };
 
-  const handleLoadCommunityWrap = async (url: string) => {
+  const handleLoadCommunityWrap = async (
+    url: string,
+    wrap?: { model?: string; name?: string },
+  ) => {
+    // A wrap is drawn against one model's template, so bring the car along with it.
+    if (wrap?.model && wrap.model !== currentModelName) {
+      setCurrentModelName(wrap.model);
+    }
+    setLoadedWrapName(wrap?.name ?? null);
     setIsWrapVisible(true);
     if (url.includes('.r2.dev/')) {
       try {
@@ -192,8 +206,9 @@ function App() {
           language={language}
           onToggleLanguage={toggleLanguage}
           currentModelName={currentModelName}
-          onModelChange={setCurrentModelName}
+          onModelChange={handleModelChange}
           singleLayer={singleLayer}
+          loadedWrapName={loadedWrapName}
           selectedLayerId={selectedLayerId}
           onSelectedLayerIdChange={setSelectedLayerId}
           layerTransforms={layerTransforms}

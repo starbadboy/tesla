@@ -21,8 +21,8 @@ export interface WrapGalleryProps {
     selectedModel?: string;
     refreshTrigger?: number;
     language?: 'en' | 'zh';
-    /** Load the wrap into the studio (and close this page). */
-    onLoadWrap: (url: string) => void | Promise<void>;
+    /** Load the wrap into the studio (and close this page), switching car if given. */
+    onLoadWrap: (url: string, wrap?: { model?: string; name?: string }) => void | Promise<void>;
     onClose: () => void;
 }
 
@@ -146,10 +146,20 @@ export function WrapGallery({
         }
     };
 
+    /**
+     * A wrap is drawn against one model's template, so the studio has to show that
+     * car. Prefer the wrap's own tag, else whatever model the list is filtered to.
+     */
+    const targetModel = (wrap: Wrap): string | undefined => {
+        const tagged = wrap.models?.find(m => m in CAR_MODELS);
+        if (tagged) return tagged;
+        return modelFilter !== ALL_MODELS && modelFilter in CAR_MODELS ? modelFilter : undefined;
+    };
+
     const handleLoad = async (wrap: Wrap) => {
         const media = mediaOf(wrap);
         if (!media) return;
-        await onLoadWrap(media);
+        await onLoadWrap(media, { model: targetModel(wrap), name: wrap.name });
         onClose();
     };
 
@@ -343,7 +353,10 @@ export function WrapGallery({
                 isOpen={Boolean(commentsFor)}
                 onClose={() => setCommentsFor(null)}
                 wrap={commentsFor}
-                onLoadWrap={url => { void onLoadWrap(url); onClose(); }}
+                onLoadWrap={url => {
+                    if (commentsFor) void onLoadWrap(url, { model: targetModel(commentsFor), name: commentsFor.name });
+                    onClose();
+                }}
                 onUpdate={updated => setWraps(prev => prev.map(w => (w._id === updated._id ? { ...w, ...updated } : w)))}
             />
         </div>
