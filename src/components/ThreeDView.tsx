@@ -4,7 +4,6 @@ import { OrbitControls, useGLTF, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { TRANSLATIONS } from '../translations';
-import { useTheme } from '../contexts/ThemeContext';
 
 
 import type { DesignCanvasHandle } from './DesignCanvas';
@@ -23,6 +22,49 @@ interface ThreeDViewProps {
     language?: 'en' | 'zh';
     autoRotate?: boolean;
     autoRotateSpeed?: number;
+    /** Hide the built-in wrap pill when the host UI owns that control. */
+    hideWrapToggle?: boolean;
+}
+
+const isPaintMaterial = (name?: string) => /paint/i.test(name ?? '');
+
+/**
+ * "Paint"/"CarPaint"/"PaintFade" name a panel's painted skin. A panel whose only
+ * paint-ish material is a narrow "PaintRough" strip keeps its skin under another name
+ * (the classic Model 3 rear doors are all "Exterior"), so it must not count.
+ */
+const isPrimaryPaint = (name?: string) => isPaintMaterial(name) && !/rough/i.test(name ?? '');
+
+/**
+ * Tesla splits a panel across materials — "Paint" for the skin, "Exterior" for the
+ * black trim beside it (B-pillar, window surrounds, wheel arches). GLTFLoader imports
+ * those as sibling meshes named `mesh_22`, `mesh_22_1`, … under a parent named for the
+ * panel, so the parent is the panel identity; standalone nodes keep their own name.
+ */
+const panelKeyOf = (mesh: THREE.Mesh) =>
+    (/^mesh_\d+(_\d+)?$/.test(mesh.name) ? mesh.parent?.name : mesh.name) || mesh.name;
+
+/** Panels that name their painted skin explicitly — there "Exterior" is trim. */
+function paintedPanels(scene: { traverse(callback: (object: unknown) => void): void }): Set<string> {
+    const panels = new Set<string>();
+    scene.traverse((child) => {
+        if (child instanceof THREE.Mesh && originalMaterials(child).some(m => isPrimaryPaint(m?.name))) {
+            panels.add(panelKeyOf(child));
+        }
+    });
+    return panels;
+}
+
+/**
+ * Material(s) as authored. Stashed on first read because the base-paint pass swaps
+ * materials before the wrap pass runs, which would otherwise lose the original names.
+ */
+function originalMaterials(mesh: THREE.Mesh): THREE.Material[] {
+    const stash = mesh.userData as { origMaterials?: THREE.Material[] };
+    if (!stash.origMaterials) {
+        stash.origMaterials = Array.isArray(mesh.material) ? [...mesh.material] : [mesh.material];
+    }
+    return stash.origMaterials;
 }
 
 // Simplified Car that applies texture to specific material
@@ -86,6 +128,14 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true 
     }, [isActive, textureActive, stageRef, texture, updateTexture]);
 
 
+    const painted = useMemo(() => paintedPanels(scene), [scene]);
+
+    /** True when the mesh is a panel's painted skin rather than the trim beside it. */
+    const takesPaint = useCallback((mesh: THREE.Mesh) => {
+        if (!painted.has(panelKeyOf(mesh))) return true;
+        return originalMaterials(mesh).some(m => isPaintMaterial(m?.name));
+    }, [painted]);
+
     // Setup initial material properties for realism (this useEffect remains for base material setup)
     useEffect(() => {
         scene.traverse((child) => {
@@ -94,7 +144,8 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true 
 
                 // Identify parts to paint vs parts to keep as is (glass, lights, wheels)
                 const name = mesh.name.toLowerCase();
-                const materialName = (Array.isArray(mesh.material) ? mesh.material[0]?.name : mesh.material?.name || '').toLowerCase();
+                const originals = originalMaterials(mesh);
+                const materialName = (originals[0]?.name || '').toLowerCase();
                 const parentName = mesh.parent?.name.toLowerCase() || '';
                 const isPlaidVariant = modelFile === 'ModelS_Plaid_2025.glb' || modelFile === 'ModelX_2021.glb';
                 // DEBUG: Log mesh names to find glass
@@ -179,9 +230,9 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true 
                         clearcoat: 1.0,
                     });
                     mesh.material = m;
-                } else if (!isInterior && !isTrim) {
+                } else if (!isInterior && !isTrim && takesPaint(mesh)) {
                     // This is likely the body paint
-                    const oldMat = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
+                    const oldMat = originals.find(m => isPaintMaterial(m?.name)) ?? originals[0];
 
                     // Create a realistic car paint material (PhysicalMaterial) - Black Base
                     const newMat = new THREE.MeshPhysicalMaterial({
@@ -203,7 +254,7 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true 
                 }
             }
         });
-    }, [scene, modelFile]);
+    }, [scene, modelFile, takesPaint]);
 
     // Apply texture to meshes
     useEffect(() => {
@@ -213,11 +264,20 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true 
         // Check if texture is actually valid
         const isTextureValid = textureActive && texture;
 
+        // The wrap template is laid out in a second UV set. Only fall back to uv0
+        // when the model ships no wrap UVs at all — otherwise meshes outside the
+        // template (roof rails, pillars, caps) would sample arbitrary bits of it.
+        let modelHasWrapUv = false;
+        scene.traverse((child) => {
+            if (child instanceof THREE.Mesh && child.geometry?.attributes.uv1) modelHasWrapUv = true;
+        });
+
         scene.traverse((child) => {
             if ((child as THREE.Mesh).isMesh) {
                 const mesh = child as THREE.Mesh;
                 const name = mesh.name.toLowerCase();
-                const materialName = (Array.isArray(mesh.material) ? mesh.material[0]?.name : mesh.material?.name || '').toLowerCase();
+                const originals = originalMaterials(mesh);
+                const materialName = (originals[0]?.name || '').toLowerCase();
 
                 // Smart detection logic...
                 const isGlass = materialName.includes('glass');
@@ -227,16 +287,16 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true 
                 const isTrim = name.includes('trim') || name.includes('chrome') || name.includes('badge') || name.includes('logo') || name.includes('lettering') || name.includes('license') || name.includes('plate') || name.includes('grille');
                 const isMisc = name.includes('camera') || name.includes('sensor') || name.includes('wiper') || name.includes('mirror_glass');
 
-                const shouldWrap = !isGlass && !isLight && !isWheel && !isInterior && !isTrim && !isMisc;
+                const wrapUv = mesh.geometry.attributes.uv1 ?? (modelHasWrapUv ? null : mesh.geometry.attributes.uv);
+                const shouldWrap = !isGlass && !isLight && !isWheel && !isInterior && !isTrim && !isMisc
+                    && takesPaint(mesh) && !!wrapUv;
 
                 if (shouldWrap) {
                     wrappedParts.push(name);
 
                     // Normalize attributes: Tesla models seem to load as 'uv1' for the wrap layer.
                     // We use a custom attribute 'wrapUv' to avoid collision with standard 'uv2' in shaders.
-                    if (mesh.geometry.attributes.uv1 || mesh.geometry.attributes.uv) {
-                        mesh.geometry.setAttribute('wrapUv', mesh.geometry.attributes.uv1 || mesh.geometry.attributes.uv);
-                    }
+                    mesh.geometry.setAttribute('wrapUv', wrapUv);
 
                     const newMat = new THREE.MeshPhysicalMaterial({
                         color: 0x000000, // Black base paint
@@ -305,12 +365,12 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true 
                     }
 
                     mesh.material = newMat;
-                    mesh.material.needsUpdate = true;
+                    newMat.needsUpdate = true;
                 }
             }
         });
         // console.log("Wrapped parts:", wrappedParts);
-    }, [scene, textureActive, texture]);
+    }, [scene, textureActive, texture, takesPaint]);
 
     useFrame((state) => {
         // Only update loop when active to save perf
@@ -341,7 +401,7 @@ const ErrorFallback = ({ error, language = 'en' }: { error?: Error, language?: '
     );
 };
 
-export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive = true, onToggleWrap, language = 'en', autoRotate = false, autoRotateSpeed = 1.0 }: ThreeDViewProps) => {
+export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive = true, onToggleWrap, language = 'en', autoRotate = false, autoRotateSpeed = 1.0, hideWrapToggle = false }: ThreeDViewProps) => {
     // Determine if we have a valid model path
     const hasModel = modelPath && modelPath.length > 0;
     const t = TRANSLATIONS[language];
@@ -354,9 +414,6 @@ export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive =
         setIsWrapApplied(showTexture);
     }, [showTexture]);
 
-    const { theme } = useTheme();
-    const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-
     const toggleWrap = () => {
         const newState = !isWrapApplied;
         setIsWrapApplied(newState);
@@ -365,9 +422,7 @@ export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive =
 
     return (
         <div className="w-full h-full relative" style={{
-            background: isDark
-                ? 'linear-gradient(to bottom, #1a1a1a, #000000)'
-                : 'linear-gradient(to bottom, #dbdbdb, #b0b0b0)'
+            background: 'linear-gradient(to bottom, #17171a, #0c0c0e)'
         }}>
             <ErrorBoundary fallback={
                 <div className="flex items-center justify-center h-full text-white/50">
@@ -385,7 +440,7 @@ export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive =
                         gl.toneMappingExposure = 1.6;
                     }}
                 >
-                    <color attach="background" args={[isDark ? '#1a1a1a' : '#d0d0d0']} />
+                    <color attach="background" args={['#0c0c0e']} />
                     {/* Tesla Gallery-style OrbitControls */}
                     <OrbitControls
                         makeDefault
@@ -465,7 +520,7 @@ export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive =
 
             {/* Apply/Remove Wrap Button */}
             {
-                hasModel && (
+                hasModel && !hideWrapToggle && (
                     <div
                         style={{
                             position: 'absolute',

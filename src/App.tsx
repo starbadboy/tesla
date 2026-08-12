@@ -1,21 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { type DesignCanvasHandle, type LayerTransform } from './components/DesignCanvas';
-import { CAR_MODELS } from './constants';
-import { TRANSLATIONS } from './translations';
-import { generateImage } from './utils/gemini';
 
 import { ShareModal } from './components/ShareModal';
-import { Gallery } from './components/Gallery';
+import { WrapGallery } from './components/WrapGallery/WrapGallery';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { SEO_COPY, SITE_IMAGE, SITE_URL } from './seo';
 
-import { TeslaStudio } from './components/TeslaStudio/TeslaStudio';
-import { IconClose } from './components/TeslaStudio/icons';
+import { WrapStudio } from './components/WrapStudio/WrapStudio';
 
 function App() {
   const [currentModelName, setCurrentModelName] = useState('Model 3 (2024 Base)');
-  const [appMode, setAppMode] = useState<'car' | 'plate' | 'sound'>('car');
 
   const [singleLayer, setSingleLayer] = useState<string | null>(null);
   const [language, setLanguage] = useState<'en' | 'zh'>(() => {
@@ -25,13 +20,6 @@ function App() {
     }
     return 'en';
   });
-
-  // AI State
-  const [aiPrompt, setAiPrompt] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isPuterLoaded, setIsPuterLoaded] = useState(false);
-  const [aiProvider, setAiProvider] = useState<'puter' | 'openai' | 'gemini'>('puter');
-  const [aiError, setAiError] = useState<string | null>(null);
 
   // Layer State
   const [layerTransforms, setLayerTransforms] = useState<Record<string, LayerTransform>>({});
@@ -47,18 +35,6 @@ function App() {
   const canvasRef = useRef<DesignCanvasHandle>(null);
 
   const seo = SEO_COPY[language];
-
-  // Puter availability
-  useEffect(() => {
-    const checkPuter = () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const w = window as unknown as { puter?: { ai?: unknown } };
-      if (w.puter && w.puter.ai) setIsPuterLoaded(true);
-    };
-    checkPuter();
-    const interval = window.setInterval(checkPuter, 500);
-    return () => window.clearInterval(interval);
-  }, []);
 
   // SEO metadata
   useEffect(() => {
@@ -130,65 +106,19 @@ function App() {
     faqScript.textContent = JSON.stringify(faqJsonLd);
   }, [language, seo]);
 
-  // Reset wraps when switching models or app mode
+  // Reset the wrap when switching models
   useEffect(() => {
     setSingleLayer(null);
     setLayerTransforms({});
     setSelectedLayerId(null);
     setIsWrapVisible(false);
-  }, [currentModelName, appMode]);
-
-  const currentModelPath = CAR_MODELS[currentModelName];
-
-  const urlToBase64 = async (url: string): Promise<string> => {
-    const response = await fetch(url);
-    const blob = await response.blob();
-    return new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  };
-
-  const handleGenerateImage = async () => {
-    if (!aiPrompt) return;
-    setIsGenerating(true);
-    setAiError(null);
-    try {
-      const modelBase64 = await urlToBase64(currentModelPath);
-      const imageUrl = await generateImage(
-        aiPrompt,
-        modelBase64,
-        currentModelName,
-        aiProvider,
-        'gpt-image-1.5',
-      );
-      setSingleLayer(imageUrl);
-      setLayerTransforms(prev => ({
-        ...prev,
-        'Full Wrap': prev['Full Wrap'] ?? { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1 },
-      }));
-      setSelectedLayerId('Full Wrap');
-      setIsWrapVisible(true);
-    } catch (error) {
-      console.error(error);
-      setAiError((error as Error).message || 'Failed to generate image');
-    } finally {
-      setIsGenerating(false);
-    }
-  };
+  }, [currentModelName]);
 
   const handleExport = () => {
     canvasRef.current?.exportImage();
   };
 
   const handleOpenShareModal = async () => {
-    if (appMode === 'sound') {
-      setShareImageBlob(null);
-      setIsShareModalOpen(true);
-      return;
-    }
     if (canvasRef.current) {
       const blob = await canvasRef.current.getExportBlob();
       if (blob) {
@@ -230,8 +160,6 @@ function App() {
     setSelectedLayerId('Full Wrap');
   };
 
-  const t = TRANSLATIONS[language];
-
   return (
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
       <AuthProvider>
@@ -260,29 +188,18 @@ function App() {
           ))}
         </section>
 
-        <TeslaStudio
+        <WrapStudio
           language={language}
           onToggleLanguage={toggleLanguage}
-          appMode={appMode}
-          onAppMode={setAppMode}
           currentModelName={currentModelName}
           onModelChange={setCurrentModelName}
           singleLayer={singleLayer}
-          onSingleLayerChange={setSingleLayer}
           selectedLayerId={selectedLayerId}
           onSelectedLayerIdChange={setSelectedLayerId}
           layerTransforms={layerTransforms}
           onLayerTransformsChange={setLayerTransforms}
           isWrapVisible={isWrapVisible}
           onIsWrapVisibleChange={setIsWrapVisible}
-          aiPrompt={aiPrompt}
-          onAiPromptChange={setAiPrompt}
-          aiProvider={aiProvider}
-          onAiProviderChange={setAiProvider}
-          isGenerating={isGenerating}
-          isPuterLoaded={isPuterLoaded}
-          aiError={aiError}
-          onGenerate={handleGenerateImage}
           canvasRef={canvasRef}
           onShare={handleOpenShareModal}
           onExport={handleExport}
@@ -292,34 +209,14 @@ function App() {
         />
 
         {isGalleryOpen && (
-          <div className="tsl-modal-backdrop" role="dialog" aria-modal="true">
-            <div className="tsl-modal-card">
-              <div className="tsl-modal-head">
-                <span>{t.community.toUpperCase()} · {currentModelName}</span>
-                <button
-                  type="button"
-                  className="tsl-icon-btn"
-                  onClick={() => setIsGalleryOpen(false)}
-                  aria-label="Close gallery"
-                >
-                  <IconClose size={16} />
-                </button>
-              </div>
-              <div className="tsl-modal-body">
-                <Gallery
-                  selectedModel={currentModelName}
-                  refreshTrigger={galleryRefreshTrigger}
-                  onLoadWrap={async (url) => {
-                    await handleLoadCommunityWrap(url);
-                    setIsGalleryOpen(false);
-                  }}
-                  language={language}
-                  viewMode="all"
-                  type={appMode}
-                />
-              </div>
-            </div>
-          </div>
+          <WrapGallery
+            type="car"
+            selectedModel={currentModelName}
+            refreshTrigger={galleryRefreshTrigger}
+            language={language}
+            onLoadWrap={handleLoadCommunityWrap}
+            onClose={() => setIsGalleryOpen(false)}
+          />
         )}
 
         <ShareModal
@@ -328,7 +225,7 @@ function App() {
           onShareSuccess={() => setGalleryRefreshTrigger(prev => prev + 1)}
           imageUrl={shareImageBlob}
           language={language}
-          type={appMode}
+          type="car"
         />
       </AuthProvider>
     </ThemeProvider>

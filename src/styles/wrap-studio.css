@@ -1,0 +1,303 @@
+/* ============================================================
+   WRAP STUDIO — dark-minimal 3D viewer
+   Ported from Claude Design handoff (Wrap Studio D.html).
+   Scoped to .ws-app so it doesn't bleed into other UI.
+   ============================================================ */
+
+.ws-app,
+.ws-app *,
+.ws-app *::before,
+.ws-app *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+.ws-app {
+  --ws-bg: #0c0c0e;
+  --ws-surface: #161618;
+  --ws-surface-2: #18181b;
+  --ws-surface-3: #1a1a1e;
+  --ws-line: #1f1f24;
+  --ws-line-2: #33333a;
+  --ws-ink-1: #f2f2f4;
+  --ws-ink-2: #e6e6e8;
+  --ws-ink-3: #c8c8cc;
+  --ws-ink-4: #9a9aa0;
+  --ws-ink-5: #8a8a90;
+  --ws-ink-6: #7a7a82;
+  --ws-ink-7: #5a5a62;
+
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: var(--ws-bg);
+  color: var(--ws-ink-2);
+  font-family: 'Archivo', 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.ws-app button { font-family: inherit; }
+
+/* ============ STAGE ============ */
+/* Bottom inset keeps the car clear of the segmented control and the shelf. */
+.ws-stage { position: absolute; inset: 0 0 330px 0; cursor: grab; }
+.ws-stage:active { cursor: grabbing; }
+/* Shown for models that have no 3D asset yet (CAR_3D_MODELS entry is empty). */
+.ws-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  text-align: center;
+  pointer-events: none;
+}
+.ws-empty-title { font: 600 15px 'Archivo', sans-serif; letter-spacing: .04em; color: var(--ws-ink-4); }
+.ws-empty-sub { font: 400 12.5px 'Archivo', sans-serif; color: var(--ws-ink-7); }
+
+/* Konva canvas stays mounted — ThreeDView reads the wrap texture off it. */
+.ws-texture-src { position: absolute; inset: 0; opacity: 0; pointer-events: none; }
+
+/* ============ HEADER ============ */
+.ws-head {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 40px;
+  z-index: 10;
+}
+.ws-wm { font: 700 15px 'Archivo', sans-serif; letter-spacing: .3em; color: var(--ws-ink-1); }
+.ws-wm span { color: var(--ws-ink-5); font-weight: 400; }
+.ws-nav {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  font: 500 12.5px 'Archivo', sans-serif;
+  color: var(--ws-ink-4);
+}
+.ws-nav button { background: none; border: none; color: inherit; font: inherit; cursor: pointer; }
+.ws-nav button:hover { color: #fff; }
+.ws-nav .ws-on { color: #fff; }
+.ws-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #2a2a2f;
+  color: var(--ws-ink-3);
+  font: 600 11px 'Archivo', sans-serif;
+  display: grid;
+  place-items: center;
+  border: none;
+  cursor: pointer;
+}
+
+/* ============ TITLE / HINT ============ */
+.ws-title {
+  position: absolute;
+  top: 62px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font: 500 13px 'Archivo', sans-serif;
+  letter-spacing: .06em;
+  color: var(--ws-ink-4);
+  z-index: 5;
+  /* Full-width strip — let drags through to the car, keep the picker clickable. */
+  pointer-events: none;
+}
+.ws-title select { pointer-events: auto; }
+/* The model name IS the picker — the caret and hover state say so. */
+.ws-title .ws-model {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 4px;
+  padding: 2px 6px 2px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: background .15s;
+}
+.ws-title .ws-model:hover { background: rgba(255, 255, 255, .07); }
+.ws-title .ws-model:hover select,
+.ws-title .ws-model:hover .ws-model-caret { color: #fff; }
+.ws-model-caret { flex: none; color: var(--ws-ink-4); transition: color .15s; }
+.ws-title select {
+  appearance: none;
+  pointer-events: auto;
+  background: none;
+  border: none;
+  outline: none;
+  text-align: center;
+  text-align-last: center;
+  font: 600 20px 'Archivo', sans-serif;
+  letter-spacing: .02em;
+  color: var(--ws-ink-1);
+  cursor: pointer;
+}
+.ws-title select option { background: var(--ws-surface); color: var(--ws-ink-2); font-size: 13px; }
+.ws-title .ws-sub { display: block; }
+.ws-hint {
+  position: absolute;
+  top: 114px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font: 400 11px 'Archivo', sans-serif;
+  color: var(--ws-ink-7);
+  z-index: 5;
+  pointer-events: none;
+}
+
+/* ============ SEGMENTED CONTROL ============ */
+.ws-seg {
+  position: absolute;
+  bottom: 308px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 4px;
+  background: var(--ws-surface-2);
+  border-radius: 999px;
+  padding: 4px;
+  z-index: 10;
+}
+.ws-seg button {
+  font: 500 12px 'Archivo', sans-serif;
+  color: var(--ws-ink-4);
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  padding: 8px 20px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ws-seg button.ws-on { background: #2a2a2f; color: #fff; }
+
+/* ============ COMMUNITY SHELF ============ */
+.ws-shelf { position: absolute; left: 0; right: 0; bottom: 96px; padding: 0 40px; z-index: 10; }
+.ws-shelf h2 {
+  font: 500 12px 'Archivo', sans-serif;
+  letter-spacing: .14em;
+  color: var(--ws-ink-5);
+  margin-bottom: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.ws-shelf h2 button {
+  font: 400 12px 'Archivo', sans-serif;
+  letter-spacing: .04em;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.ws-shelf h2 button:hover { color: #fff; }
+.ws-cards { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; }
+@media (max-width: 1100px) { .ws-cards { grid-template-columns: repeat(4, 1fr); } }
+@media (max-width: 720px) { .ws-cards { grid-template-columns: repeat(2, 1fr); } }
+.ws-card {
+  background: var(--ws-surface);
+  border-radius: 10px;
+  padding: 0 0 12px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  text-align: left;
+  transition: border-color .15s, background .15s;
+}
+.ws-card:hover { background: var(--ws-surface-3); }
+.ws-card.ws-on { border-color: #3a3a42; background: #1b1b1f; }
+.ws-thumb {
+  height: 96px;
+  border-radius: 10px 10px 0 0;
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+}
+.ws-thumb img {
+  max-width: 84%;
+  max-height: 84px;
+  object-fit: contain;
+  filter: drop-shadow(0 10px 10px rgba(0, 0, 0, .5));
+}
+.ws-card .ws-nm {
+  font: 600 12.5px 'Archivo', sans-serif;
+  color: var(--ws-ink-2);
+  padding: 10px 14px 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-card .ws-by {
+  font: 400 11px 'Archivo', sans-serif;
+  color: var(--ws-ink-6);
+  padding: 0 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-shelf-empty { font: 400 12px 'Archivo', sans-serif; color: var(--ws-ink-6); height: 96px; display: flex; align-items: center; }
+
+/* ============ FOOTER ============ */
+.ws-foot {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 72px;
+  border-top: 1px solid var(--ws-line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 40px;
+  background: var(--ws-bg);
+  z-index: 10;
+}
+.ws-btn {
+  font: 500 13px 'Archivo', sans-serif;
+  padding: 12px 30px;
+  border-radius: 6px;
+  border: none;
+  background: var(--ws-ink-2);
+  color: var(--ws-bg);
+  cursor: pointer;
+}
+.ws-btn:hover { background: #fff; }
+.ws-btn.ws-ghost { background: transparent; color: var(--ws-ink-3); border: 1px solid var(--ws-line-2); margin-right: 10px; }
+.ws-btn.ws-ghost:hover { background: transparent; border-color: #55555c; color: #fff; }
+.ws-rotate {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font: 500 11.5px 'Archivo', sans-serif;
+  letter-spacing: .08em;
+  color: var(--ws-ink-5);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.ws-rotate:hover { color: var(--ws-ink-3); }
+.ws-rotate .ws-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #3a3a42;
+}
+.ws-rotate.ws-on { color: var(--ws-ink-2); }
+.ws-rotate.ws-on .ws-dot { background: #e6e6e8; box-shadow: 0 0 8px rgba(230, 230, 232, .6); }
+
+@media (max-height: 760px) {
+  .ws-seg { bottom: 288px; }
+}
+@media (max-width: 640px) {
+  .ws-head, .ws-shelf, .ws-foot { padding: 0 20px; }
+  .ws-shelf { padding: 0 20px; }
+  .ws-nav { gap: 16px; }
+  .ws-btn { padding: 12px 18px; }
+}
