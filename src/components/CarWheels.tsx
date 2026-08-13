@@ -160,3 +160,56 @@ export function CarWheels({ scene }: CarWheelsProps) {
         </>
     );
 }
+
+/**
+ * A soft blob directly under the car. The scene's directional light throws its shadow
+ * off to one side, which leaves tall models — the Model Y especially — looking airborne;
+ * a contact shadow is what actually reads as "resting on the ground".
+ */
+export function CarContactShadow({ scene }: CarWheelsProps) {
+    const shape = useMemo(() => {
+        const root = scene as THREE.Object3D;
+        const box = new THREE.Box3();
+        root.traverse(child => {
+            if (child instanceof THREE.Mesh && child.visible && !child.userData.proceduralWheel) {
+                box.expandByObject(child);
+            }
+        });
+        if (box.isEmpty()) return null;
+
+        const size = box.getSize(new THREE.Vector3());
+        const centre = box.getCenter(new THREE.Vector3());
+
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 128;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return null;
+        const gradient = ctx.createRadialGradient(64, 64, 4, 64, 64, 62);
+        gradient.addColorStop(0, 'rgba(0,0,0,0.62)');
+        gradient.addColorStop(0.55, 'rgba(0,0,0,0.32)');
+        gradient.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, 128, 128);
+
+        return {
+            texture: new THREE.CanvasTexture(canvas),
+            width: Math.max(size.x, size.z) * 1.05,
+            depth: Math.min(size.x, size.z) * 1.35,
+            alongX: size.x >= size.z,
+            centre: [centre.x, box.min.y + 0.004, centre.z] as [number, number, number],
+        };
+    }, [scene]);
+
+    if (!shape) return null;
+
+    return (
+        <mesh
+            position={shape.centre}
+            rotation={[-Math.PI / 2, 0, shape.alongX ? 0 : Math.PI / 2]}
+            onUpdate={markProcedural}
+        >
+            <planeGeometry args={[shape.width, shape.depth]} />
+            <meshBasicMaterial map={shape.texture} transparent depthWrite={false} />
+        </mesh>
+    );
+}

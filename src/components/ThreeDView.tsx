@@ -8,7 +8,7 @@ import { TRANSLATIONS } from '../translations';
 
 import type { DesignCanvasHandle } from './DesignCanvas';
 import { ErrorBoundary } from './ErrorBoundary';
-import { CarWheels } from './CarWheels';
+import { CarWheels, CarContactShadow } from './CarWheels';
 import '../styles/three-loader.css';
 
 interface ThreeDViewProps {
@@ -481,6 +481,7 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true 
             {/* Wheels mount inside the scene so they inherit its scale and offset. */}
             <primitive object={scene} scale={2} position={[0, -1, 0]}>
                 <CarWheels scene={scene} />
+                <CarContactShadow scene={scene} />
             </primitive>
         </group>
     );
