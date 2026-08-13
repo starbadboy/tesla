@@ -145,7 +145,7 @@ export function WrapStudio({
             <div className="ws-head">
                 <div className="ws-wm">TESLA<span> STUDIO</span></div>
                 <nav className="ws-nav">
-                    <span className="ws-on">{t.design}</span>
+                    <span className="ws-on">{t.preview3d}</span>
                     <button type="button" onClick={onOpenGallery}>{t.community}</button>
                     <button type="button" onClick={onToggleLanguage}>{language === 'en' ? '中文' : 'EN'}</button>
                     {/* Sign in / account. UserMenu carries its own AuthModal. */}

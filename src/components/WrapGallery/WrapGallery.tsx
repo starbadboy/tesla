@@ -179,7 +179,7 @@ export function WrapGallery({
             <div className="wg-head">
                 <div className="wg-wm">TESLA<span> STUDIO</span></div>
                 <nav className="wg-nav">
-                    <button type="button" onClick={onClose}>{t.design}</button>
+                    <button type="button" onClick={onClose}>{t.preview3d}</button>
                     <span className="wg-on">{t.community}</span>
                 </nav>
             </div>
