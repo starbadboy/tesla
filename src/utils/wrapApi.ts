@@ -10,15 +10,42 @@ function authHeaders(): Record<string, string> {
     return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-/** Community wraps (or lock sounds) for a type, sorted server-side. */
-export async function fetchWraps(type: WrapType, sort: SortOption): Promise<Wrap[]> {
-    const endpoint = type === 'sound'
-        ? `/api/sounds?sort=${sort}`
-        : `/api/wraps?sort=${sort}&type=${type}`;
-    const res = await fetch(endpoint, { headers: authHeaders() });
+export interface WrapQuery {
+    /** Rows per request. Omit to get the whole list (what /api/sounds still does). */
+    limit?: number;
+    skip?: number;
+    /** Server-side search over name and author. */
+    q?: string;
+    /** Server-side model filter; wraps with no models listed count as universal. */
+    model?: string;
+}
+
+export interface WrapPage {
+    items: Wrap[];
+    /** Size of the full match, from X-Total-Count. */
+    total: number;
+}
+
+/** Community wraps (or lock sounds) for a type, filtered and sorted server-side. */
+export async function fetchWraps(
+    type: WrapType,
+    sort: SortOption,
+    query: WrapQuery = {},
+): Promise<WrapPage> {
+    const params = new URLSearchParams({ sort });
+    if (type !== 'sound') params.set('type', type);
+    if (query.limit) params.set('limit', String(query.limit));
+    if (query.skip) params.set('skip', String(query.skip));
+    if (query.q) params.set('q', query.q);
+    if (query.model) params.set('model', query.model);
+
+    const base = type === 'sound' ? '/api/sounds' : '/api/wraps';
+    const res = await fetch(`${base}?${params}`, { headers: authHeaders() });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    return Array.isArray(data) ? data : [];
+    const items = Array.isArray(data) ? data : [];
+    const counted = Number(res.headers.get('X-Total-Count'));
+    return { items, total: Number.isFinite(counted) && counted > 0 ? counted : items.length };
 }
 
 /** Returns the new like count. */

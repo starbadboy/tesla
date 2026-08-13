@@ -166,9 +166,62 @@ app.get('/api/wraps', async (req, res) => {
             sortStage = { score: -1, createdAt: -1 };
         }
 
+        // Optional server-side search on name/author, so paging stays correct instead
+        // of the client filtering only the page it happens to hold.
+        const q = (req.query.q || '').toString().trim();
+        if (q) {
+            const safe = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            pipeline.push({
+                $match: {
+                    $or: [
+                        { name: { $regex: safe, $options: 'i' } },
+                        { author: { $regex: safe, $options: 'i' } },
+                    ],
+                },
+            });
+        }
+
+        // Optional model filter. Wraps with no models listed are universal.
+        const model = (req.query.model || '').toString().trim();
+        if (model) {
+            pipeline.push({
+                $match: {
+                    $or: [
+                        { models: model },
+                        { models: { $size: 0 } },
+                        { models: { $exists: false } },
+                    ],
+                },
+            });
+        }
+
         pipeline.push({ $sort: sortStage });
 
+        // Paging is opt-in: without a limit the whole list is returned, which is what
+        // the older callers expect. X-Total-Count carries the size of the full match so
+        // a client can show progress and know when to stop asking.
+        const limit = Math.min(Number(req.query.limit) || 0, 200);
+        const skip = Math.max(Number(req.query.skip) || 0, 0);
+
+        if (limit > 0) {
+            const [page] = await Wrap.aggregate([
+                ...pipeline,
+                {
+                    $facet: {
+                        items: [{ $skip: skip }, { $limit: limit }],
+                        total: [{ $count: 'value' }],
+                    },
+                },
+            ]);
+            const total = page?.total?.[0]?.value ?? 0;
+            res.set('X-Total-Count', String(total));
+            res.set('Access-Control-Expose-Headers', 'X-Total-Count');
+            return res.json(page?.items ?? []);
+        }
+
         const wraps = await Wrap.aggregate(pipeline);
+        res.set('X-Total-Count', String(wraps.length));
+        res.set('Access-Control-Expose-Headers', 'X-Total-Count');
         res.json(wraps);
     } catch (err) {
         res.status(500).json({ error: err.message });

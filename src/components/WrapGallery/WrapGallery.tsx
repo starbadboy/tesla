@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
     ArrowLeft, Box, Calendar, ChevronDown, Download, Flame, Heart,
     MessageCircle, Search, Sparkles, Trash2,
@@ -60,18 +60,37 @@ export function WrapGallery({
     const [likedIds, setLikedIds] = useState<string[]>([]);
     const [commentsFor, setCommentsFor] = useState<Wrap | null>(null);
 
+    const [total, setTotal] = useState(0);
+    const sentinelRef = useRef<HTMLDivElement>(null);
+
+    // Typing shouldn't fire a request per keystroke.
+    const [query, setQuery] = useState('');
+    useEffect(() => {
+        const timer = window.setTimeout(() => setQuery(search.trim()), 300);
+        return () => window.clearTimeout(timer);
+    }, [search]);
+
+    const serverModel = type === 'car' && modelFilter !== ALL_MODELS ? modelFilter : undefined;
+
+    // First page. Any change to the query starts the list over.
     useEffect(() => {
         let cancelled = false;
         setLoading(true);
-        fetchWraps(type, sortBy)
-            .then(list => { if (!cancelled) setWraps(list); })
+        fetchWraps(type, sortBy, { limit: PAGE_SIZE, q: query || undefined, model: serverModel })
+            .then(({ items, total: count }) => {
+                if (cancelled) return;
+                setWraps(items);
+                setTotal(count);
+            })
             .catch(error => {
                 console.error('Failed to fetch community wraps', error);
-                if (!cancelled) setWraps([]);
+                if (cancelled) return;
+                setWraps([]);
+                setTotal(0);
             })
             .finally(() => { if (!cancelled) setLoading(false); });
         return () => { cancelled = true; };
-    }, [type, sortBy, refreshTrigger]);
+    }, [type, sortBy, query, serverModel, refreshTrigger]);
 
     // Escape closes the detail view first, then the page.
     useEffect(() => {
@@ -84,45 +103,40 @@ export function WrapGallery({
         return () => window.removeEventListener('keydown', onKey);
     }, [openId, commentsFor, onClose]);
 
-    const visible = useMemo(() => {
-        const q = search.trim().toLowerCase();
-        return wraps.filter(w => {
-            const modelOk = type !== 'car'
-                || modelFilter === ALL_MODELS
-                || !w.models || w.models.length === 0
-                || w.models.includes(modelFilter);
-            const searchOk = !q
-                || w.name.toLowerCase().includes(q)
-                || w.author.toLowerCase().includes(q)
-                || (w.models ?? []).some(m => m.toLowerCase().includes(q));
-            return modelOk && searchOk;
-        });
-    }, [wraps, search, modelFilter, type]);
-
-    const [shown, setShown] = useState(PAGE_SIZE);
-    const sentinelRef = useRef<HTMLDivElement>(null);
-
-    // Any change to the result set starts counting again.
-    useEffect(() => {
-        setShown(PAGE_SIZE);
-    }, [search, modelFilter, sortBy, type]);
-
+    // Next pages, pulled in as the end of the grid approaches.
     useEffect(() => {
         const sentinel = sentinelRef.current;
-        if (!sentinel || shown >= visible.length) return;
+        if (!sentinel || loading || wraps.length === 0 || wraps.length >= total) return;
+
+        let cancelled = false;
         const observer = new IntersectionObserver(
             entries => {
-                if (entries[0]?.isIntersecting) {
-                    setShown(current => Math.min(current + PAGE_SIZE, visible.length));
-                }
+                if (!entries[0]?.isIntersecting || cancelled) return;
+                cancelled = true;
+                setLoading(true);
+                fetchWraps(type, sortBy, {
+                    limit: PAGE_SIZE,
+                    skip: wraps.length,
+                    q: query || undefined,
+                    model: serverModel,
+                })
+                    .then(({ items, total: count }) => {
+                        setWraps(current => {
+                            const seen = new Set(current.map(w => w._id));
+                            return [...current, ...items.filter(w => !seen.has(w._id))];
+                        });
+                        setTotal(count);
+                    })
+                    .catch(error => console.error('Failed to fetch more wraps', error))
+                    .finally(() => setLoading(false));
             },
             { rootMargin: '800px' },
         );
         observer.observe(sentinel);
-        return () => observer.disconnect();
-    }, [shown, visible.length]);
+        return () => { cancelled = true; observer.disconnect(); };
+    }, [wraps, total, loading, type, sortBy, query, serverModel]);
 
-    const page = visible.slice(0, shown);
+    const page = wraps;
 
     const open = openId ? wraps.find(w => w._id === openId) ?? null : null;
 
@@ -313,7 +327,7 @@ export function WrapGallery({
 
                         {loading && wraps.length === 0 ? (
                             <div className="wg-note">{t.connecting}</div>
-                        ) : visible.length === 0 ? (
+                        ) : page.length === 0 ? (
                             <div className="wg-note">
                                 {type === 'sound' ? t.noSoundsFound : type === 'plate' ? t.noPlatesFound : t.noWrapsFound}
                             </div>
@@ -383,11 +397,11 @@ export function WrapGallery({
                                 })}
                             </div>
                         )}
-                        {visible.length > 0 && (
+                        {page.length > 0 && (
                             <>
                                 <div ref={sentinelRef} aria-hidden="true" />
                                 <div className="wg-more">
-                                    {page.length} / {visible.length}
+                                    {page.length} / {total}
                                 </div>
                             </>
                         )}

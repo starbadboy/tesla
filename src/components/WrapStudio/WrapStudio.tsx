@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { ChevronDown, Upload } from 'lucide-react';
 import { DesignCanvas, type DesignCanvasHandle, type LayerTransform } from '../DesignCanvas';
 import { ThreeDView } from '../ThreeDView';
@@ -55,16 +55,18 @@ export function WrapStudio({
 
     const model3dPath = CAR_3D_MODELS[currentModelName] ?? null;
 
+    // The server filters to this model (universal wraps included) and caps the rows, so
+    // the shelf no longer downloads the whole collection to show a strip of it.
     useEffect(() => {
         let cancelled = false;
-        fetchWraps('car', 'popular')
-            .then(list => { if (!cancelled) setShelf(list); })
+        fetchWraps('car', 'popular', { limit: SHELF_SIZE, model: currentModelName })
+            .then(({ items }) => { if (!cancelled) setShelf(items); })
             .catch(error => {
                 console.error('Failed to fetch community wraps', error);
                 if (!cancelled) setShelf([]);
             });
         return () => { cancelled = true; };
-    }, [communityRefreshTrigger]);
+    }, [communityRefreshTrigger, currentModelName]);
 
     // ThreeDView binds a newly loaded wrap to its materials only after showTexture
     // cycles — the texture uploads (verified: 1024x1024, version climbing) and the
@@ -79,12 +81,7 @@ export function WrapStudio({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [singleLayer]);
 
-    // Wraps tagged for this model come first; universal ones fill the shelf.
-    const visible = useMemo(() => {
-        const forModel = shelf.filter(w => w.models?.includes(currentModelName));
-        const universal = shelf.filter(w => !w.models || w.models.length === 0);
-        return [...forModel, ...universal].slice(0, SHELF_SIZE);
-    }, [shelf, currentModelName]);
+    const visible = shelf;
 
     const fileRef = useRef<HTMLInputElement>(null);
 
