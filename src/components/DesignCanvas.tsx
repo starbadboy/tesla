@@ -267,8 +267,11 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
                     if (plateOverlay) plateOverlay.hide();
 
                     const isSmallPlate = canvasType === 'plate' && plateSize === '420x100';
-                    const TARGET_WIDTH = canvasType === 'plate' ? 420 : 1024;
-                    const TARGET_HEIGHT = isSmallPlate ? 100 : (canvasType === 'plate' ? 200 : 1024);
+                    // Wraps export at the sheet's own resolution — resampling to a fixed
+                    // 1024 threw away detail on larger templates. Plates keep the sizes
+                    // Tesla requires.
+                    const TARGET_WIDTH = canvasType === 'plate' ? 420 : dimensions.width;
+                    const TARGET_HEIGHT = isSmallPlate ? 100 : (canvasType === 'plate' ? 200 : dimensions.height);
 
                     // Calculate crop based on dimensions and scale
                     const contentX = (stage.width() - dimensions.width * scale) / 2;
@@ -311,11 +314,16 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
 
                         const finalizeExport = (blob: Blob | null) => {
                             if (!blob) return;
-                            compressBlob(blob, canvasType === 'plate' ? 0.5 : 1).then(compressedBlob => {
+                            // Plates have a hard size budget; a wrap sheet is saved as-is so
+                            // the export matches what the preview used.
+                            const prepared = canvasType === 'plate'
+                                ? compressBlob(blob, 0.5)
+                                : Promise.resolve(blob);
+                            prepared.then(compressedBlob => {
                                 const url = URL.createObjectURL(compressedBlob);
                                 const link = document.createElement('a');
 
-                                let filename = `design-tesla-1024.png`;
+                                let filename = `design-tesla-${TARGET_WIDTH}.png`;
                                 if (canvasType === 'plate') {
                                     const id = Math.random().toString(36).substring(2, 10).toUpperCase();
                                     filename = `PLATE${id}.png`;
