@@ -34,6 +34,13 @@ const WrapSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
+    // Salted hashes of the clients that liked this without an account, so an anonymous
+    // like counts once and can be taken back. Raw addresses are never stored.
+    anonLikes: {
+        type: [String],
+        default: [],
+        select: false
+    },
     downloads: {
         type: Number,
         default: 0

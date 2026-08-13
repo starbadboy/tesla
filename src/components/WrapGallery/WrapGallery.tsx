@@ -155,9 +155,10 @@ export function WrapGallery({
 
     const handleLike = async (wrap: Wrap) => {
         try {
-            const likes = await likeWrap(wrap._id, type);
+            // The server toggles: liking twice takes it back, so follow what it reports.
+            const { likes, liked } = await likeWrap(wrap._id, type);
             setWraps(prev => prev.map(w => (w._id === wrap._id ? { ...w, likes } : w)));
-            setLikedIds(prev => (prev.includes(wrap._id) ? prev : [...prev, wrap._id]));
+            setLikedIds(prev => (liked ? [...new Set([...prev, wrap._id])] : prev.filter(id => id !== wrap._id)));
         } catch (error) {
             console.error('Failed to like wrap', error);
         }

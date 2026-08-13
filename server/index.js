@@ -1,4 +1,5 @@
 const path = require('path');
+const crypto = require('crypto');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 const express = require('express');
 const mongoose = require('mongoose');
@@ -10,6 +11,17 @@ const fs = require('fs');
 const { uploadToR2, deleteFromR2, getR2KeyFromUrl, getMimeType } = require('./utils/r2');
 
 const Wrap = require('./models/Wrap');
+
+/**
+ * A stable, non-reversible id for an unauthenticated client, used to let an anonymous
+ * like count once per wrap. Behind a proxy the first X-Forwarded-For hop is the client.
+ */
+function anonFingerprint(req) {
+    const forwarded = (req.headers['x-forwarded-for'] || '').toString().split(',')[0].trim();
+    const address = forwarded || req.ip || req.connection?.remoteAddress || 'unknown';
+    const salt = process.env.JWT_SECRET || 'tesla-studio';
+    return crypto.createHash('sha256').update(`${salt}:${address}`).digest('hex').slice(0, 32);
+}
 const OpenAI = require('openai');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const authRoutes = require('./routes/auth');
@@ -368,12 +380,34 @@ app.post('/api/wraps/:id/like', async (req, res) => {
                 await user.save();
             }
         } else {
-            // Anonymous like - just increment (legacy)
-            // Or restrict likes to logged-in users? The prompt didn't say restrict.
-            // Let's allow anonymous likes to just increment count for now to not break existing behavior,
-            // but they won't be saved to any garage.
-            wrap.likes += 1;
-            liked = true;
+            // Anonymous likes stay allowed but count once per client and can be taken
+            // back, the same as a signed-in like. Before this they incremented without
+            // any check, so the count — and every "popular" sort that reads it — could
+            // be inflated by repeating the request.
+            const fingerprint = anonFingerprint(req);
+            const fresh = await Wrap.findById(wrap._id).select('+anonLikes');
+            const already = fresh?.anonLikes?.includes(fingerprint);
+
+            if (already) {
+                await Wrap.updateOne(
+                    { _id: wrap._id },
+                    { $pull: { anonLikes: fingerprint }, $inc: { likes: -1 } },
+                );
+                liked = false;
+            } else {
+                await Wrap.updateOne(
+                    { _id: wrap._id },
+                    { $addToSet: { anonLikes: fingerprint }, $inc: { likes: 1 } },
+                );
+                liked = true;
+            }
+
+            const counted = await Wrap.findById(wrap._id).select('likes');
+            const likes = Math.max(0, counted?.likes ?? 0);
+            if (likes !== counted?.likes) {
+                await Wrap.updateOne({ _id: wrap._id }, { $set: { likes } });
+            }
+            return res.json({ likes, liked });
         }
 
         await wrap.save();
