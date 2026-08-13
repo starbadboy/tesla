@@ -102,6 +102,8 @@ export const TRANSLATIONS = {
         failedToLoad3DModel: "Failed to load 3D model",
         viewUnavailable: "3D View Unavailable",
         no3DModel: "No 3D Model",
+        no3dPreview: "3D preview not available for this model",
+        pick2dPreview: "Select a wrap to see a 2D preview",
         selectDifferentVehicle: "Select a different vehicle",
 
         // ShareModal
@@ -253,6 +255,8 @@ export const TRANSLATIONS = {
         failedToLoad3DModel: "无法加载 3D 模型",
         viewUnavailable: "3D 视图不可用",
         no3DModel: "无 3D 模型",
+        no3dPreview: "该车型暂无 3D 预览",
+        pick2dPreview: "选择一款车衣即可查看 2D 预览",
         selectDifferentVehicle: "请选择其他车型",
 
         // ShareModal

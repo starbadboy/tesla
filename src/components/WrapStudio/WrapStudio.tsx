@@ -110,10 +110,18 @@ export function WrapStudio({
     return (
         <div className="ws-app">
             <div className="ws-stage">
+                {/* No 3D asset for this model: show the wrap sheet flat instead of an
+                    empty stage. The sheet is drawn for a light background, so the card
+                    stays light even here. */}
                 {!model3dPath && (
-                    <div className="ws-empty">
-                        <div className="ws-empty-title">{t.no3DModel}</div>
-                        <div className="ws-empty-sub">{t.selectDifferentVehicle}</div>
+                    <div className="ws-flat">
+                        {singleLayer && (
+                            <div className="ws-flat-card">
+                                <img src={singleLayer} alt={loadedWrapName ?? t.no3dPreview} />
+                            </div>
+                        )}
+                        <div className="ws-flat-title">{t.no3dPreview}</div>
+                        {!singleLayer && <div className="ws-flat-sub">{t.pick2dPreview}</div>}
                     </div>
                 )}
                 {model3dPath && (
@@ -178,7 +186,7 @@ export function WrapStudio({
             </div>
             {model3dPath && <div className="ws-hint">{t.dragHint}</div>}
 
-            <div className="ws-seg">
+            {model3dPath && <div className="ws-seg">
                 <button
                     type="button"
                     className={isWrapVisible ? 'ws-on' : ''}
@@ -193,7 +201,7 @@ export function WrapStudio({
                 >
                     {t.basePaint}
                 </button>
-            </div>
+            </div>}
 
             <div className="ws-shelf">
                 <h2>
@@ -225,11 +233,15 @@ export function WrapStudio({
             <div className="ws-foot">
                 <button
                     type="button"
-                    className={`ws-rotate ${autoRotate ? 'ws-on' : ''}`}
+                    className={`ws-rotate ${autoRotate && model3dPath ? 'ws-on' : ''}`}
                     onClick={() => setAutoRotate(v => !v)}
+                    disabled={!model3dPath}
+                    style={!model3dPath ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
+                    aria-label="Auto-rotate"
+                    title="Auto-rotate"
                 >
                     <span className="ws-dot" />
-                    <span>AUTO-ROTATE</span>
+                    <span className="ws-rotate-label">AUTO-ROTATE</span>
                 </button>
                 <div>
                     <input

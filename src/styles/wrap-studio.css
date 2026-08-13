@@ -39,19 +39,30 @@
 /* Bottom inset keeps the car clear of the segmented control and the shelf. */
 .ws-stage { position: absolute; inset: 0 0 330px 0; cursor: grab; }
 .ws-stage:active { cursor: grabbing; }
-/* Shown for models that have no 3D asset yet (CAR_3D_MODELS entry is empty). */
-.ws-empty {
+/* Models with no 3D asset (empty CAR_3D_MODELS entry) fall back to the flat sheet. */
+.ws-flat {
   position: absolute;
   inset: 0;
   display: grid;
   place-content: center;
   justify-items: center;
-  gap: 8px;
+  gap: 14px;
+  /* Clears the title block, which sits over the top of the stage. */
+  padding: 150px 16px 16px;
   text-align: center;
-  pointer-events: none;
 }
-.ws-empty-title { font: 600 15px 'Archivo', sans-serif; letter-spacing: .04em; color: var(--ws-ink-4); }
-.ws-empty-sub { font: 400 12.5px 'Archivo', sans-serif; color: var(--ws-ink-7); }
+.ws-flat-card {
+  background: #f2f2f4;
+  border-radius: 16px;
+  padding: 18px;
+  display: grid;
+  place-items: center;
+  max-width: min(560px, 82vw);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .45);
+}
+.ws-flat-card img { display: block; max-width: 100%; max-height: min(40vh, 420px); object-fit: contain; }
+.ws-flat-title { font: 600 15px 'Archivo', sans-serif; letter-spacing: .02em; color: var(--ws-ink-3); }
+.ws-flat-sub { font: 400 12.5px 'Archivo', sans-serif; color: var(--ws-ink-6); margin-top: -8px; }
 
 /* Konva canvas stays mounted — ThreeDView reads the wrap texture off it. */
 .ws-texture-src { position: absolute; inset: 0; opacity: 0; pointer-events: none; }
@@ -330,6 +341,10 @@
   .ws-hint { position: static; order: 3; padding: 6px 16px 0; }
 
   .ws-stage { position: relative; inset: auto; order: 4; flex: 1 1 auto; min-height: 32vh; }
+  .ws-flat { padding: 12px; gap: 10px; }
+  .ws-flat-card { padding: 12px; border-radius: 12px; max-width: 88vw; }
+  .ws-flat-card img { max-height: 34vh; }
+  .ws-flat-title { font-size: 13px; }
 
   .ws-seg { position: static; order: 5; transform: none; align-self: center; margin: 10px 0 14px; }
   .ws-seg button { padding: 8px 16px; }
@@ -340,8 +355,10 @@
   .ws-cards { gap: 12px; }
   .ws-thumb { height: 84px; }
 
-  .ws-foot { position: static; order: 7; height: 64px; padding: 0 16px; }
-  .ws-btn { padding: 11px 16px; font-size: 12.5px; }
-  .ws-btn.ws-ghost { margin-right: 8px; }
+  .ws-foot { position: static; order: 7; height: 64px; padding: 0 12px; gap: 8px; }
+  /* Three actions plus the toggle do not fit a phone row: keep the dot, drop its label. */
+  .ws-rotate-label { display: none; }
+  .ws-btn { padding: 10px 12px; font-size: 12px; gap: 6px; }
+  .ws-btn.ws-ghost { margin-right: 6px; }
   .ws-rotate { font-size: 10.5px; letter-spacing: .06em; }
 }
