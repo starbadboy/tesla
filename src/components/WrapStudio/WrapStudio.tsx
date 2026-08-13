@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
-import { ChevronDown, Upload } from 'lucide-react';
+import { ArrowDownToLine, Heart, Sparkles, Flame, Upload } from 'lucide-react';
+import { OptionMenu } from '../ui/OptionMenu';
 import { DesignCanvas, type DesignCanvasHandle, type LayerTransform } from '../DesignCanvas';
 import { ThreeDView } from '../ThreeDView';
 import { CAR_3D_MODELS, CAR_MODELS } from '../../constants';
 import { TRANSLATIONS } from '../../translations';
 import { UserMenu } from '../Auth/UserMenu';
-import { fetchWraps } from '../../utils/wrapApi';
+import { fetchWraps, wrapFlags, type SortOption } from '../../utils/wrapApi';
 import type { Wrap } from '../Gallery';
 import '../../styles/wrap-studio.css';
 
@@ -53,6 +54,7 @@ export function WrapStudio({
     const [shelf, setShelf] = useState<Wrap[]>([]);
     const [activeWrap, setActiveWrap] = useState<Wrap | null>(null);
     const [autoRotate, setAutoRotate] = useState(true);
+    const [shelfSort, setShelfSort] = useState<SortOption>('popular');
 
     const model3dPath = CAR_3D_MODELS[currentModelName] ?? null;
 
@@ -60,14 +62,14 @@ export function WrapStudio({
     // the shelf no longer downloads the whole collection to show a strip of it.
     useEffect(() => {
         let cancelled = false;
-        fetchWraps('car', 'popular', { limit: SHELF_SIZE, model: currentModelName })
+        fetchWraps('car', shelfSort, { limit: SHELF_SIZE, model: currentModelName })
             .then(({ items }) => { if (!cancelled) setShelf(items); })
             .catch(error => {
                 console.error('Failed to fetch community wraps', error);
                 if (!cancelled) setShelf([]);
             });
         return () => { cancelled = true; };
-    }, [communityRefreshTrigger, currentModelName]);
+    }, [communityRefreshTrigger, currentModelName, shelfSort]);
 
     // ThreeDView binds a newly loaded wrap to its materials only after showTexture
     // cycles — the texture uploads (verified: 1024x1024, version climbing) and the
@@ -171,18 +173,14 @@ export function WrapStudio({
             </div>
 
             <div className="ws-title">
-                <label className="ws-model">
-                    <select
-                        value={currentModelName}
-                        onChange={e => onModelChange(e.target.value)}
-                        aria-label={t.modelSelection}
-                    >
-                        {Object.keys(CAR_MODELS).map(name => (
-                            <option key={name} value={name}>{name}</option>
-                        ))}
-                    </select>
-                    <ChevronDown className="ws-model-caret" size={16} />
-                </label>
+                <OptionMenu
+                    className="ws-model"
+                    ariaLabel={t.modelSelection}
+                    align="center"
+                    value={currentModelName}
+                    options={Object.keys(CAR_MODELS).map(name => ({ value: name, label: name }))}
+                    onChange={onModelChange}
+                />
                 <span className="ws-sub">{subtitle}</span>
             </div>
             {model3dPath && <div className="ws-hint">{t.dragHint}</div>}
@@ -206,8 +204,22 @@ export function WrapStudio({
 
             <div className="ws-shelf">
                 <h2>
-                    <span>{t.community.toUpperCase()} · COMMUNITY WRAPS</span>
-                    <button type="button" onClick={onOpenGallery}>{t.viewAll} →</button>
+                    <span>{t.communityWraps}</span>
+                    <span className="ws-shelf-tools">
+                        <OptionMenu
+                            className="ws-sort"
+                            ariaLabel={t.sortBy}
+                            align="right"
+                            value={shelfSort}
+                            onChange={next => setShelfSort(next as SortOption)}
+                            options={[
+                                { value: 'popular', label: t.popular },
+                                { value: 'newest', label: t.newest },
+                                { value: 'downloads', label: t.mostDownloaded },
+                            ]}
+                        />
+                        <button type="button" onClick={onOpenGallery}>{t.viewAll} →</button>
+                    </span>
                 </h2>
                 {visible.length === 0 ? (
                     <div className="ws-shelf-empty">{t.noWrapsFound}</div>
@@ -222,9 +234,22 @@ export function WrapStudio({
                             >
                                 <div className="ws-thumb">
                                     <img src={wrap.imageUrl} alt={wrap.name} loading="lazy" />
+                                    {(() => {
+                                        const { isNew, isHot } = wrapFlags(wrap);
+                                        return (
+                                            <span className="ws-badges">
+                                                {isNew && <span className="ws-badge ws-new"><Sparkles size={9} /> NEW</span>}
+                                                {isHot && <span className="ws-badge ws-hot"><Flame size={9} /> HOT</span>}
+                                            </span>
+                                        );
+                                    })()}
                                 </div>
                                 <div className="ws-nm">{wrap.name}</div>
                                 <div className="ws-by">@{wrap.author}</div>
+                                <div className="ws-stats">
+                                    <span><Heart size={11} /> {wrap.likes ?? 0}</span>
+                                    <span><ArrowDownToLine size={11} /> {wrap.downloads ?? 0}</span>
+                                </div>
                             </button>
                         ))}
                     </div>

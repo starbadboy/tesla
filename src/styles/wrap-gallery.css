@@ -114,7 +114,6 @@
 .wg-search input::placeholder { color: var(--wg-ink-5); }
 
 .wg-sel {
-  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -124,21 +123,13 @@
   padding: 0 16px;
   height: 46px;
   color: var(--wg-ink-2);
-  white-space: nowrap;
-}
-.wg-sel > svg { color: var(--wg-ink-5); flex: none; }
-.wg-sel select {
-  appearance: none;
-  background: none;
-  border: none;
-  outline: none;
-  cursor: pointer;
-  color: inherit;
   font: 500 14px 'Archivo', sans-serif;
-  padding-right: 20px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color .15s;
 }
-.wg-sel select option { background: var(--wg-surface); color: var(--wg-ink-2); }
-.wg-sel .wg-caret { position: absolute; right: 14px; pointer-events: none; color: var(--wg-ink-5); }
+.wg-sel:hover { border-color: var(--wg-line-hover); }
+.wg-sel > svg { color: var(--wg-ink-5); flex: none; }
 
 .wg-more {
   font: 400 12px 'Archivo', sans-serif;

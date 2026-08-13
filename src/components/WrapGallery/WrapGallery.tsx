@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-    ArrowLeft, Box, Calendar, ChevronDown, Download, Flame, Heart,
+    ArrowLeft, Box, Calendar, Download, Flame, Heart,
     MessageCircle, Search, Sparkles, Trash2,
 } from 'lucide-react';
 import { CAR_MODELS } from '../../constants';
+import { OptionMenu } from '../ui/OptionMenu';
 import { TRANSLATIONS } from '../../translations';
 import { useAuth } from '../../contexts/AuthContext';
 import {
-    deleteWrap, downloadWrap, fetchGarage, fetchWraps, likeWrap, nextTagValue, updateWrapTags,
+    deleteWrap, downloadWrap, fetchGarage, fetchWraps, likeWrap, nextTagValue, updateWrapTags, wrapFlags,
     type GarageTab, type SortOption, type WrapType,
 } from '../../utils/wrapApi';
 import type { Wrap } from '../Gallery';
@@ -39,13 +40,6 @@ export interface WrapGalleryProps {
 function ownerId(wrap: Wrap): string | undefined {
     if (!wrap.user) return undefined;
     return typeof wrap.user === 'string' ? wrap.user : wrap.user._id;
-}
-
-function isRecent(dateStr?: string): boolean {
-    if (!dateStr) return false;
-    const time = new Date(dateStr).getTime();
-    if (Number.isNaN(time)) return false;
-    return Date.now() - time < 24 * 60 * 60 * 1000;
 }
 
 export function WrapGallery({
@@ -359,25 +353,30 @@ export function WrapGallery({
                                 />
                             </label>
                             {type === 'car' && (
-                                <div className="wg-sel">
-                                    <select value={modelFilter} onChange={e => setModelFilter(e.target.value)} aria-label={t.allModels}>
-                                        <option value={ALL_MODELS}>{t.allModels}</option>
-                                        {Object.keys(CAR_MODELS).map(name => (
-                                            <option key={name} value={name}>{name}</option>
-                                        ))}
-                                    </select>
-                                    <ChevronDown className="wg-caret" size={12} />
-                                </div>
+                                <OptionMenu
+                                    className="wg-sel"
+                                    ariaLabel={t.allModels}
+                                    value={modelFilter}
+                                    onChange={setModelFilter}
+                                    options={[
+                                        { value: ALL_MODELS, label: t.allModels },
+                                        ...Object.keys(CAR_MODELS).map(name => ({ value: name, label: name })),
+                                    ]}
+                                />
                             )}
-                            <div className="wg-sel">
-                                <Download size={13} />
-                                <select value={sortBy} onChange={e => setSortBy(e.target.value as SortOption)} aria-label={t.sortBy}>
-                                    <option value="downloads">{t.mostDownloaded}</option>
-                                    <option value="popular">{t.popular}</option>
-                                    <option value="newest">{t.newest}</option>
-                                </select>
-                                <ChevronDown className="wg-caret" size={12} />
-                            </div>
+                            <OptionMenu
+                                className="wg-sel"
+                                ariaLabel={t.sortBy}
+                                align="right"
+                                icon={<Download size={13} />}
+                                value={sortBy}
+                                onChange={next => setSortBy(next as SortOption)}
+                                options={[
+                                    { value: 'downloads', label: t.mostDownloaded },
+                                    { value: 'popular', label: t.popular },
+                                    { value: 'newest', label: t.newest },
+                                ]}
+                            />
                         </div>
                         )}
 
@@ -395,8 +394,7 @@ export function WrapGallery({
                         ) : (
                             <div className="wg-grid">
                                 {page.map(wrap => {
-                                    const showNew = wrap.forceNew === true || (wrap.forceNew !== false && isRecent(wrap.createdAt));
-                                    const showHot = wrap.forceHot === true || (wrap.forceHot !== false && (wrap.likes + wrap.downloads) > 30);
+                                    const { isNew: showNew, isHot: showHot } = wrapFlags(wrap);
                                     return (
                                         <div
                                             key={wrap._id}

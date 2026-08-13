@@ -53,6 +53,7 @@ export const TRANSLATIONS = {
         // New Keys
         studio: "Studio",
         community: "Community",
+        communityWraps: "COMMUNITY WRAPS",
         new: "New",
         shareYourWrap: "Share Your Wrap",
         shareYourPlate: "Share Your Plate",
@@ -209,6 +210,7 @@ export const TRANSLATIONS = {
         // New Keys
         studio: "工作室",
         community: "社区",
+        communityWraps: "社区车衣",
         new: "新",
         shareYourWrap: "分享你的设计",
         shareYourPlate: "分享你的车牌",

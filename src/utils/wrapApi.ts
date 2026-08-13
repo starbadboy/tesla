@@ -48,6 +48,16 @@ export async function fetchWraps(
     return { items, total: Number.isFinite(counted) && counted > 0 ? counted : items.length };
 }
 
+/** Shared badge rules so the studio shelf and the gallery agree. */
+export function wrapFlags(wrap: Wrap): { isNew: boolean; isHot: boolean } {
+    const posted = wrap.createdAt ? new Date(wrap.createdAt).getTime() : NaN;
+    const recent = Number.isFinite(posted) && Date.now() - posted < 24 * 60 * 60 * 1000;
+    return {
+        isNew: wrap.forceNew === true || (wrap.forceNew !== false && recent),
+        isHot: wrap.forceHot === true || (wrap.forceHot !== false && wrap.likes + wrap.downloads > 30),
+    };
+}
+
 export type GarageTab = 'my-uploads' | 'liked';
 
 /** The signed-in user's own uploads, or the wraps they liked. Requires a token. */
