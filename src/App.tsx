@@ -174,8 +174,10 @@ function App() {
     setSelectedLayerId('Full Wrap');
   };
 
+  // The studio and gallery are black-only, so Tailwind-styled pieces (auth modal,
+  // comments) follow suit instead of the OS setting.
   return (
-    <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
+    <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
       <AuthProvider>
         {/* SEO-only content; hidden from sighted users */}
         <section className="sr-only" aria-labelledby="seo-heading">

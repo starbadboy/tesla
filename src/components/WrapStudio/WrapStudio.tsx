@@ -4,7 +4,7 @@ import { DesignCanvas, type DesignCanvasHandle, type LayerTransform } from '../D
 import { ThreeDView } from '../ThreeDView';
 import { CAR_3D_MODELS, CAR_MODELS } from '../../constants';
 import { TRANSLATIONS } from '../../translations';
-import { useAuth } from '../../contexts/AuthContext';
+import { UserMenu } from '../Auth/UserMenu';
 import { fetchWraps } from '../../utils/wrapApi';
 import type { Wrap } from '../Gallery';
 import '../../styles/wrap-studio.css';
@@ -48,7 +48,6 @@ export function WrapStudio({
     children,
 }: WrapStudioProps) {
     const t = TRANSLATIONS[language];
-    const { user } = useAuth();
 
     const [shelf, setShelf] = useState<Wrap[]>([]);
     const [activeWrap, setActiveWrap] = useState<Wrap | null>(null);
@@ -149,9 +148,8 @@ export function WrapStudio({
                     <span className="ws-on">{t.design}</span>
                     <button type="button" onClick={onOpenGallery}>{t.community}</button>
                     <button type="button" onClick={onToggleLanguage}>{language === 'en' ? '中文' : 'EN'}</button>
-                    <button type="button" className="ws-avatar" onClick={onOpenGallery} title={user?.username ?? t.community}>
-                        {user?.username?.[0]?.toUpperCase() ?? 'K'}
-                    </button>
+                    {/* Sign in / account. UserMenu carries its own AuthModal. */}
+                    <UserMenu onOpenGarage={onOpenGallery} language={language} />
                 </nav>
             </div>
 

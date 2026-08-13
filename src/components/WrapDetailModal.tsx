@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Heart, Download, Send, Trash2, User, Pencil, Save, ChevronDown } from 'lucide-react';
 import { Button } from './ui/Button';
 import { useAuth } from '../contexts/AuthContext';
@@ -167,8 +168,10 @@ export function WrapDetailModal({ isOpen, onClose, wrap, onLoadWrap, onUpdate }:
 
     if (!isOpen || !wrap) return null;
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 text-sans">
+    // Portalled for the same reason as AuthModal: the gallery shell's reset would
+    // strip the padding off this Tailwind layout.
+    return createPortal(
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 text-sans">
             <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-2xl w-full max-w-5xl h-[80vh] flex overflow-hidden animate-in fade-in zoom-in duration-200">
 
                 {/* Close Button on Mobile (Overlay) - or just rely on top right in Layout */}
@@ -371,6 +374,7 @@ export function WrapDetailModal({ isOpen, onClose, wrap, onLoadWrap, onUpdate }:
                     </div>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body,
     );
 }

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import axios from 'axios';
 import { X, Mail, Lock, User as UserIcon, Loader } from 'lucide-react';
@@ -54,7 +55,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTa
         }
     };
 
-    return (
+    // Portalled to the document root: the studio and gallery shells reset padding
+    // and margin on every descendant, which would flatten this Tailwind layout.
+    return createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
             <div className="bg-white dark:bg-zinc-900 w-full max-w-md rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 border border-transparent dark:border-zinc-800">
                 {/* Header */}
@@ -148,6 +151,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTa
                     </Button>
                 </form>
             </div>
-        </div>
+        </div>,
+        document.body,
     );
 };
