@@ -33,7 +33,9 @@ export interface WrapStudioProps {
     children?: ReactNode;
 }
 
-const SHELF_SIZE = 6;
+// Six fit the strip; the rest scroll. Beyond this, the gallery ('View all') is
+// the better surface than a very long horizontal scroller.
+const SHELF_SIZE = 24;
 
 export function WrapStudio({
     language, onToggleLanguage,

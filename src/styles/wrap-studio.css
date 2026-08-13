@@ -198,9 +198,24 @@
   cursor: pointer;
 }
 .ws-shelf h2 button:hover { color: #fff; }
-.ws-cards { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; }
-@media (max-width: 1100px) { .ws-cards { grid-template-columns: repeat(4, 1fr); } }
-@media (max-width: 720px) { .ws-cards { grid-template-columns: repeat(2, 1fr); } }
+/* Horizontal strip: six cards wide, the rest reachable by scrolling. */
+.ws-cards {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: #3a3a42 transparent;
+  overscroll-behavior-x: contain;
+}
+.ws-cards::-webkit-scrollbar { height: 8px; }
+.ws-cards::-webkit-scrollbar-track { background: rgba(255, 255, 255, .04); border-radius: 999px; }
+.ws-cards::-webkit-scrollbar-thumb { background: #3a3a42; border-radius: 999px; }
+.ws-cards::-webkit-scrollbar-thumb:hover { background: #55555c; }
+.ws-card { flex: 0 0 calc((100% - 5 * 16px) / 6); }
+@media (max-width: 1100px) { .ws-card { flex-basis: calc((100% - 3 * 16px) / 4); } }
+@media (max-width: 720px) { .ws-card { flex-basis: calc((100% - 16px) / 2); } }
 .ws-card {
   background: var(--ws-surface);
   border-radius: 10px;
