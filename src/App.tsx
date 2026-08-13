@@ -9,6 +9,13 @@ import { SEO_COPY, SITE_IMAGE, SITE_URL } from './seo';
 
 import { WrapStudio } from './components/WrapStudio/WrapStudio';
 
+/**
+ * A newly loaded sheet starts from a clean transform. DesignCanvas fits each image to
+ * the canvas, so carrying the previous transform over shrank the next wrap — picking a
+ * community wrap after an upload rendered it mis-mapped.
+ */
+const FRESH_LAYER = { 'Full Wrap': { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1 } };
+
 function App() {
   const [currentModelName, setCurrentModelName] = useState('Model 3 (2024 Base)');
 
@@ -156,10 +163,7 @@ function App() {
         const blob = await resp.blob();
         const blobUrl = URL.createObjectURL(blob);
         setSingleLayer(blobUrl);
-        setLayerTransforms(prev => ({
-          ...prev,
-          'Full Wrap': prev['Full Wrap'] ?? { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1 },
-        }));
+        setLayerTransforms(FRESH_LAYER);
         setSelectedLayerId('Full Wrap');
         return;
       } catch (e) {
@@ -167,10 +171,7 @@ function App() {
       }
     }
     setSingleLayer(url);
-    setLayerTransforms(prev => ({
-      ...prev,
-      'Full Wrap': prev['Full Wrap'] ?? { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1 },
-    }));
+    setLayerTransforms(FRESH_LAYER);
     setSelectedLayerId('Full Wrap');
   };
 
