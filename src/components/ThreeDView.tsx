@@ -62,6 +62,29 @@ const FORCE_TRIM_MESHES: Record<string, Set<string>> = {
     ]),
 };
 
+/**
+ * True when a mesh's wrap UVs collapse to a point: the asset never mapped it into the
+ * template, so sampling would smear one texel over the whole panel. The Model Y (2025
+ * Base) GLB does this to 450k of its 500k verts, including its main skin. Measured once
+ * per geometry and cached.
+ */
+function hasMappedWrapUv(geometry: THREE.BufferGeometry, wrapUv: THREE.BufferAttribute | THREE.InterleavedBufferAttribute): boolean {
+    const cache = geometry.userData as { wrapUvMapped?: boolean };
+    if (cache.wrapUvMapped !== undefined) return cache.wrapUvMapped;
+
+    let minU = Infinity, maxU = -Infinity, minV = Infinity, maxV = -Infinity;
+    for (let i = 0; i < wrapUv.count; i++) {
+        const u = wrapUv.getX(i);
+        const v = wrapUv.getY(i);
+        if (u < minU) minU = u;
+        if (u > maxU) maxU = u;
+        if (v < minV) minV = v;
+        if (v > maxV) maxV = v;
+    }
+    cache.wrapUvMapped = maxU - minU > 0.001 && maxV - minV > 0.001;
+    return cache.wrapUvMapped;
+}
+
 const isPaintMaterial = (name?: string) => /paint/i.test(name ?? '');
 
 /**
@@ -356,7 +379,8 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true 
                     : mesh.geometry.attributes.uv1 ?? (modelHasWrapUv ? null : mesh.geometry.attributes.uv);
                 const shouldWrap = !isGlass && !isLight && !isWheel && !isInterior && !isTrim && !isMisc
                     && !FORCE_TRIM_MESHES[modelFile]?.has(mesh.name)
-                    && takesPaint(mesh) && !!wrapUv;
+                    && takesPaint(mesh) && !!wrapUv
+                    && hasMappedWrapUv(mesh.geometry, wrapUv);
 
                 if (shouldWrap) {
                     wrappedParts.push(name);
