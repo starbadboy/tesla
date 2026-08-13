@@ -1,6 +1,6 @@
 
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls, useGLTF, Html } from '@react-three/drei';
+import { OrbitControls, useGLTF, Html, useProgress } from '@react-three/drei';
 import * as THREE from 'three';
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { TRANSLATIONS } from '../translations';
@@ -8,6 +8,7 @@ import { TRANSLATIONS } from '../translations';
 
 import type { DesignCanvasHandle } from './DesignCanvas';
 import { ErrorBoundary } from './ErrorBoundary';
+import '../styles/three-loader.css';
 
 interface ThreeDViewProps {
     stageRef: React.RefObject<DesignCanvasHandle | null>;
@@ -496,6 +497,12 @@ export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive =
         setIsWrapApplied(showTexture);
     }, [showTexture]);
 
+    // A GLB is tens of megabytes; without this the stage is just black while it
+    // downloads and there is no way to tell loading from broken. useProgress reads
+    // three's loading manager, so it works out here in the DOM. It counts files, not
+    // bytes, so the bar sweeps instead of showing a percentage stuck at zero.
+    const { active: loadingModel } = useProgress();
+
     const toggleWrap = () => {
         const newState = !isWrapApplied;
         setIsWrapApplied(newState);
@@ -506,6 +513,13 @@ export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive =
         <div className="w-full h-full relative" style={{
             background: 'linear-gradient(to bottom, #17171a, #0c0c0e)'
         }}>
+            {hasModel && loadingModel && (
+                <div className="tdv-loading">
+                    <div className="tdv-loading-label">{t.loadingModel}</div>
+                    <div className="tdv-loading-track"><div className="tdv-loading-bar" /></div>
+                </div>
+            )}
+
             <ErrorBoundary fallback={
                 <div className="flex items-center justify-center h-full text-white/50">
                     <p>{t.viewUnavailable}</p>
