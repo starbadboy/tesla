@@ -123,6 +123,13 @@
 .wg-sel select option { background: var(--wg-surface); color: var(--wg-ink-2); }
 .wg-sel .wg-caret { position: absolute; right: 14px; pointer-events: none; color: var(--wg-ink-5); }
 
+.wg-more {
+  font: 400 12px 'Archivo', sans-serif;
+  color: var(--wg-ink-5);
+  text-align: center;
+  padding: 26px 0 4px;
+}
+
 .wg-note { font: 400 13px 'Archivo', sans-serif; color: var(--wg-ink-4); padding: 40px 0; }
 
 /* ============ GRID ============ */

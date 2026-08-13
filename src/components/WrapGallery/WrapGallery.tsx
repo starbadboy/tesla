@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
     ArrowLeft, Box, Calendar, ChevronDown, Download, Flame, Heart,
     MessageCircle, Search, Sparkles, Trash2,
@@ -15,6 +15,13 @@ import { WrapDetailModal } from '../WrapDetailModal';
 import '../../styles/wrap-gallery.css';
 
 const ALL_MODELS = '__all__';
+
+/**
+ * Cards added per step. The API hands back the whole collection, so rendering it all
+ * meant ~1900 cards and a 113,000px grid on "All Models" — slow to lay out and
+ * unusable on a phone. Cards now arrive a page at a time as you reach the end.
+ */
+const PAGE_SIZE = 60;
 
 export interface WrapGalleryProps {
     type: WrapType;
@@ -90,6 +97,31 @@ export function WrapGallery({
             return modelOk && searchOk;
         });
     }, [wraps, search, modelFilter, type]);
+
+    const [shown, setShown] = useState(PAGE_SIZE);
+    const sentinelRef = useRef<HTMLDivElement>(null);
+
+    // Any change to the result set starts counting again.
+    useEffect(() => {
+        setShown(PAGE_SIZE);
+    }, [search, modelFilter, sortBy, type]);
+
+    useEffect(() => {
+        const sentinel = sentinelRef.current;
+        if (!sentinel || shown >= visible.length) return;
+        const observer = new IntersectionObserver(
+            entries => {
+                if (entries[0]?.isIntersecting) {
+                    setShown(current => Math.min(current + PAGE_SIZE, visible.length));
+                }
+            },
+            { rootMargin: '800px' },
+        );
+        observer.observe(sentinel);
+        return () => observer.disconnect();
+    }, [shown, visible.length]);
+
+    const page = visible.slice(0, shown);
 
     const open = openId ? wraps.find(w => w._id === openId) ?? null : null;
 
@@ -281,7 +313,7 @@ export function WrapGallery({
                             </div>
                         ) : (
                             <div className="wg-grid">
-                                {visible.map(wrap => {
+                                {page.map(wrap => {
                                     const showNew = wrap.forceNew === true || (wrap.forceNew !== false && isRecent(wrap.createdAt));
                                     const showHot = wrap.forceHot === true || (wrap.forceHot !== false && (wrap.likes + wrap.downloads) > 30);
                                     return (
@@ -344,6 +376,14 @@ export function WrapGallery({
                                     );
                                 })}
                             </div>
+                        )}
+                        {visible.length > 0 && (
+                            <>
+                                <div ref={sentinelRef} aria-hidden="true" />
+                                <div className="wg-more">
+                                    {page.length} / {visible.length}
+                                </div>
+                            </>
                         )}
                     </>
                 )}
