@@ -43,24 +43,46 @@ interface DesignCanvasProps {
     plateSize?: '420x100' | '420x200';
 }
 
+/**
+ * A layer draws at its natural pixel size, so a sheet that is not exactly canvas-sized
+ * lands on the wrong panels — uploads of arbitrary images were unusable. Fit it once,
+ * centred, when it first loads. Sheets that already match are left untouched.
+ */
 const TextureImage = ({
     imgPath,
     isSelected,
     onSelect,
     onChange,
     transform,
-    isInteractable = true
+    isInteractable = true,
+    fitTo,
 }: {
     imgPath: string;
     isSelected: boolean;
     onSelect: () => void;
     onChange: (t: LayerTransform) => void;
+    fitTo?: { width: number; height: number };
     transform: LayerTransform;
     isInteractable?: boolean;
 }) => {
     const [image] = useImage(imgPath, 'anonymous');
     const shapeRef = useRef<Konva.Image>(null);
     const trRef = useRef<Konva.Transformer>(null);
+
+    useEffect(() => {
+        if (!image || !fitTo) return;
+        if (transform.scaleX !== 1 || transform.scaleY !== 1) return;
+        const scale = Math.min(fitTo.width / image.width, fitTo.height / image.height);
+        if (Math.abs(scale - 1) < 0.001) return;
+        onChange({
+            ...transform,
+            scaleX: scale,
+            scaleY: scale,
+            x: (fitTo.width - image.width * scale) / 2,
+            y: (fitTo.height - image.height * scale) / 2,
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [image, fitTo]);
 
     useEffect(() => {
         if (isSelected && trRef.current && shapeRef.current) {
@@ -556,6 +578,7 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
                                 onChange={(newTransform) => onTransformChange(part, newTransform)}
                                 transform={transform}
                                 isInteractable={mode === 'select'}
+                                fitTo={dimensions}
                             />
                         );
                     })}

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState, type ReactNode, type RefObject } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { ChevronDown, Upload } from 'lucide-react';
 import { DesignCanvas, type DesignCanvasHandle, type LayerTransform } from '../DesignCanvas';
 import { ThreeDView } from '../ThreeDView';
 import { CAR_3D_MODELS, CAR_MODELS } from '../../constants';
@@ -85,6 +85,17 @@ export function WrapStudio({
         const universal = shelf.filter(w => !w.models || w.models.length === 0);
         return [...forModel, ...universal].slice(0, SHELF_SIZE);
     }, [shelf, currentModelName]);
+
+    const fileRef = useRef<HTMLInputElement>(null);
+
+    /** Preview a sheet from disk. DesignCanvas fits it to the template canvas. */
+    const handleUpload = async (file: File | undefined) => {
+        if (!file) return;
+        setActiveWrap(null);
+        onLayerTransformsChange({});
+        onIsWrapVisibleChange(true);
+        await onLoadCommunityWrap(URL.createObjectURL(file), { name: file.name.replace(/\.[^.]+$/, '') });
+    };
 
     const handlePick = async (wrap: Wrap) => {
         if (!wrap.imageUrl) return;
@@ -224,6 +235,21 @@ export function WrapStudio({
                     <span>AUTO-ROTATE</span>
                 </button>
                 <div>
+                    <input
+                        ref={fileRef}
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        hidden
+                        onChange={e => { void handleUpload(e.target.files?.[0]); e.target.value = ''; }}
+                    />
+                    <button
+                        type="button"
+                        className="ws-btn ws-ghost"
+                        onClick={() => fileRef.current?.click()}
+                        title={t.uploadHint}
+                    >
+                        <Upload size={14} /> {t.upload}
+                    </button>
                     <button type="button" className="ws-btn ws-ghost" onClick={onShare}>{t.share}</button>
                     <button type="button" className="ws-btn" onClick={onExport}>{t.export} ↓</button>
                 </div>

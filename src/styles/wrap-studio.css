@@ -275,6 +275,9 @@
   z-index: 10;
 }
 .ws-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font: 500 13px 'Archivo', sans-serif;
   padding: 12px 30px;
   border-radius: 6px;
