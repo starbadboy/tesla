@@ -51,17 +51,19 @@
   padding: 150px 16px 16px;
   text-align: center;
 }
+/* Same treatment as the gallery's detail frame: a dark surface with a hairline
+   border sits with the rest of the studio, where a light card read as a frame. */
 .ws-flat-card {
-  background: #f2f2f4;
-  border-radius: 16px;
-  padding: 18px;
+  background: var(--ws-surface);
+  border: 1px solid var(--ws-line);
+  border-radius: 14px;
+  overflow: hidden;
   display: grid;
   place-items: center;
   max-width: min(560px, 82vw);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, .45);
 }
-.ws-flat-card img { display: block; max-width: 100%; max-height: min(40vh, 420px); object-fit: contain; }
-.ws-flat-title { font: 600 15px 'Archivo', sans-serif; letter-spacing: .02em; color: var(--ws-ink-3); }
+.ws-flat-card img { display: block; max-width: 100%; max-height: min(42vh, 440px); object-fit: contain; border-radius: inherit; }
+.ws-flat-title { font: 500 13px 'Archivo', sans-serif; letter-spacing: .04em; color: var(--ws-ink-4); }
 .ws-flat-sub { font: 400 12.5px 'Archivo', sans-serif; color: var(--ws-ink-6); margin-top: -8px; }
 
 /* Konva canvas stays mounted — ThreeDView reads the wrap texture off it. */
@@ -377,7 +379,7 @@
 
   .ws-stage { position: relative; inset: auto; order: 4; flex: 1 1 auto; min-height: 32vh; }
   .ws-flat { padding: 12px; gap: 10px; }
-  .ws-flat-card { padding: 12px; border-radius: 12px; max-width: 88vw; }
+  .ws-flat-card { border-radius: 12px; max-width: 88vw; }
   .ws-flat-card img { max-height: 34vh; }
   .ws-flat-title { font-size: 13px; }
 
