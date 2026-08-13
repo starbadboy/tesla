@@ -53,16 +53,24 @@
 }
 /* Same treatment as the gallery's detail frame: a dark surface with a hairline
    border sits with the rest of the studio, where a light card read as a frame. */
+/* The card hugs the sheet: sizing the card and clipping it cropped the bottom of
+   the layout, because the image kept its own square aspect inside a shorter box. */
 .ws-flat-card {
   background: var(--ws-surface);
   border: 1px solid var(--ws-line);
   border-radius: 14px;
-  overflow: hidden;
-  display: grid;
-  place-items: center;
-  max-width: min(560px, 82vw);
+  display: inline-grid;
+  line-height: 0;
 }
-.ws-flat-card img { display: block; max-width: 100%; max-height: min(42vh, 440px); object-fit: contain; border-radius: inherit; }
+.ws-flat-card img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: min(520px, 82vw);
+  max-height: min(46vh, 460px);
+  object-fit: contain;
+  border-radius: 13px;
+}
 .ws-flat-title { font: 500 13px 'Archivo', sans-serif; letter-spacing: .04em; color: var(--ws-ink-4); }
 .ws-flat-sub { font: 400 12.5px 'Archivo', sans-serif; color: var(--ws-ink-6); margin-top: -8px; }
 
@@ -387,8 +395,8 @@
 
   .ws-stage { position: relative; inset: auto; order: 4; flex: 1 1 auto; min-height: 32vh; }
   .ws-flat { padding: 12px; gap: 10px; }
-  .ws-flat-card { border-radius: 12px; max-width: 88vw; }
-  .ws-flat-card img { max-height: 34vh; }
+  .ws-flat-card { border-radius: 12px; }
+  .ws-flat-card img { max-width: 86vw; max-height: 34vh; border-radius: 11px; }
   .ws-flat-title { font-size: 13px; }
 
   .ws-seg { position: static; order: 5; transform: none; align-self: center; margin: 10px 0 14px; }
