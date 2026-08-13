@@ -11,6 +11,8 @@ export interface Wrap {
     name: string;
     author: string;
     imageUrl?: string;
+    /** Pre-rendered shot of this wrap on its car, produced by scripts/render-wraps. */
+    renderUrl?: string;
     audioUrl?: string;
     models?: string[];
     likes: number;

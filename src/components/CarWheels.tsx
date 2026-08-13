@@ -192,7 +192,8 @@ export function CarContactShadow({ scene }: CarWheelsProps) {
         ctx.fillRect(0, 0, 128, 128);
 
         return {
-            texture: new THREE.CanvasTexture(canvas),
+            // Untyped at the JSX boundary: two @types/three copies disagree on Texture.
+            texture: new THREE.CanvasTexture(canvas) as unknown as undefined,
             width: Math.max(size.x, size.z) * 1.05,
             depth: Math.min(size.x, size.z) * 1.35,
             alongX: size.x >= size.z,

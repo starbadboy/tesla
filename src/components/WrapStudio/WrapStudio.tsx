@@ -30,6 +30,7 @@ export interface WrapStudioProps {
     onExport: () => void;
     onOpenGallery: () => void;
     onOpenGarage: () => void;
+    onOpen3DGallery: () => void;
     onLoadCommunityWrap: (url: string, wrap?: { model?: string; name?: string }) => void | Promise<void>;
     communityRefreshTrigger?: number;
     children?: ReactNode;
@@ -45,7 +46,7 @@ export function WrapStudio({
     singleLayer, loadedWrapName, isWrapVisible, onIsWrapVisibleChange,
     canvasRef, layerTransforms, onLayerTransformsChange,
     selectedLayerId, onSelectedLayerIdChange,
-    onShare, onExport, onOpenGallery, onOpenGarage, onLoadCommunityWrap,
+    onShare, onExport, onOpenGallery, onOpenGarage, onOpen3DGallery, onLoadCommunityWrap,
     communityRefreshTrigger = 0,
     children,
 }: WrapStudioProps) {
@@ -165,6 +166,7 @@ export function WrapStudio({
                 <div className="ws-wm">TESLA<span> STUDIO</span></div>
                 <nav className="ws-nav">
                     <span className="ws-on">{t.preview3d}</span>
+                    <button type="button" onClick={onOpen3DGallery}>{t.gallery3d}</button>
                     <button type="button" onClick={onOpenGallery}>{t.community}</button>
                     <button type="button" onClick={onToggleLanguage}>{language === 'en' ? '中文' : 'EN'}</button>
                     {/* Sign in / account. UserMenu carries its own AuthModal. */}
