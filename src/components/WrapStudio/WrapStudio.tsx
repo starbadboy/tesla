@@ -245,10 +245,12 @@ export function WrapStudio({
                                     })()}
                                 </div>
                                 <div className="ws-nm">{wrap.name}</div>
-                                <div className="ws-by">@{wrap.author}</div>
-                                <div className="ws-stats">
-                                    <span><Heart size={11} /> {wrap.likes ?? 0}</span>
-                                    <span><ArrowDownToLine size={11} /> {wrap.downloads ?? 0}</span>
+                                <div className="ws-meta">
+                                    <span className="ws-by">@{wrap.author}</span>
+                                    <span className="ws-stats">
+                                        <span><Heart size={11} /> {wrap.likes ?? 0}</span>
+                                        <span><ArrowDownToLine size={11} /> {wrap.downloads ?? 0}</span>
+                                    </span>
                                 </div>
                             </button>
                         ))}

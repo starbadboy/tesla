@@ -287,11 +287,19 @@
 .ws-badge.ws-new { background: rgba(220, 38, 38, .9); }
 .ws-badge.ws-hot { background: rgba(249, 115, 22, .9); }
 
-.ws-stats {
+/* Author left, counts right: the card had a bare right edge with both on the left. */
+.ws-meta {
   display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 14px;
+}
+.ws-stats {
+  display: inline-flex;
   align-items: center;
-  gap: 12px;
-  padding: 6px 14px 0;
+  gap: 10px;
+  flex: none;
   font: 400 11px 'Archivo', sans-serif;
   color: var(--ws-ink-6);
 }
@@ -300,7 +308,7 @@
 .ws-card .ws-by {
   font: 400 11px 'Archivo', sans-serif;
   color: var(--ws-ink-6);
-  padding: 0 14px;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
