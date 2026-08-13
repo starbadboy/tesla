@@ -26,6 +26,10 @@ interface ThreeDViewProps {
     autoRotateSpeed?: number;
     /** Hide the built-in wrap pill when the host UI owns that control. */
     hideWrapToggle?: boolean;
+    /** Clear to transparent instead of the studio's black — used by the render surface. */
+    transparent?: boolean;
+    /** Overrides the automatic framing, e.g. a tighter crop for rendered thumbnails. */
+    fov?: number;
 }
 
 /**
@@ -149,7 +153,7 @@ function originalMaterials(mesh: THREE.Mesh): THREE.Material[] {
 }
 
 // Simplified Car that applies texture to specific material
-const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true }: { stageRef: React.RefObject<DesignCanvasHandle | null>, modelPath: string, showTexture?: boolean, isActive?: boolean }) => {
+const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true, transparentStage = false }: { stageRef: React.RefObject<DesignCanvasHandle | null>, modelPath: string, showTexture?: boolean, isActive?: boolean, transparentStage?: boolean }) => {
     const { scene } = useGLTF(modelPath);
     const modelFile = modelPath.split('/').pop() || '';
 
@@ -481,7 +485,7 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true 
             {/* Wheels mount inside the scene so they inherit its scale and offset. */}
             <primitive object={scene} scale={2} position={[0, -1, 0]}>
                 <CarWheels scene={scene} />
-                <CarContactShadow scene={scene} />
+                {!transparentStage && <CarContactShadow scene={scene} />}
             </primitive>
         </group>
     );
@@ -503,19 +507,19 @@ const ErrorFallback = ({ error, language = 'en' }: { error?: Error, language?: '
  * Perspective FOV is vertical, so a portrait viewport loses horizontal framing and
  * crops the car's nose and tail. Widen it when the stage is taller than it is wide.
  */
-function FitFraming() {
+function FitFraming({ override }: { override?: number }) {
     const { camera, size } = useThree();
     useEffect(() => {
         if (!(camera instanceof THREE.PerspectiveCamera)) return;
-        const wanted = size.height > size.width ? 62 : 45;
+        const wanted = override ?? (size.height > size.width ? 62 : 45);
         if (camera.fov === wanted) return;
         camera.fov = wanted;
         camera.updateProjectionMatrix();
-    }, [camera, size]);
+    }, [camera, size, override]);
     return null;
 }
 
-export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive = true, onToggleWrap, language = 'en', autoRotate = false, autoRotateSpeed = 1.0, hideWrapToggle = false }: ThreeDViewProps) => {
+export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive = true, onToggleWrap, language = 'en', autoRotate = false, autoRotateSpeed = 1.0, hideWrapToggle = false, transparent = false, fov }: ThreeDViewProps) => {
     // Determine if we have a valid model path
     const hasModel = modelPath && modelPath.length > 0;
     const t = TRANSLATIONS[language];
@@ -542,7 +546,7 @@ export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive =
 
     return (
         <div className="w-full h-full relative" style={{
-            background: 'linear-gradient(to bottom, #17171a, #0c0c0e)'
+            background: transparent ? 'transparent' : 'linear-gradient(to bottom, #17171a, #0c0c0e)'
         }}>
             {hasModel && loadingModel && (
                 <div className="tdv-loading">
@@ -562,13 +566,15 @@ export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive =
                     gl={{
                         toneMapping: THREE.ACESFilmicToneMapping,
                         outputColorSpace: THREE.SRGBColorSpace,
+                        alpha: transparent,
+                        preserveDrawingBuffer: transparent,
                     }}
                     onCreated={({ gl }) => {
                         gl.toneMappingExposure = 1.6;
                     }}
                 >
-                    <color attach="background" args={['#0c0c0e']} />
-                    <FitFraming />
+                    {!transparent && <color attach="background" args={['#0c0c0e']} />}
+                    <FitFraming override={fov} />
                     {/* Tesla Gallery-style OrbitControls */}
                     <OrbitControls
                         makeDefault
@@ -622,8 +628,8 @@ export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive =
                         color="#ffffff"
                     />
 
-                    {/* Ground shadow plane */}
-                    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1, 0]} receiveShadow>
+                    {/* Ground shadow plane — omitted on a transparent render surface. */}
+                    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1, 0]} receiveShadow visible={!transparent}>
                         <planeGeometry args={[50, 50]} />
                         <shadowMaterial transparent opacity={0.3} />
                     </mesh>
@@ -632,7 +638,7 @@ export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive =
                         <ErrorBoundary key={`${modelPath}-${isWrapApplied}`} fallback={<ErrorFallback language={language} />}>
                             {/* Removed Stage to use custom Environment and lighting control */}
                             <group position={[0, 0, 0]}>
-                                <TexturedCar stageRef={stageRef} modelPath={modelPath} showTexture={isWrapApplied} isActive={isActive} />
+                                <TexturedCar stageRef={stageRef} modelPath={modelPath} showTexture={isWrapApplied} isActive={isActive} transparentStage={transparent} />
                             </group>
                         </ErrorBoundary>
                     ) : (

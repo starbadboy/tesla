@@ -17,6 +17,12 @@ const WrapSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    // Pre-rendered shot of this wrap on its car, produced by scripts/render-wraps.mjs
+    // and shown by the 3D gallery in place of the flat sheet.
+    renderUrl: {
+        type: String,
+        default: ''
+    },
     models: {
         type: [String], // Array of model names this wrap is compatible with/showcased on
         default: []
