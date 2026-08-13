@@ -39,6 +39,7 @@ function App() {
   const [isWrapVisible, setIsWrapVisible] = useState(true);
   const [galleryRefreshTrigger, setGalleryRefreshTrigger] = useState(0);
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+  const [galleryView, setGalleryView] = useState<'community' | 'garage'>('community');
 
   const canvasRef = useRef<DesignCanvasHandle>(null);
 
@@ -222,7 +223,8 @@ function App() {
           canvasRef={canvasRef}
           onShare={handleOpenShareModal}
           onExport={handleExport}
-          onOpenGallery={() => setIsGalleryOpen(true)}
+          onOpenGallery={() => { setGalleryView('community'); setIsGalleryOpen(true); }}
+          onOpenGarage={() => { setGalleryView('garage'); setIsGalleryOpen(true); }}
           onLoadCommunityWrap={handleLoadCommunityWrap}
           communityRefreshTrigger={galleryRefreshTrigger}
         />
@@ -234,6 +236,7 @@ function App() {
             refreshTrigger={galleryRefreshTrigger}
             language={language}
             onToggleLanguage={toggleLanguage}
+            view={galleryView}
             onLoadWrap={handleLoadCommunityWrap}
             onClose={() => setIsGalleryOpen(false)}
           />

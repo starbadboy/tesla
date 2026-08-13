@@ -48,6 +48,16 @@ export async function fetchWraps(
     return { items, total: Number.isFinite(counted) && counted > 0 ? counted : items.length };
 }
 
+export type GarageTab = 'my-uploads' | 'liked';
+
+/** The signed-in user's own uploads, or the wraps they liked. Requires a token. */
+export async function fetchGarage(tab: GarageTab): Promise<Wrap[]> {
+    const res = await fetch(`/api/user/garage?type=${tab}`, { headers: authHeaders() });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+}
+
 /** Toggles the like and returns the new count plus whether this client now likes it. */
 export async function likeWrap(id: string, type: WrapType): Promise<{ likes: number; liked: boolean }> {
     const url = type === 'sound' ? `/api/sounds/${id}/like` : `/api/wraps/${id}/like`;

@@ -28,6 +28,7 @@ export interface WrapStudioProps {
     onShare: () => void;
     onExport: () => void;
     onOpenGallery: () => void;
+    onOpenGarage: () => void;
     onLoadCommunityWrap: (url: string, wrap?: { model?: string; name?: string }) => void | Promise<void>;
     communityRefreshTrigger?: number;
     children?: ReactNode;
@@ -43,7 +44,7 @@ export function WrapStudio({
     singleLayer, loadedWrapName, isWrapVisible, onIsWrapVisibleChange,
     canvasRef, layerTransforms, onLayerTransformsChange,
     selectedLayerId, onSelectedLayerIdChange,
-    onShare, onExport, onOpenGallery, onLoadCommunityWrap,
+    onShare, onExport, onOpenGallery, onOpenGarage, onLoadCommunityWrap,
     communityRefreshTrigger = 0,
     children,
 }: WrapStudioProps) {
@@ -165,7 +166,7 @@ export function WrapStudio({
                     <button type="button" onClick={onOpenGallery}>{t.community}</button>
                     <button type="button" onClick={onToggleLanguage}>{language === 'en' ? '中文' : 'EN'}</button>
                     {/* Sign in / account. UserMenu carries its own AuthModal. */}
-                    <UserMenu onOpenGarage={onOpenGallery} language={language} />
+                    <UserMenu onOpenGarage={onOpenGarage} language={language} />
                 </nav>
             </div>
 

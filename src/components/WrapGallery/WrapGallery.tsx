@@ -7,8 +7,8 @@ import { CAR_MODELS } from '../../constants';
 import { TRANSLATIONS } from '../../translations';
 import { useAuth } from '../../contexts/AuthContext';
 import {
-    deleteWrap, downloadWrap, fetchWraps, likeWrap, nextTagValue, updateWrapTags,
-    type SortOption, type WrapType,
+    deleteWrap, downloadWrap, fetchGarage, fetchWraps, likeWrap, nextTagValue, updateWrapTags,
+    type GarageTab, type SortOption, type WrapType,
 } from '../../utils/wrapApi';
 import type { Wrap } from '../Gallery';
 import { WrapDetailModal } from '../WrapDetailModal';
@@ -29,6 +29,8 @@ export interface WrapGalleryProps {
     refreshTrigger?: number;
     language?: 'en' | 'zh';
     onToggleLanguage?: () => void;
+    /** 'garage' lists the signed-in user's own uploads and liked wraps. */
+    view?: 'community' | 'garage';
     /** Load the wrap into the studio (and close this page), switching car if given. */
     onLoadWrap: (url: string, wrap?: { model?: string; name?: string }) => void | Promise<void>;
     onClose: () => void;
@@ -47,7 +49,8 @@ function isRecent(dateStr?: string): boolean {
 }
 
 export function WrapGallery({
-    type, selectedModel, refreshTrigger = 0, language = 'en', onToggleLanguage, onLoadWrap, onClose,
+    type, selectedModel, refreshTrigger = 0, language = 'en', onToggleLanguage,
+    view = 'community', onLoadWrap, onClose,
 }: WrapGalleryProps) {
     const t = TRANSLATIONS[language];
     const { user } = useAuth();
@@ -60,6 +63,9 @@ export function WrapGallery({
     const [likedIds, setLikedIds] = useState<string[]>([]);
     const [commentsFor, setCommentsFor] = useState<Wrap | null>(null);
 
+    const [garageTab, setGarageTab] = useState<GarageTab>('my-uploads');
+    const [garageError, setGarageError] = useState(false);
+    const isGarage = view === 'garage';
     const [total, setTotal] = useState(0);
     const sentinelRef = useRef<HTMLDivElement>(null);
 
@@ -76,6 +82,27 @@ export function WrapGallery({
     useEffect(() => {
         let cancelled = false;
         setLoading(true);
+        setGarageError(false);
+
+        // The garage is one user's own list, so it arrives whole rather than paged.
+        if (isGarage) {
+            fetchGarage(garageTab)
+                .then(items => {
+                    if (cancelled) return;
+                    setWraps(items);
+                    setTotal(items.length);
+                })
+                .catch(error => {
+                    console.error('Failed to fetch garage', error);
+                    if (cancelled) return;
+                    setWraps([]);
+                    setTotal(0);
+                    setGarageError(true);
+                })
+                .finally(() => { if (!cancelled) setLoading(false); });
+            return () => { cancelled = true; };
+        }
+
         fetchWraps(type, sortBy, { limit: PAGE_SIZE, q: query || undefined, model: serverModel })
             .then(({ items, total: count }) => {
                 if (cancelled) return;
@@ -90,7 +117,7 @@ export function WrapGallery({
             })
             .finally(() => { if (!cancelled) setLoading(false); });
         return () => { cancelled = true; };
-    }, [type, sortBy, query, serverModel, refreshTrigger]);
+    }, [type, sortBy, query, serverModel, refreshTrigger, isGarage, garageTab]);
 
     // Escape closes the detail view first, then the page.
     useEffect(() => {
@@ -106,7 +133,7 @@ export function WrapGallery({
     // Next pages, pulled in as the end of the grid approaches.
     useEffect(() => {
         const sentinel = sentinelRef.current;
-        if (!sentinel || loading || wraps.length === 0 || wraps.length >= total) return;
+        if (isGarage || !sentinel || loading || wraps.length === 0 || wraps.length >= total) return;
 
         let cancelled = false;
         const observer = new IntersectionObserver(
@@ -134,7 +161,7 @@ export function WrapGallery({
         );
         observer.observe(sentinel);
         return () => { cancelled = true; observer.disconnect(); };
-    }, [wraps, total, loading, type, sortBy, query, serverModel]);
+    }, [wraps, total, loading, type, sortBy, query, serverModel, isGarage]);
 
     const page = wraps;
 
@@ -294,7 +321,34 @@ export function WrapGallery({
                     </>
                 ) : (
                     <>
-                        <h1>{type === 'sound' ? t.galleryTitleSound : type === 'plate' ? t.galleryTitlePlate : t.galleryTitle}</h1>
+                        <h1>
+                            {isGarage
+                                ? t.myGarage
+                                : type === 'sound' ? t.galleryTitleSound
+                                    : type === 'plate' ? t.galleryTitlePlate : t.galleryTitle}
+                        </h1>
+                        {isGarage ? (
+                            <div className="wg-tabs" role="tablist">
+                                <button
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={garageTab === 'my-uploads'}
+                                    className={garageTab === 'my-uploads' ? 'is-active' : ''}
+                                    onClick={() => setGarageTab('my-uploads')}
+                                >
+                                    {t.myUploads}
+                                </button>
+                                <button
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={garageTab === 'liked'}
+                                    className={garageTab === 'liked' ? 'is-active' : ''}
+                                    onClick={() => setGarageTab('liked')}
+                                >
+                                    {t.likedWraps}
+                                </button>
+                            </div>
+                        ) : (
                         <div className="wg-bar">
                             <label className="wg-search">
                                 <Search size={15} />
@@ -325,12 +379,18 @@ export function WrapGallery({
                                 <ChevronDown className="wg-caret" size={12} />
                             </div>
                         </div>
+                        )}
 
                         {loading && wraps.length === 0 ? (
                             <div className="wg-note">{t.connecting}</div>
                         ) : page.length === 0 ? (
                             <div className="wg-note">
-                                {type === 'sound' ? t.noSoundsFound : type === 'plate' ? t.noPlatesFound : t.noWrapsFound}
+                                {garageError
+                                    ? t.garageLogin
+                                    : isGarage
+                                        ? (garageTab === 'liked' ? t.garageEmptyLiked : t.garageEmptyUploads)
+                                        : type === 'sound' ? t.noSoundsFound
+                                            : type === 'plate' ? t.noPlatesFound : t.noWrapsFound}
                             </div>
                         ) : (
                             <div className="wg-grid">
@@ -401,9 +461,11 @@ export function WrapGallery({
                         {page.length > 0 && (
                             <>
                                 <div ref={sentinelRef} aria-hidden="true" />
-                                <div className="wg-more">
-                                    {page.length} / {total}
-                                </div>
+                                {!isGarage && (
+                                    <div className="wg-more">
+                                        {page.length} / {total}
+                                    </div>
+                                )}
                             </>
                         )}
                     </>
