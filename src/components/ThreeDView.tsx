@@ -8,6 +8,7 @@ import { TRANSLATIONS } from '../translations';
 
 import type { DesignCanvasHandle } from './DesignCanvas';
 import { ErrorBoundary } from './ErrorBoundary';
+import { CarWheels } from './CarWheels';
 import '../styles/three-loader.css';
 
 interface ThreeDViewProps {
@@ -224,6 +225,7 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true 
             // them does not type-check.
             if (child instanceof THREE.Mesh) {
                 const mesh = child;
+                if (mesh.userData.proceduralWheel) return;
 
                 // Identify parts to paint vs parts to keep as is (glass, lights, wheels)
                 const name = mesh.name.toLowerCase();
@@ -361,6 +363,7 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true 
             // them does not type-check.
             if (child instanceof THREE.Mesh) {
                 const mesh = child;
+                if (mesh.userData.proceduralWheel) return;
                 const name = mesh.name.toLowerCase();
                 const originals = originalMaterials(mesh);
                 const materialName = (originals[0]?.name || '').toLowerCase();
@@ -475,7 +478,10 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true 
 
     return (
         <group>
-            <primitive object={scene} scale={2} position={[0, -1, 0]} />
+            {/* Wheels mount inside the scene so they inherit its scale and offset. */}
+            <primitive object={scene} scale={2} position={[0, -1, 0]}>
+                <CarWheels scene={scene} />
+            </primitive>
         </group>
     );
 };
