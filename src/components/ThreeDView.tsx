@@ -195,8 +195,11 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true 
     // Setup initial material properties for realism (this useEffect remains for base material setup)
     useEffect(() => {
         scene.traverse((child) => {
-            if ((child as THREE.Mesh).isMesh) {
-                const mesh = child as THREE.Mesh;
+            // instanceof, not a cast: two copies of @types/three are installed and the
+            // traverse callback's Object3D comes from the other one, so a cast between
+            // them does not type-check.
+            if (child instanceof THREE.Mesh) {
+                const mesh = child;
 
                 // Identify parts to paint vs parts to keep as is (glass, lights, wheels)
                 const name = mesh.name.toLowerCase();
@@ -329,8 +332,11 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true 
         });
 
         scene.traverse((child) => {
-            if ((child as THREE.Mesh).isMesh) {
-                const mesh = child as THREE.Mesh;
+            // instanceof, not a cast: two copies of @types/three are installed and the
+            // traverse callback's Object3D comes from the other one, so a cast between
+            // them does not type-check.
+            if (child instanceof THREE.Mesh) {
+                const mesh = child;
                 const name = mesh.name.toLowerCase();
                 const originals = originalMaterials(mesh);
                 const materialName = (originals[0]?.name || '').toLowerCase();
