@@ -177,7 +177,7 @@ export function WrapGallery({
     return (
         <div className="wg-app" role="dialog" aria-modal="true" aria-label={t.community}>
             <div className="wg-head">
-                <div className="wg-wm">WRAP<span> STUDIO</span></div>
+                <div className="wg-wm">TESLA<span> STUDIO</span></div>
                 <nav className="wg-nav">
                     <button type="button" onClick={onClose}>{t.design}</button>
                     <span className="wg-on">{t.community}</span>

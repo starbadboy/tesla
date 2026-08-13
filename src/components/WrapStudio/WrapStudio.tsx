@@ -144,7 +144,7 @@ export function WrapStudio({
             </div>
 
             <div className="ws-head">
-                <div className="ws-wm">WRAP<span> STUDIO</span></div>
+                <div className="ws-wm">TESLA<span> STUDIO</span></div>
                 <nav className="ws-nav">
                     <span className="ws-on">{t.design}</span>
                     <button type="button" onClick={onOpenGallery}>{t.community}</button>
