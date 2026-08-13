@@ -28,6 +28,7 @@ export interface WrapGalleryProps {
     selectedModel?: string;
     refreshTrigger?: number;
     language?: 'en' | 'zh';
+    onToggleLanguage?: () => void;
     /** Load the wrap into the studio (and close this page), switching car if given. */
     onLoadWrap: (url: string, wrap?: { model?: string; name?: string }) => void | Promise<void>;
     onClose: () => void;
@@ -46,7 +47,7 @@ function isRecent(dateStr?: string): boolean {
 }
 
 export function WrapGallery({
-    type, selectedModel, refreshTrigger = 0, language = 'en', onLoadWrap, onClose,
+    type, selectedModel, refreshTrigger = 0, language = 'en', onToggleLanguage, onLoadWrap, onClose,
 }: WrapGalleryProps) {
     const t = TRANSLATIONS[language];
     const { user } = useAuth();
@@ -213,6 +214,11 @@ export function WrapGallery({
                 <nav className="wg-nav">
                     <button type="button" onClick={onClose}>{t.preview3d}</button>
                     <span className="wg-on">{t.community}</span>
+                    {onToggleLanguage && (
+                        <button type="button" onClick={onToggleLanguage}>
+                            {language === 'en' ? '中文' : 'EN'}
+                        </button>
+                    )}
                 </nav>
             </div>
 

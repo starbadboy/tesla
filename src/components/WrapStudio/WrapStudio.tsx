@@ -187,7 +187,7 @@ export function WrapStudio({
                     className={isWrapVisible ? 'ws-on' : ''}
                     onClick={() => onIsWrapVisibleChange(true)}
                 >
-                    {t.preview3d}
+                    {t.wrapOn}
                 </button>
                 <button
                     type="button"

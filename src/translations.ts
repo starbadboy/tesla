@@ -69,6 +69,7 @@ export const TRANSLATIONS = {
 
         // Gallery
         official: "Official",
+        wrapOn: "Wrap",
         basePaint: "Factory Paint",
         dragHint: "Drag to rotate · Scroll to zoom",
         viewAll: "View all",
@@ -219,6 +220,7 @@ export const TRANSLATIONS = {
 
         // Gallery
         official: "官方",
+        wrapOn: "车衣",
         basePaint: "原厂漆",
         dragHint: "拖拽旋转 · 滚轮缩放",
         viewAll: "查看全部",

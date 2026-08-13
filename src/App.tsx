@@ -190,12 +190,13 @@ function App() {
               <li key={feature}>{feature}</li>
             ))}
           </ul>
-          <h2>Supported Tesla design tools</h2>
+          <h2>What Tesla Studio does</h2>
           <p>
-            Tesla Wrap Studio supports Tesla wrap design, 3D wrap preview, AI wrap pattern generation,
-            community wrap sharing, custom license plate artwork, and custom Tesla lock sound sharing.
+            Tesla Studio supports 3D wrap preview on Model 3, Model S, Model X, Model Y and Cybertruck,
+            uploading your own full-wrap sheet, browsing and downloading community wraps, and sharing your
+            own designs.
           </p>
-          <img src={SITE_IMAGE} alt="Tesla Wrap Studio 3D wrap preview" />
+          <img src={SITE_IMAGE} alt="Tesla Studio 3D wrap preview" />
           <h2>Frequently asked questions</h2>
           {seo.faq.map(item => (
             <article key={item.question}>
@@ -232,6 +233,7 @@ function App() {
             selectedModel={currentModelName}
             refreshTrigger={galleryRefreshTrigger}
             language={language}
+            onToggleLanguage={toggleLanguage}
             onLoadWrap={handleLoadCommunityWrap}
             onClose={() => setIsGalleryOpen(false)}
           />
