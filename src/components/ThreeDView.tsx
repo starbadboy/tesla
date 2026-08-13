@@ -1,5 +1,5 @@
 
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, useGLTF, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { useEffect, useMemo, useState, useCallback } from 'react';
@@ -461,6 +461,22 @@ const ErrorFallback = ({ error, language = 'en' }: { error?: Error, language?: '
     );
 };
 
+/**
+ * Perspective FOV is vertical, so a portrait viewport loses horizontal framing and
+ * crops the car's nose and tail. Widen it when the stage is taller than it is wide.
+ */
+function FitFraming() {
+    const { camera, size } = useThree();
+    useEffect(() => {
+        if (!(camera instanceof THREE.PerspectiveCamera)) return;
+        const wanted = size.height > size.width ? 62 : 45;
+        if (camera.fov === wanted) return;
+        camera.fov = wanted;
+        camera.updateProjectionMatrix();
+    }, [camera, size]);
+    return null;
+}
+
 export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive = true, onToggleWrap, language = 'en', autoRotate = false, autoRotateSpeed = 1.0, hideWrapToggle = false }: ThreeDViewProps) => {
     // Determine if we have a valid model path
     const hasModel = modelPath && modelPath.length > 0;
@@ -501,6 +517,7 @@ export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive =
                     }}
                 >
                     <color attach="background" args={['#0c0c0e']} />
+                    <FitFraming />
                     {/* Tesla Gallery-style OrbitControls */}
                     <OrbitControls
                         makeDefault

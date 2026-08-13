@@ -310,9 +310,35 @@
 @media (max-height: 760px) {
   .ws-seg { bottom: 288px; }
 }
-@media (max-width: 640px) {
-  .ws-head, .ws-shelf, .ws-foot { padding: 0 20px; }
-  .ws-shelf { padding: 0 20px; }
-  .ws-nav { gap: 16px; }
-  .ws-btn { padding: 12px 18px; }
+/* ============ MOBILE ============
+   The desktop layout pins every block to the viewport and reserves 330px under
+   the stage. On a phone the shelf and footer need far more than that, so the car
+   ended up behind the cards. Mobile stacks the same blocks in flow instead and
+   lets the stage take whatever height is left. */
+@media (max-width: 720px) {
+  .ws-app { display: flex; flex-direction: column; }
+
+  .ws-head { position: static; order: 1; height: 54px; padding: 0 16px; gap: 12px; }
+  .ws-wm { font-size: 13px; letter-spacing: .22em; }
+  .ws-nav { gap: 14px; font-size: 12px; }
+
+  .ws-title { position: static; order: 2; padding: 10px 16px 0; }
+  .ws-title select { font-size: 19px; }
+  .ws-hint { position: static; order: 3; padding: 6px 16px 0; }
+
+  .ws-stage { position: relative; inset: auto; order: 4; flex: 1 1 auto; min-height: 32vh; }
+
+  .ws-seg { position: static; order: 5; transform: none; align-self: center; margin: 10px 0 14px; }
+  .ws-seg button { padding: 8px 16px; }
+
+  .ws-shelf { position: static; order: 6; padding: 0 16px 10px; }
+  .ws-shelf h2 { font-size: 11px; margin-bottom: 10px; }
+  .ws-card { flex-basis: calc((100% - 12px) / 2); }
+  .ws-cards { gap: 12px; }
+  .ws-thumb { height: 84px; }
+
+  .ws-foot { position: static; order: 7; height: 64px; padding: 0 16px; }
+  .ws-btn { padding: 11px 16px; font-size: 12.5px; }
+  .ws-btn.ws-ghost { margin-right: 8px; }
+  .ws-rotate { font-size: 10.5px; letter-spacing: .06em; }
 }
