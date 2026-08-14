@@ -29,6 +29,27 @@ export const CAR_3D_MODELS: Record<string, string> = {
     "Model Y": `${CDN_BASE}/models/modely_classic/ModelY_High.gltf`,
 };
 
+/**
+ * The factory colours Tesla actually sells, so "Factory Paint" can mean a real finish
+ * rather than only black. Hex values are eyeballed from the configurator's swatches —
+ * the point is recognisable, not colorimetric.
+ */
+export interface TeslaPaint {
+    id: string;
+    name: string;
+    nameZh: string;
+    hex: string;
+}
+
+export const TESLA_PAINTS: TeslaPaint[] = [
+    { id: 'stealth-grey', name: 'Stealth Grey', nameZh: '隐夜灰', hex: '#4a4b4e' },
+    { id: 'pearl-white', name: 'Pearl White', nameZh: '珍珠白', hex: '#eef0f2' },
+    { id: 'solid-black', name: 'Solid Black', nameZh: '曜石黑', hex: '#111214' },
+    { id: 'deep-blue', name: 'Deep Blue Metallic', nameZh: '深海蓝', hex: '#1d3557' },
+    { id: 'quicksilver', name: 'Quicksilver', nameZh: '银翼灰', hex: '#b7babd' },
+    { id: 'ultra-red', name: 'Ultra Red', nameZh: '烈焰红', hex: '#9e1b1b' },
+];
+
 export const WRAP_FOLDER_MAP: Record<string, string> = {
     "Cybertruck": "cybertruck",
     "Model S (2021+)": "models-2021",

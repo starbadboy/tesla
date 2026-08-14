@@ -3,7 +3,7 @@ import { ArrowDownToLine, Heart, Sparkles, Flame, Pencil } from 'lucide-react';
 import { OptionMenu } from '../ui/OptionMenu';
 import { DesignCanvas, type DesignCanvasHandle, type LayerTransform } from '../DesignCanvas';
 import { ThreeDView } from '../ThreeDView';
-import { CAR_3D_MODELS, CAR_MODELS } from '../../constants';
+import { CAR_3D_MODELS, CAR_MODELS, TESLA_PAINTS } from '../../constants';
 import { TRANSLATIONS } from '../../translations';
 import { UserMenu } from '../Auth/UserMenu';
 import { fetchWraps, hasThreeD, wrapFlags, type SortOption } from '../../utils/wrapApi';
@@ -33,6 +33,8 @@ export interface WrapStudioProps {
     onOpen3DGallery: () => void;
     onOpenEditor: () => void;
     onOpenHome: () => void;
+    paintColor: string;
+    onPaintColorChange: (hex: string) => void;
     /**
      * Set while a full-screen surface (editor, gallery) is open. Two ThreeDViews share one
      * cached GLTF scene, so both rewrite the same meshes' materials and the visible car
@@ -70,6 +72,7 @@ export function WrapStudio({
     canvasRef, layerTransforms, onLayerTransformsChange,
     selectedLayerId, onSelectedLayerIdChange,
     onShare, onExport, onOpenGallery, onOpenGarage, onOpen3DGallery, onOpenEditor, onOpenHome, onLoadCommunityWrap,
+    paintColor, onPaintColorChange,
     suspended = false,
     communityRefreshTrigger = 0,
     children,
@@ -105,10 +108,13 @@ export function WrapStudio({
         await onLoadCommunityWrap(wrap.imageUrl, { name: wrap.name, model: wrap.models?.[0] });
     };
 
-    const subtitle = !singleLayer
-        ? (language === 'zh' ? '未载入车衣 · 从下方选择' : 'No wrap loaded · pick one below')
-        : !isWrapVisible
-            ? `${t.basePaint} · Midnight`
+    const paint = TESLA_PAINTS.find(entry => entry.hex === paintColor) ?? TESLA_PAINTS[0];
+    const paintName = language === 'zh' ? paint.nameZh : paint.name;
+
+    const subtitle = !isWrapVisible
+        ? `${t.basePaint} · ${paintName}`
+        : !singleLayer
+            ? (language === 'zh' ? '未载入车衣 · 从下方选择' : 'No wrap loaded · pick one below')
             : `${loadedWrapName ?? activeWrap?.name ?? t.importWrap} · ${language === 'zh' ? '全车贴膜' : 'Full wrap'}`;
 
     return (
@@ -136,6 +142,7 @@ export function WrapStudio({
                         showTexture={isWrapVisible}
                         onToggleWrap={onIsWrapVisibleChange}
                         language={language}
+                        paintColor={paintColor}
                         autoRotate={autoRotate}
                         autoRotateSpeed={0.8}
                         hideWrapToggle
@@ -189,21 +196,42 @@ export function WrapStudio({
             </div>
             {model3dPath && <div className="ws-hint">{t.dragHint}</div>}
 
-            {model3dPath && <div className="ws-seg">
-                <button
-                    type="button"
-                    className={isWrapVisible ? 'ws-on' : ''}
-                    onClick={() => onIsWrapVisibleChange(true)}
-                >
-                    {t.wrapOn}
-                </button>
-                <button
-                    type="button"
-                    className={!isWrapVisible ? 'ws-on' : ''}
-                    onClick={() => onIsWrapVisibleChange(false)}
-                >
-                    {t.basePaint}
-                </button>
+            {model3dPath && <div className="ws-controls">
+                <div className="ws-seg">
+                    <button
+                        type="button"
+                        className={isWrapVisible ? 'ws-on' : ''}
+                        onClick={() => onIsWrapVisibleChange(true)}
+                    >
+                        {t.wrapOn}
+                    </button>
+                    <button
+                        type="button"
+                        className={!isWrapVisible ? 'ws-on' : ''}
+                        onClick={() => onIsWrapVisibleChange(false)}
+                    >
+                        {t.basePaint}
+                    </button>
+                </div>
+
+                {/* The colours Tesla sells, so factory paint is a choice and not just black.
+                    Beside the segment rather than under it: the band between here and the
+                    shelf is only tall enough for one row. The name is in the subtitle. */}
+                {!isWrapVisible && (
+                    <span className="ws-paint-row">
+                        {TESLA_PAINTS.map(entry => (
+                            <button
+                                key={entry.id}
+                                type="button"
+                                className={`ws-paint ${entry.hex === paintColor ? 'ws-on' : ''}`}
+                                style={{ background: entry.hex }}
+                                title={language === 'zh' ? entry.nameZh : entry.name}
+                                aria-label={language === 'zh' ? entry.nameZh : entry.name}
+                                onClick={() => onPaintColorChange(entry.hex)}
+                            />
+                        ))}
+                    </span>
+                )}
             </div>}
 
             <div className="ws-shelf">

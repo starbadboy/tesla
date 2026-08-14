@@ -45,6 +45,8 @@ export interface WrapEditorProps {
     onSelectedLayerIdChange: (id: string | null) => void;
     isWrapVisible: boolean;
     onIsWrapVisibleChange: (v: boolean) => void;
+    /** Factory paint chosen in the studio, so the preview card agrees with it. */
+    paintColor?: string;
     canvasRef: RefObject<DesignCanvasHandle | null>;
     onLoadWrap: (url: string, wrap?: { model?: string; name?: string }) => void | Promise<void>;
     onRemoveWrap: () => void;
@@ -85,7 +87,7 @@ export function WrapEditor({
     singleLayer, loadedWrapName,
     layerTransforms, onLayerTransformsChange,
     selectedLayerId, onSelectedLayerIdChange,
-    isWrapVisible, onIsWrapVisibleChange,
+    isWrapVisible, onIsWrapVisibleChange, paintColor = '#000000',
     canvasRef, onLoadWrap, onRemoveWrap, onExport, onShare, onClose,
 }: WrapEditorProps) {
     const t = TRANSLATIONS[language];
@@ -461,6 +463,7 @@ export function WrapEditor({
                             isActive
                             showTexture={isWrapVisible}
                             language={language}
+                            paintColor={paintColor}
                             autoRotate={false}
                             hideWrapToggle
                         />

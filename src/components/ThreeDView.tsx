@@ -28,6 +28,8 @@ interface ThreeDViewProps {
     hideWrapToggle?: boolean;
     /** Clear to transparent instead of the studio's black — used by the render surface. */
     transparent?: boolean;
+    /** Factory paint under the wrap, and the whole car when no wrap is shown. */
+    paintColor?: string;
     /** Overrides the automatic framing, e.g. a tighter crop for rendered thumbnails. */
     fov?: number;
 }
@@ -91,6 +93,21 @@ function hasMappedWrapUv(geometry: THREE.BufferGeometry, wrapUv: THREE.BufferAtt
 }
 
 const isPaintMaterial = (name?: string) => /paint/i.test(name ?? '');
+
+/**
+ * Whether a material is the car's bodywork, and so takes the factory colour.
+ *
+ * Meshes cannot be told apart by name — GLTFLoader calls them `mesh_0_7` under a parent
+ * like `Interior_Body` — but the authored materials name themselves precisely: Paint,
+ * PaintRough and Exterior on the body, Fabric, Carpet, Seatbelts, Aluminum and the rest
+ * inside. The Cybertruck has no Paint at all; its body is Metal_Dark_Exterior, which is
+ * why Exterior counts and why the second test then drops its plastic and rubber trim.
+ */
+const BODY_MATERIAL = /paint|exterior|^cover/i;
+const NOT_BODY_MATERIAL = /plastic|rubber|glass|light|fabric|carpet|leather|seat|interior|trim|chrome|mirror|frunk|tpo|pvc/i;
+
+const isBodyMaterial = (name?: string) =>
+    BODY_MATERIAL.test(name ?? '') && !NOT_BODY_MATERIAL.test(name ?? '');
 
 /**
  * Only a plain "Paint"/"CarPaint" names a panel's main skin. The "Fade" and "Rough"
@@ -162,7 +179,7 @@ const BACKWARDS_MODELS = ['models_2021', 'modelx_2021', 'models_2025_plaid'];
 
 const facesBackwards = (modelPath: string) => BACKWARDS_MODELS.some(name => modelPath.includes(name));
 
-const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true, transparentStage = false }: { stageRef: React.RefObject<DesignCanvasHandle | null>, modelPath: string, showTexture?: boolean, isActive?: boolean, transparentStage?: boolean }) => {
+const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true, transparentStage = false, paintColor = '#000000' }: { stageRef: React.RefObject<DesignCanvasHandle | null>, modelPath: string, showTexture?: boolean, isActive?: boolean, transparentStage?: boolean, paintColor?: string }) => {
     const { scene } = useGLTF(modelPath);
     const modelFile = modelPath.split('/').pop() || '';
 
@@ -266,7 +283,18 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true,
                     // console.log('Found mesh:', name, 'Material:', matName);
                     (window as unknown as Record<string, boolean>)['logged_meshes_' + name] = true;
                 }
-                const isGlass = materialName.includes('glass');
+                /**
+                 * Some panes carry the asset's unnamed default material, which is plain
+                 * white: the 2025 Model Y's rear quarter windows and roof glass among
+                 * them. They used to be painted black, so they read as tinted glass by
+                 * accident; once paint was limited to bodywork they turned into white
+                 * slabs. Judge them by where they sit instead.
+                 */
+                const panelName = panelKeyOf(mesh).toLowerCase();
+                const unauthored = originals.length > 0 && originals.every(m => !m?.name);
+                const glassPanel = /window|glass|roof|windscreen|windshield/.test(panelName);
+
+                const isGlass = materialName.includes('glass') || (unauthored && glassPanel);
                 const isLight = name.includes('light') || name.includes('lamp');
                 const isWheel = name.includes('wheel') || name.includes('tire') || name.includes('rim') || name.includes('kolo');
                 const isInterior = name.includes('interior') || name.includes('seat');
@@ -341,13 +369,19 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true,
                         clearcoat: 1.0,
                     });
                     mesh.material = m;
-                } else if (!isInterior && !isTrim && takesPaint(mesh)) {
-                    // This is likely the body paint
+                } else if (unauthored) {
+                    // Not glass and not named: keep it dark rather than let the default
+                    // white show, and out of the paint colour since it is not bodywork.
+                    const m = new THREE.MeshStandardMaterial({ color: 0x0f0f0f, roughness: 0.6, metalness: 0.2 });
+                    m.name = 'Unnamed';
+                    mesh.material = m;
+                } else if (!isInterior && !isTrim && takesPaint(mesh) && originals.some(m => isBodyMaterial(m?.name))) {
+                    // Bodywork: takes the factory colour.
                     const oldMat = originals.find(m => isPaintMaterial(m?.name)) ?? originals[0];
 
                     // Create a realistic car paint material (PhysicalMaterial) - Black Base
                     const newMat = new THREE.MeshPhysicalMaterial({
-                        color: new THREE.Color(0x000000), // Black base car color
+                        color: new THREE.Color(paintColor),
                         metalness: 0.1,
                         roughness: 0.1, // Smooth finish
                         clearcoat: 1.0, // High clearcoat for car paint look
@@ -359,13 +393,16 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true,
                         newMat.map = oldMat.map;
                     }
 
+                    // Named so it can be told apart from the authored materials, which is
+                    // how "does the factory colour land only on bodywork?" gets checked.
+                    newMat.name = 'FactoryPaint';
                     mesh.material = newMat;
                     mesh.castShadow = true;
                     mesh.receiveShadow = true;
                 }
             }
         });
-    }, [scene, modelFile, takesPaint]);
+    }, [scene, modelFile, takesPaint, paintColor]);
 
     // Apply texture to meshes
     useEffect(() => {
@@ -419,7 +456,8 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true,
                     mesh.geometry.setAttribute('wrapUv', wrapUv);
 
                     const newMat = new THREE.MeshPhysicalMaterial({
-                        color: 0x000000, // Black base paint
+                        // Shows through wherever the wrap art is transparent.
+                        color: new THREE.Color(paintColor),
                         roughness: 0.3,  // Very smooth
                         metalness: 0.3,   // Higher metalness for "metallic wrap" feel
                         clearcoat: 0.8,   // Max clearcoat for "wet" look
@@ -490,7 +528,7 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true,
             }
         });
         // console.log("Wrapped parts:", wrappedParts);
-    }, [scene, textureActive, texture, takesPaint]);
+    }, [scene, textureActive, texture, takesPaint, paintColor]);
 
     useFrame((state) => {
         // Only update loop when active to save perf
@@ -549,7 +587,7 @@ function FitFraming({ override, modelPath }: { override?: number; modelPath: str
     return null;
 }
 
-export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive = true, onToggleWrap, language = 'en', autoRotate = false, autoRotateSpeed = 1.0, hideWrapToggle = false, transparent = false, fov }: ThreeDViewProps) => {
+export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive = true, onToggleWrap, language = 'en', autoRotate = false, autoRotateSpeed = 1.0, hideWrapToggle = false, transparent = false, paintColor = '#000000', fov }: ThreeDViewProps) => {
     // Determine if we have a valid model path
     const hasModel = modelPath && modelPath.length > 0;
     const t = TRANSLATIONS[language];
@@ -668,7 +706,7 @@ export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive =
                         <ErrorBoundary key={`${modelPath}-${isWrapApplied}`} fallback={<ErrorFallback language={language} />}>
                             {/* Removed Stage to use custom Environment and lighting control */}
                             <group position={[0, 0, 0]}>
-                                <TexturedCar stageRef={stageRef} modelPath={modelPath} showTexture={isWrapApplied} isActive={isActive} transparentStage={transparent} />
+                                <TexturedCar stageRef={stageRef} modelPath={modelPath} showTexture={isWrapApplied} isActive={isActive} transparentStage={transparent} paintColor={paintColor} />
                             </group>
                         </ErrorBoundary>
                     ) : (
