@@ -1,15 +1,20 @@
-import { useEffect, useState, type RefObject } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowRight, Download, Layers, Palette, Sparkles, Wand2 } from 'lucide-react';
 import { ThreeDView } from '../ThreeDView';
+import { DesignCanvas, type DesignCanvasHandle, type LayerTransform } from '../DesignCanvas';
 import { UserMenu } from '../Auth/UserMenu';
 import { WrapWall } from './WrapWall';
-import type { DesignCanvasHandle } from '../DesignCanvas';
 import { CAR_3D_MODELS, CAR_MODELS } from '../../constants';
 import { TRANSLATIONS } from '../../translations';
 import { SEO_COPY } from '../../seo';
 import { fetchWraps } from '../../utils/wrapApi';
 import type { Wrap } from '../Gallery';
 import '../../styles/home.css';
+
+/** The sheet is drawn at template size, so it needs no transform of its own. */
+const HERO_LAYER: Record<string, LayerTransform> = {
+    'Full Wrap': { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1 },
+};
 
 export interface HomeProps {
     language: 'en' | 'zh';
@@ -22,7 +27,6 @@ export interface HomeProps {
     onOpen3DGallery: () => void;
     onOpenEditor: () => void;
     onLoadWrap: (url: string, wrap?: { model?: string; name?: string }) => void | Promise<void>;
-    canvasRef: RefObject<DesignCanvasHandle | null>;
     refreshTrigger?: number;
 }
 
@@ -36,19 +40,54 @@ export interface HomeProps {
 export function Home({
     language, onToggleLanguage, currentModelName,
     onStart, onOpenGallery, onOpenGarage, onOpen3DGallery, onOpenEditor,
-    onLoadWrap, canvasRef, refreshTrigger = 0,
+    onLoadWrap, refreshTrigger = 0,
 }: HomeProps) {
     const t = TRANSLATIONS[language];
     const seo = SEO_COPY[language];
     const [total, setTotal] = useState(0);
+    const [hero, setHero] = useState<Wrap | null>(null);
+    const [heroVisible, setHeroVisible] = useState(false);
 
-    const model3dPath = CAR_3D_MODELS[currentModelName] ?? CAR_3D_MODELS['Model 3 (2024 Base)'];
+    /**
+     * The hero drives its own canvas rather than the app's: the studio is suspended while
+     * this page is up, so its canvas — the usual texture source — is not mounted.
+     */
+    const heroCanvasRef = useRef<DesignCanvasHandle>(null);
 
+    // Shown on the car the wrap was drawn for, so the art lands on the right panels.
+    const heroModel = hero?.models?.find(name => CAR_3D_MODELS[name])
+        ?? (CAR_3D_MODELS[currentModelName] ? currentModelName : 'Model 3 (2024 Base)');
+    const model3dPath = CAR_3D_MODELS[heroModel];
+
+    // A different wrap on every visit: the point of the page is the collection, and a
+    // factory-black car says nothing about it.
     useEffect(() => {
-        fetchWraps('car', 'popular', { limit: 1 })
-            .then(({ total: count }) => setTotal(count))
-            .catch(error => console.error('Failed to count wraps', error));
+        fetchWraps('car', 'popular', { limit: 60 })
+            .then(({ items, total: count }) => {
+                setTotal(count);
+                const usable = items.filter(wrap => wrap.imageUrl && wrap.models?.some(name => CAR_3D_MODELS[name]));
+                if (usable.length > 0) setHero(usable[Math.floor(Math.random() * usable.length)]);
+            })
+            .catch(error => console.error('Failed to fetch wraps for the hero', error));
     }, [refreshTrigger]);
+
+    // ThreeDView binds a wrap as showTexture flips, and the sheet arrives after the scene
+    // has mounted, so the flip has to follow the sheet.
+    // ponytail: workaround, not the root cause — see the same cycle in App.
+    useEffect(() => {
+        if (!hero) return;
+        setHeroVisible(false);
+        const settle = window.setTimeout(() => setHeroVisible(true), 400);
+        return () => window.clearTimeout(settle);
+    }, [hero]);
+
+    // The raw R2 domain sends no CORS headers, so a canvas cannot read those sheets; the
+    // server proxies them, exactly as loading a wrap into the studio does.
+    const heroSheet = hero?.imageUrl
+        ? (hero.imageUrl.includes('.r2.dev/')
+            ? `/api/proxy-image?url=${encodeURIComponent(hero.imageUrl)}`
+            : hero.imageUrl)
+        : null;
 
     const steps = [
         { icon: Layers, title: t.stepPick, body: t.stepPickBody },
@@ -92,17 +131,41 @@ export function Home({
                 </div>
                 <div className="hm-hero-car">
                     <ThreeDView
-                        stageRef={canvasRef}
+                        stageRef={heroCanvasRef}
                         modelPath={model3dPath}
                         isActive
-                        showTexture={false}
+                        showTexture={heroVisible}
                         language={language}
                         autoRotate
                         autoRotateSpeed={0.5}
                         hideWrapToggle
                     />
+                    {hero && (
+                        <button type="button" className="hm-hero-credit" onClick={() => handlePick(hero)}>
+                            {hero.name} <i>@{hero.author}</i>
+                        </button>
+                    )}
                 </div>
             </section>
+
+            {/* Hidden canvas the hero's 3D view samples its wrap from. */}
+            <div className="hm-texture-src" aria-hidden="true">
+                <DesignCanvas
+                    ref={heroCanvasRef}
+                    modelPath={CAR_MODELS[heroModel]}
+                    layers={heroSheet ? { 'Full Wrap': heroSheet } : {}}
+                    transforms={HERO_LAYER}
+                    onTransformChange={() => undefined}
+                    selectedId={null}
+                    onSelect={() => undefined}
+                    onExport={() => undefined}
+                    mode="select"
+                    brushColor="#000000"
+                    brushSize={5}
+                    canvasType="car"
+                    plateSize="420x200"
+                />
+            </div>
 
             <WrapWall
                 language={language}

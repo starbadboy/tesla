@@ -272,7 +272,6 @@ function App() {
             onOpen3DGallery={() => setIs3DGalleryOpen(true)}
             onOpenEditor={() => setIsEditorOpen(true)}
             onLoadWrap={handleLoadCommunityWrap}
-            canvasRef={canvasRef}
             refreshTrigger={galleryRefreshTrigger}
           />
         )}

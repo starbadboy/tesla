@@ -138,9 +138,39 @@
 /* The stage sizes itself to its box, so the hero gives it one. The glow is what keeps a
    black car legible against a black page — the paint has no wrap on it here. */
 .hm-hero-car {
+  position: relative;
   height: 420px;
   background: radial-gradient(closest-side, rgba(255, 255, 255, .07), transparent 72%);
 }
+
+/* Off screen but laid out: the canvas measures its box to size the stage it draws. */
+.hm-texture-src {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.hm-hero-credit {
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  transform: translateX(-50%);
+  max-width: 90%;
+  padding: 6px 14px;
+  border: 1px solid var(--hm-line);
+  border-radius: 999px;
+  background: rgba(12, 12, 14, .72);
+  font: 500 12px 'Archivo', sans-serif;
+  color: var(--hm-ink-3);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hm-hero-credit:hover { color: #fff; border-color: var(--hm-line-2); }
+.hm-hero-credit i { font-style: normal; color: var(--hm-ink-5); }
 
 /* ============ WALL ============ */
 .hm-wall { padding: 64px 0 76px; text-align: center; border-top: 1px solid var(--hm-line); }
