@@ -66,6 +66,15 @@ async function main() {
     const args = parseArgs(process.argv);
     const stamp = Math.floor(Date.now() / 1000);
 
+    // Checked up front: the renderer drives the app's own page, and forgetting to start
+    // the server otherwise surfaces as a browser navigation stack trace.
+    try {
+        await fetch(args.base, { method: 'HEAD' });
+    } catch {
+        console.error(`Cannot reach ${args.base}. Start the app first (npm start), or pass --base=<url>.`);
+        process.exit(1);
+    }
+
     const mongoUrl = process.env.MONGO_URL;
     if (!mongoUrl) throw new Error('MONGO_URL is not set');
     await mongoose.connect(mongoUrl);
