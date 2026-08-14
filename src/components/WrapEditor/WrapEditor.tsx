@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from 'react';
 import {
     ArrowLeft, BringToFront, Circle, FolderOpen, History, Layers, Maximize2,
     MousePointer2, PaintBucket, Pencil, Redo2, RotateCcw, SendToBack, Share2,
@@ -69,6 +69,10 @@ const EMPTY_DOC: Doc = { objects: [], lines: [], fills: [] };
 const ZOOM_STEP = 1.25;
 const ZOOM_RANGE = { min: 0.25, max: 4 };
 
+const PREVIEW_DEFAULT = { width: 340, height: 232 };
+const PREVIEW_MIN = { width: 220, height: 150 };
+const PREVIEW_MAX = { width: 720, height: 560 };
+
 /**
  * The design surface: the wrap sheet itself, editable, with the car alongside it.
  *
@@ -99,6 +103,29 @@ export function WrapEditor({
     const [objectId, setObjectId] = useState<string | null>(null);
     const [zoom, setZoom] = useState(1);
     const [scale, setScale] = useState(1);
+    const [preview, setPreview] = useState(PREVIEW_DEFAULT);
+
+    /**
+     * Drag the card's inner corner to resize it. The card is pinned top right, so pulling
+     * left and down grows it; the stage reserves whatever width it ends up with, which is
+     * why this is state rather than plain CSS resize.
+     */
+    const startResize = (event: ReactPointerEvent<HTMLSpanElement>) => {
+        event.preventDefault();
+        const origin = { x: event.clientX, y: event.clientY, ...preview };
+        const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+        const onMove = (move: PointerEvent) => setPreview({
+            width: clamp(origin.width - (move.clientX - origin.x), PREVIEW_MIN.width, PREVIEW_MAX.width),
+            height: clamp(origin.height + (move.clientY - origin.y), PREVIEW_MIN.height, PREVIEW_MAX.height),
+        });
+        const onUp = () => {
+            window.removeEventListener('pointermove', onMove);
+            window.removeEventListener('pointerup', onUp);
+        };
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp);
+    };
 
     /** Every content change goes through here, which is what makes undo complete. */
     const commit = useCallback((next: Doc) => {
@@ -198,7 +225,12 @@ export function WrapEditor({
     ];
 
     return (
-        <div className={`we-app ${panel ? 'is-panel-open' : ''}`}>
+        <div
+            className={`we-app ${panel ? 'is-panel-open' : ''}`}
+            // The stage centres the sheet in what is left over, so it has to know how much
+            // room the floating card takes; otherwise the sheet slides under it.
+            style={{ '--we-preview-w': `${preview.width + 32}px` } as import('react').CSSProperties}
+        >
             <header className="we-top">
                 <button type="button" className="we-back" onClick={onClose} aria-label={t.preview3d}>
                     <ArrowLeft size={17} />
@@ -421,7 +453,7 @@ export function WrapEditor({
                 </div>
 
                 {/* The car, alongside the sheet rather than instead of it. */}
-                <div className="we-preview">
+                <div className="we-preview" style={{ width: preview.width, height: preview.height }}>
                     {model3dPath ? (
                         <ThreeDView
                             stageRef={canvasRef}
@@ -435,6 +467,12 @@ export function WrapEditor({
                     ) : (
                         <p className="we-empty">{t.no3dPreview}</p>
                     )}
+                    <span
+                        className="we-resize"
+                        onPointerDown={startResize}
+                        role="separator"
+                        aria-label={t.resizePreview}
+                    />
                     <div className="we-seg">
                         <button
                             type="button"

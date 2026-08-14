@@ -306,6 +306,7 @@
 /* The checkerboard still covers the shell; only the stage inside it steps aside, so an
    open panel narrows the drawing area rather than sitting on top of the sheet. */
 .we-app.is-panel-open .we-canvas { padding-left: 388px; }
+.we-canvas { padding-right: var(--we-preview-w, 0px); }
 
 .we-canvas {
   position: absolute;
@@ -323,8 +324,6 @@
   top: 16px;
   right: 16px;
   z-index: 2;
-  width: 340px;
-  height: 232px;
   border: 1px solid var(--we-line);
   border-radius: 14px;
   background: #0e0e11;
@@ -332,9 +331,23 @@
 }
 .we-preview .we-empty { display: grid; place-content: center; height: 100%; }
 
+/* Grip in the card's inner corner, mirroring where the card is pinned. */
+.we-resize {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 22px;
+  height: 22px;
+  cursor: nesw-resize;
+  background:
+    linear-gradient(45deg, transparent 46%, var(--we-ink-4) 46%, var(--we-ink-4) 54%, transparent 54%),
+    linear-gradient(45deg, transparent 66%, var(--we-ink-4) 66%, var(--we-ink-4) 74%, transparent 74%);
+  touch-action: none;
+}
+
 .we-seg {
   position: absolute;
-  left: 10px;
+  left: 26px;
   bottom: 10px;
   display: inline-flex;
   padding: 3px;
@@ -462,8 +475,9 @@
   .we-panel { top: auto; bottom: 92px; left: 10px; right: 10px; width: auto; max-height: 38vh; }
   .we-app.is-panel-open .we-canvas { padding-left: 0; padding-bottom: calc(38vh + 96px); }
 
-  .we-preview { width: 150px; height: 104px; top: 66px; right: 10px; }
-  .we-preview .we-seg { display: none; }
+  .we-canvas { padding-right: 0; }
+  .we-preview { width: 150px !important; height: 104px !important; top: 66px; right: 10px; }
+  .we-preview .we-seg, .we-resize { display: none; }
 
   .we-tools { bottom: 14px; max-width: calc(100vw - 20px); overflow-x: auto; }
   .we-rot { min-width: 120px; }
