@@ -1,5 +1,6 @@
 // Shared community-wrap API calls used by the Gallery panel and the Wrap Gallery page.
 import type { Wrap } from '../components/Gallery';
+import { CAR_3D_MODELS } from '../constants';
 import { compressBlob } from './imageProcessor';
 
 export type WrapType = 'car' | 'plate' | 'sound';
@@ -46,6 +47,17 @@ export async function fetchWraps(
     const items = Array.isArray(data) ? data : [];
     const counted = Number(res.headers.get('X-Total-Count'));
     return { items, total: Number.isFinite(counted) && counted > 0 ? counted : items.length };
+}
+
+/**
+ * Whether this wrap's own car can be shown in 3D.
+ *
+ * The renderer falls back to a default car for wraps it cannot place, so a Model Y L
+ * design has a render of itself on a Model 3 — fine as a thumbnail source, misleading as
+ * a claim. The hover swap and the 3D badge both hang off this.
+ */
+export function hasThreeD(wrap: Wrap): boolean {
+    return (wrap.models ?? []).some(name => Boolean(CAR_3D_MODELS[name]));
 }
 
 /** Shared badge rules so the studio shelf and the gallery agree. */

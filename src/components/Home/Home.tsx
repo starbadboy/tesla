@@ -25,7 +25,6 @@ export interface HomeProps {
     onOpenGallery: () => void;
     onOpenGarage: () => void;
     onOpen3DGallery: () => void;
-    onOpenEditor: () => void;
     onLoadWrap: (url: string, wrap?: { model?: string; name?: string }) => void | Promise<void>;
     refreshTrigger?: number;
 }
@@ -39,7 +38,7 @@ export interface HomeProps {
  */
 export function Home({
     language, onToggleLanguage, currentModelName,
-    onStart, onOpenGallery, onOpenGarage, onOpen3DGallery, onOpenEditor,
+    onStart, onOpenGallery, onOpenGarage, onOpen3DGallery,
     onLoadWrap, refreshTrigger = 0,
 }: HomeProps) {
     const t = TRANSLATIONS[language];
@@ -111,7 +110,6 @@ export function Home({
                 </button>
                 <nav className="hm-nav">
                     <button type="button" onClick={() => onStart()}>{t.preview3d}</button>
-                    <button type="button" onClick={onOpenEditor}>{t.designStudio}</button>
                     <button type="button" onClick={onOpen3DGallery}>{t.gallery3d}</button>
                     <button type="button" onClick={onOpenGallery}>{t.community}</button>
                     <button type="button" onClick={onToggleLanguage}>{language === 'en' ? '中文' : 'EN'}</button>

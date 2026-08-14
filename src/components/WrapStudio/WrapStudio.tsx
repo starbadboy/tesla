@@ -6,7 +6,7 @@ import { ThreeDView } from '../ThreeDView';
 import { CAR_3D_MODELS, CAR_MODELS } from '../../constants';
 import { TRANSLATIONS } from '../../translations';
 import { UserMenu } from '../Auth/UserMenu';
-import { fetchWraps, wrapFlags, type SortOption } from '../../utils/wrapApi';
+import { fetchWraps, hasThreeD, wrapFlags, type SortOption } from '../../utils/wrapApi';
 import type { Wrap } from '../Gallery';
 import '../../styles/wrap-studio.css';
 
@@ -56,7 +56,7 @@ function ShelfThumb({ wrap }: { wrap: Wrap }) {
     return (
         <span className={`ws-shot ${ready ? 'is-ready' : ''}`} onMouseEnter={() => setWanted(true)}>
             <img className="ws-sheet" src={wrap.imageUrl} alt={wrap.name} loading="lazy" />
-            {wanted && wrap.renderUrl && (
+            {wanted && wrap.renderUrl && hasThreeD(wrap) && (
                 <img className="ws-on-car" src={wrap.renderUrl} alt="" aria-hidden="true" onLoad={() => setReady(true)} />
             )}
         </span>

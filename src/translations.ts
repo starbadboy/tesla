@@ -14,7 +14,7 @@ export const TRANSLATIONS = {
             "Use Nodes to resize & rotate.",
             "The car body acts as a mask on top."
         ],
-        export: "Export Design",
+        export: "Export",
         installation: "4. Installation Guide",
         installSteps: [
             "Format USB drive to exFAT or FAT32.",
@@ -54,7 +54,7 @@ export const TRANSLATIONS = {
         studio: "Studio",
         community: "Community",
         communityWraps: "COMMUNITY WRAPS",
-        gallery3d: "3D Gallery",
+        gallery3d: "Browse 3D",
         new: "New",
         shareYourWrap: "Share Your Wrap",
         shareYourPlate: "Share Your Plate",
@@ -109,7 +109,7 @@ export const TRANSLATIONS = {
         noGenerations: "Nothing generated yet",
         noWrapLoaded: "No wrap loaded",
         reset: "Reset",
-        preview3d: "3D Preview",
+        preview3d: "Preview",
         modelProvider: "Model Provider",
         computerAI: "Puter AI (Free)",
         openai: "OpenAI (gpt-image-1.5)",
@@ -218,7 +218,7 @@ export const TRANSLATIONS = {
             "使用节点调整大小和旋转。",
             "车身作为遮罩覆盖在上方。"
         ],
-        export: "导出设计",
+        export: "导出",
         installation: "4. 安装指南",
         installSteps: [
             "将 U盘 格式化为 exFAT 或 FAT32。",
@@ -258,7 +258,7 @@ export const TRANSLATIONS = {
         studio: "工作室",
         community: "社区",
         communityWraps: "社区车衣",
-        gallery3d: "3D 展厅",
+        gallery3d: "3D 浏览",
         new: "新",
         shareYourWrap: "分享你的设计",
         shareYourPlate: "分享你的车牌",
@@ -313,7 +313,7 @@ export const TRANSLATIONS = {
         noGenerations: "还没有生成记录",
         noWrapLoaded: "未载入车衣",
         reset: "重置",
-        preview3d: "3D 预览",
+        preview3d: "预览",
         modelProvider: "模型提供商",
         computerAI: "Puter AI (免费)",
         openai: "OpenAI (gpt-image-1.5)",

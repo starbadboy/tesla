@@ -8,7 +8,8 @@ import { OptionMenu } from '../ui/OptionMenu';
 import { TRANSLATIONS } from '../../translations';
 import { useAuth } from '../../contexts/AuthContext';
 import {
-    deleteWrap, downloadWrap, fetchGarage, fetchWraps, likeWrap, nextTagValue, updateWrapTags, wrapFlags,
+    deleteWrap, downloadWrap, fetchGarage, fetchWraps, hasThreeD, likeWrap, nextTagValue, updateWrapTags,
+    wrapFlags,
     type GarageTab, type SortOption, type WrapType,
 } from '../../utils/wrapApi';
 import type { Wrap } from '../Gallery';
@@ -56,7 +57,7 @@ function WrapThumb({ wrap, alt }: { wrap: Wrap; alt: string }) {
     return (
         <div className={`wg-thumb ${ready ? 'is-ready' : ''}`} onMouseEnter={() => setWanted(true)}>
             <img className="wg-sheet" src={wrap.imageUrl} alt={alt} loading="lazy" />
-            {wanted && wrap.renderUrl && (
+            {wanted && wrap.renderUrl && hasThreeD(wrap) && (
                 <img
                     className="wg-on-car"
                     src={wrap.renderUrl}
@@ -477,7 +478,7 @@ export function WrapGallery({
                                                 <div className="wg-stats">
                                                     <span><Heart size={13} /> {wrap.likes}</span>
                                                     <span><Download size={13} /> {wrap.downloads ?? 0}</span>
-                                                    {type === 'car' && <span className="wg-b3d">3D</span>}
+                                                    {type === 'car' && hasThreeD(wrap) && <span className="wg-b3d">3D</span>}
                                                 </div>
                                             </div>
                                         </div>

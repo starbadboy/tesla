@@ -270,7 +270,6 @@ function App() {
             onOpenGallery={() => { setGalleryView('community'); setIsGalleryOpen(true); }}
             onOpenGarage={() => { setGalleryView('garage'); setIsGalleryOpen(true); }}
             onOpen3DGallery={() => setIs3DGalleryOpen(true)}
-            onOpenEditor={() => setIsEditorOpen(true)}
             onLoadWrap={handleLoadCommunityWrap}
             refreshTrigger={galleryRefreshTrigger}
           />

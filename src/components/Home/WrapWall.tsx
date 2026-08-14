@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { TRANSLATIONS } from '../../translations';
-import { fetchWraps } from '../../utils/wrapApi';
+import { fetchWraps, hasThreeD } from '../../utils/wrapApi';
 import type { Wrap } from '../Gallery';
 
 /** Enough to fill two belts on a wide screen without the loop reading as a short cycle. */
@@ -32,7 +32,8 @@ export function WrapWall({ language, onPick, onViewAll, refreshTrigger = 0 }: Wr
         fetchWraps('car', 'popular', { limit: WALL_SIZE })
             .then(({ items, total: count }) => {
                 if (cancelled) return;
-                setWraps(items.filter(wrap => wrap.renderUrl));
+                // Only wraps whose own car we can show: the rest are rendered on a stand-in.
+                setWraps(items.filter(wrap => wrap.renderUrl && hasThreeD(wrap)));
                 setTotal(count);
             })
             .catch(error => console.error('Failed to fetch wraps for the wall', error));
