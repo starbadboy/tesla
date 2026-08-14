@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
-import { ArrowDownToLine, Heart, Sparkles, Flame, Upload } from 'lucide-react';
+import { useEffect, useState, type ReactNode, type RefObject } from 'react';
+import { ArrowDownToLine, Heart, Sparkles, Flame, Pencil } from 'lucide-react';
 import { OptionMenu } from '../ui/OptionMenu';
 import { DesignCanvas, type DesignCanvasHandle, type LayerTransform } from '../DesignCanvas';
 import { ThreeDView } from '../ThreeDView';
@@ -31,6 +31,7 @@ export interface WrapStudioProps {
     onOpenGallery: () => void;
     onOpenGarage: () => void;
     onOpen3DGallery: () => void;
+    onOpenEditor: () => void;
     onLoadCommunityWrap: (url: string, wrap?: { model?: string; name?: string }) => void | Promise<void>;
     communityRefreshTrigger?: number;
     children?: ReactNode;
@@ -46,7 +47,7 @@ export function WrapStudio({
     singleLayer, loadedWrapName, isWrapVisible, onIsWrapVisibleChange,
     canvasRef, layerTransforms, onLayerTransformsChange,
     selectedLayerId, onSelectedLayerIdChange,
-    onShare, onExport, onOpenGallery, onOpenGarage, onOpen3DGallery, onLoadCommunityWrap,
+    onShare, onExport, onOpenGallery, onOpenGarage, onOpen3DGallery, onOpenEditor, onLoadCommunityWrap,
     communityRefreshTrigger = 0,
     children,
 }: WrapStudioProps) {
@@ -86,17 +87,6 @@ export function WrapStudio({
     }, [singleLayer]);
 
     const visible = shelf;
-
-    const fileRef = useRef<HTMLInputElement>(null);
-
-    /** Preview a sheet from disk. DesignCanvas fits it to the template canvas. */
-    const handleUpload = async (file: File | undefined) => {
-        if (!file) return;
-        setActiveWrap(null);
-        onLayerTransformsChange({});
-        onIsWrapVisibleChange(true);
-        await onLoadCommunityWrap(URL.createObjectURL(file), { name: file.name.replace(/\.[^.]+$/, '') });
-    };
 
     const handlePick = async (wrap: Wrap) => {
         if (!wrap.imageUrl) return;
@@ -274,20 +264,13 @@ export function WrapStudio({
                     <span className="ws-rotate-label">AUTO-ROTATE</span>
                 </button>
                 <div>
-                    <input
-                        ref={fileRef}
-                        type="file"
-                        accept="image/png,image/jpeg,image/webp"
-                        hidden
-                        onChange={e => { void handleUpload(e.target.files?.[0]); e.target.value = ''; }}
-                    />
                     <button
                         type="button"
                         className="ws-btn ws-ghost"
-                        onClick={() => fileRef.current?.click()}
+                        onClick={onOpenEditor}
                         title={t.uploadHint}
                     >
-                        <Upload size={14} /> {t.upload}
+                        <Pencil size={14} /> {t.designStudio}
                     </button>
                     <button type="button" className="ws-btn ws-ghost" onClick={onShare}>{t.share}</button>
                     <button type="button" className="ws-btn" onClick={onExport}>{t.export} ↓</button>

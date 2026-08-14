@@ -1,13 +1,42 @@
 import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
-import { Stage, Layer, Image as KonvaImage, Transformer, Rect, Line, Group } from 'react-konva';
+import { Stage, Layer, Image as KonvaImage, Transformer, Rect, Ellipse, Text as KonvaText, Line, Group } from 'react-konva';
 import useImage from 'use-image';
-import { processTemplateMask, compressBlob } from '../utils/imageProcessor';
+import { processTemplateMask, compressBlob, fillRegion, type FillMap } from '../utils/imageProcessor';
 import Konva from 'konva';
+
+/** A freehand stroke, a placed shape or a panel fill: everything the editor can undo. */
+export interface DrawnLine {
+    tool: string;
+    points: number[];
+    color: string;
+    size: number;
+}
+
+export interface CanvasObject {
+    id: string;
+    type: 'text' | 'rect' | 'ellipse';
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    rotation: number;
+    fill: string;
+    text?: string;
+    fontSize?: number;
+}
+
+/** A click that flooded one template panel. Kept as an operation so undo can replay. */
+export interface FillOp {
+    x: number;
+    y: number;
+    color: string;
+}
 
 export interface DesignCanvasHandle {
     exportImage: () => void;
     getExportBlob: () => Promise<Blob | null>;
     clearLines: () => void;
+    clearFills: () => void;
     getStage: () => Konva.Stage | null;
     getTextureCanvas: () => HTMLCanvasElement | null;
 }
@@ -21,13 +50,6 @@ export interface LayerTransform {
     opacity: number;
 }
 
-interface DrawnLine {
-    tool: string;
-    points: number[];
-    color: string;
-    size: number;
-}
-
 interface DesignCanvasProps {
     modelPath: string;
     layers: Record<string, string | null>;
@@ -36,9 +58,26 @@ interface DesignCanvasProps {
     selectedId: string | null;
     onSelect: (id: string | null) => void;
     onExport: (stage: Konva.Stage) => void;
-    mode: 'select' | 'draw';
+    mode: 'select' | 'draw' | 'fill' | 'text' | 'rect' | 'ellipse';
     brushColor: string;
     brushSize: number;
+    /** Colour a click drops into a single template panel while mode is 'fill'. */
+    fillColor?: string;
+    /**
+     * Editable content, controlled. Surfaces that only preview a wrap leave these out and
+     * the canvas keeps its own strokes, which is what the studio and the renderer do.
+     */
+    objects?: CanvasObject[];
+    onObjectsChange?: (next: CanvasObject[]) => void;
+    lines?: DrawnLine[];
+    onLinesChange?: (next: DrawnLine[]) => void;
+    fills?: FillOp[];
+    onFillsChange?: (next: FillOp[]) => void;
+    selectedObjectId?: string | null;
+    onSelectObject?: (id: string | null) => void;
+    /** Multiplies the fit-to-container scale. */
+    zoom?: number;
+    onScaleChange?: (scale: number) => void;
     canvasType?: 'car' | 'plate';
     plateSize?: '420x100' | '420x200';
 }
@@ -147,6 +186,72 @@ const TextureImage = ({
     );
 };
 
+/** One placed shape or text run, draggable and resizable like the wrap image. */
+const ObjectShape = ({ object, isSelected, isInteractable, onSelect, onChange }: {
+    object: CanvasObject;
+    isSelected: boolean;
+    isInteractable: boolean;
+    onSelect: () => void;
+    onChange: (next: CanvasObject) => void;
+}) => {
+    const shapeRef = useRef<Konva.Shape>(null);
+    const trRef = useRef<Konva.Transformer>(null);
+
+    useEffect(() => {
+        if (isSelected && trRef.current && shapeRef.current) {
+            trRef.current.nodes([shapeRef.current]);
+            trRef.current.getLayer()?.batchDraw();
+        }
+    }, [isSelected]);
+
+    const common = {
+        ref: shapeRef as never,
+        x: object.x,
+        y: object.y,
+        rotation: object.rotation,
+        fill: object.fill,
+        draggable: isInteractable,
+        onClick: isInteractable ? onSelect : undefined,
+        onTap: isInteractable ? onSelect : undefined,
+        onDragEnd: (e: Konva.KonvaEventObject<DragEvent>) =>
+            onChange({ ...object, x: e.target.x(), y: e.target.y() }),
+        // Scale is baked back into width/height so text stays crisp and a later resize
+        // starts from a clean 1x node.
+        onTransformEnd: () => {
+            const node = shapeRef.current;
+            if (!node) return;
+            const next = {
+                ...object,
+                x: node.x(),
+                y: node.y(),
+                rotation: node.rotation(),
+                width: Math.max(8, object.width * node.scaleX()),
+                height: Math.max(8, object.height * node.scaleY()),
+            };
+            if (object.type === 'text') next.fontSize = Math.max(8, (object.fontSize ?? 64) * node.scaleY());
+            node.scaleX(1);
+            node.scaleY(1);
+            onChange(next);
+        },
+    };
+
+    return (
+        <>
+            {object.type === 'rect' && <Rect {...common} width={object.width} height={object.height} />}
+            {object.type === 'ellipse' && (
+                <Ellipse {...common} radiusX={object.width / 2} radiusY={object.height / 2} />
+            )}
+            {object.type === 'text' && (
+                <KonvaText {...common} text={object.text ?? ''} fontSize={object.fontSize ?? 64} fontStyle="bold" />
+            )}
+            {isSelected && isInteractable && (
+                <Transformer ref={trRef} anchorSize={22} rotateAnchorOffset={36} padding={8}
+                    boundBoxFunc={(oldBox, newBox) => (newBox.width < 8 || newBox.height < 8 ? oldBox : newBox)} />
+            )}
+        </>
+    );
+};
+
 export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
     modelPath,
     layers,
@@ -157,16 +262,37 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
     mode,
     brushColor,
     brushSize,
+    fillColor = '#ff3b30',
+    objects,
+    onObjectsChange,
+    lines: linesProp,
+    onLinesChange,
+    fills,
+    onFillsChange,
+    selectedObjectId = null,
+    onSelectObject,
+    zoom = 1,
+    onScaleChange,
     canvasType = 'car',
     plateSize = '420x100'
 }, ref) => {
     const [overlays, setOverlays] = useState<{ mask: string | null, lines: string | null, trim: string | null }>({ mask: null, lines: null, trim: null });
+    // Which pixels belong to a panel, and the canvas those panel fills are painted on.
+    // Kept out of state: the map is megabytes and the canvas is mutated in place.
+    const fillMapRef = useRef<FillMap | null>(null);
+    const fillsRef = useRef<HTMLCanvasElement | null>(null);
+    const [fillVersion, setFillVersion] = useState(0);
+    const [ownFills, setOwnFills] = useState<FillOp[]>([]);
+    const fillOps = fills ?? ownFills;
     const [maskImage] = useImage(overlays.mask || '', 'anonymous');
     const [trimImage] = useImage(overlays.trim || '', 'anonymous');
     const [linesImage] = useImage(overlays.lines || '', 'anonymous');
 
-    // Drawing state
-    const [lines, setLines] = useState<DrawnLine[]>([]);
+    // Drawing state. Controlled when the editor passes strokes in; otherwise local, so
+    // the preview surfaces keep working unchanged.
+    const [ownLines, setOwnLines] = useState<DrawnLine[]>([]);
+    const lines = linesProp ?? ownLines;
+    const setLines = (next: DrawnLine[]) => (onLinesChange ?? setOwnLines)(next);
     const isDrawing = useRef(false);
 
     // Internal ref to the Stage
@@ -179,6 +305,10 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
     useImperativeHandle(ref, () => ({
         clearLines: () => {
             setLines([]);
+        },
+        clearFills: () => {
+            if (onFillsChange) onFillsChange([]);
+            else setOwnFills([]);
         },
         getStage: () => stageRef.current,
         getTextureCanvas: () => {
@@ -457,7 +587,10 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
             try {
 
                 const result = await processTemplateMask(modelPath);
-                if (isMounted) setOverlays(result);
+                if (!isMounted) return;
+                fillMapRef.current = result.fillable;
+                fillsRef.current = null;
+                setOverlays({ mask: result.mask, lines: result.lines, trim: result.trim });
             } catch (e) {
                 console.error("Failed to process mask", e);
             }
@@ -465,6 +598,36 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
         loadAndProcess();
         return () => { isMounted = false; };
     }, [modelPath, canvasType]);
+
+    // The fill canvas is a pure function of the recorded clicks, so undo is just a
+    // shorter list: replay it rather than keeping pixel snapshots of a 2048px canvas.
+    useEffect(() => {
+        const map = fillMapRef.current;
+        if (!map) return;
+
+        if (!fillsRef.current) {
+            const canvas = document.createElement('canvas');
+            canvas.width = map.width;
+            canvas.height = map.height;
+            fillsRef.current = canvas;
+        }
+        const ctx = fillsRef.current.getContext('2d', { willReadFrequently: true });
+        if (!ctx) return;
+
+        ctx.clearRect(0, 0, map.width, map.height);
+        if (fillOps.length > 0) {
+            const frame = ctx.getImageData(0, 0, map.width, map.height);
+            for (const op of fillOps) {
+                fillRegion(map, op.x, op.y, {
+                    r: parseInt(op.color.slice(1, 3), 16),
+                    g: parseInt(op.color.slice(3, 5), 16),
+                    b: parseInt(op.color.slice(5, 7), 16),
+                }, frame);
+            }
+            ctx.putImageData(frame, 0, 0);
+        }
+        setFillVersion(v => v + 1);
+    }, [fillOps, overlays.mask]);
 
     // Update dimensions when overlay loads
     useEffect(() => {
@@ -482,6 +645,16 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
         }
     }, [maskImage, canvasType]);
 
+    /**
+     * Fitting is held back until `dimensions` actually matches the template, not merely
+     * until the mask exists: dimensions starts at a placeholder and is set an effect later,
+     * so a sheet present at mount used to be fitted to 2048 and ended up twice the canvas.
+     */
+    const fitTarget = canvasType === 'plate'
+        || (maskImage && dimensions.width === maskImage.width && dimensions.height === maskImage.height)
+        ? dimensions
+        : undefined;
+
     // Layout state
     const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
     const containerRef = useRef<HTMLDivElement>(null);
@@ -497,7 +670,7 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
 
                 const scaleX = width / dimensions.width;
                 const scaleY = height / dimensions.height;
-                const fitScale = Math.min(scaleX, scaleY) * 0.9;
+                const fitScale = Math.min(scaleX, scaleY) * 0.9 * zoom;
 
                 setScale(fitScale);
             }
@@ -505,9 +678,58 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
 
         resizeObserver.observe(containerRef.current);
         return () => resizeObserver.disconnect();
-    }, [dimensions]);
+    }, [dimensions, zoom]);
+
+    useEffect(() => { onScaleChange?.(scale); }, [scale, onScaleChange]);
+
+    /** Records a click as a fill of the panel under the pointer. */
+    const handleFillClick = (stage: Konva.Stage) => {
+        const map = fillMapRef.current;
+        const point = stage.getRelativePointerPosition();
+        if (!map || !point) return;
+
+        const x = Math.round(point.x);
+        const y = Math.round(point.y);
+        if (x < 0 || y < 0 || x >= map.width || y >= map.height) return;
+        if (map.data[y * map.width + x] !== 1) return; // a line or outside the car
+
+        const op = { x, y, color: fillColor };
+        if (onFillsChange) onFillsChange([...(fills ?? []), op]);
+        else setOwnFills(current => [...current, op]);
+    };
+
+    /** Places a new object where the pointer went down, centred on that point. */
+    const handlePlace = (stage: Konva.Stage) => {
+        const point = stage.getRelativePointerPosition();
+        if (!point || !onObjectsChange) return;
+
+        const size = Math.round(Math.min(dimensions.width, dimensions.height) * 0.18);
+        const object: CanvasObject = {
+            id: `${mode}-${Date.now()}`,
+            type: mode as CanvasObject['type'],
+            x: Math.round(point.x - (mode === 'text' ? 0 : size / 2)),
+            y: Math.round(point.y - (mode === 'text' ? 0 : size / 2)),
+            width: size,
+            height: mode === 'text' ? Math.round(size / 2) : size,
+            rotation: 0,
+            fill: fillColor,
+            ...(mode === 'text' ? { text: 'TESLA', fontSize: Math.round(size / 2) } : {}),
+        };
+        onObjectsChange([...(objects ?? []), object]);
+        onSelectObject?.(object.id);
+    };
 
     const handleMouseDown = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+        if (mode === 'text' || mode === 'rect' || mode === 'ellipse') {
+            const stage = e.target.getStage();
+            if (stage) handlePlace(stage);
+            return;
+        }
+        if (mode === 'fill') {
+            const stage = e.target.getStage();
+            if (stage) handleFillClick(stage);
+            return;
+        }
         if (mode === 'draw') {
             const stage = e.target.getStage();
             const pos = stage?.getPointerPosition();
@@ -525,6 +747,7 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
             const clickedOnEmpty = e.target === e.target.getStage();
             if (clickedOnEmpty) {
                 onSelect(null);
+                onSelectObject?.(null);
             }
         }
     };
@@ -586,10 +809,36 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
                                 onChange={(newTransform) => onTransformChange(part, newTransform)}
                                 transform={transform}
                                 isInteractable={mode === 'select'}
-                                fitTo={dimensions}
+                                fitTo={fitTarget}
                             />
                         );
                     })}
+
+                    {/* Panel fills sit over the wrap art so a click always shows its
+                        colour, and under the outlines so the panel edges stay visible. */}
+                    {fillsRef.current && canvasType !== 'plate' && (
+                        <KonvaImage
+                            name="fillsImage"
+                            image={fillsRef.current}
+                            width={dimensions.width}
+                            height={dimensions.height}
+                            listening={false}
+                            // Konva caches the drawn frame; the counter forces a redraw
+                            // after the canvas is mutated in place.
+                            key={`fills-${fillVersion}`}
+                        />
+                    )}
+
+                    {objects?.map(object => (
+                        <ObjectShape
+                            key={object.id}
+                            object={object}
+                            isSelected={selectedObjectId === object.id}
+                            isInteractable={mode === 'select'}
+                            onSelect={() => onSelectObject?.(object.id)}
+                            onChange={next => onObjectsChange?.(objects.map(o => (o.id === next.id ? next : o)))}
+                        />
+                    ))}
 
                     {/* Plate Template Overlay */}
                     {canvasType === 'plate' && (

@@ -4,6 +4,7 @@ import { type DesignCanvasHandle, type LayerTransform } from './components/Desig
 import { ShareModal } from './components/ShareModal';
 import { WrapGallery } from './components/WrapGallery/WrapGallery';
 import { Gallery3D } from './components/Gallery3D/Gallery3D';
+import { WrapEditor } from './components/WrapEditor/WrapEditor';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { SEO_COPY, SITE_IMAGE, SITE_URL } from './seo';
@@ -41,6 +42,7 @@ function App() {
   const [galleryRefreshTrigger, setGalleryRefreshTrigger] = useState(0);
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [is3DGalleryOpen, setIs3DGalleryOpen] = useState(false);
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [galleryView, setGalleryView] = useState<'community' | 'garage'>('community');
 
   const canvasRef = useRef<DesignCanvasHandle>(null);
@@ -128,6 +130,13 @@ function App() {
     setLayerTransforms({});
     setSelectedLayerId(null);
     setIsWrapVisible(false);
+  };
+
+  const handleRemoveWrap = () => {
+    setSingleLayer(null);
+    setLoadedWrapName(null);
+    setLayerTransforms({});
+    setSelectedLayerId(null);
   };
 
   const handleExport = () => {
@@ -228,9 +237,32 @@ function App() {
           onOpenGallery={() => { setGalleryView('community'); setIsGalleryOpen(true); }}
           onOpenGarage={() => { setGalleryView('garage'); setIsGalleryOpen(true); }}
           onOpen3DGallery={() => setIs3DGalleryOpen(true)}
+          onOpenEditor={() => setIsEditorOpen(true)}
           onLoadCommunityWrap={handleLoadCommunityWrap}
           communityRefreshTrigger={galleryRefreshTrigger}
         />
+
+        {isEditorOpen && (
+          <WrapEditor
+            language={language}
+            currentModelName={currentModelName}
+            onModelChange={handleModelChange}
+            singleLayer={singleLayer}
+            loadedWrapName={loadedWrapName}
+            layerTransforms={layerTransforms}
+            onLayerTransformsChange={setLayerTransforms}
+            selectedLayerId={selectedLayerId}
+            onSelectedLayerIdChange={setSelectedLayerId}
+            isWrapVisible={isWrapVisible}
+            onIsWrapVisibleChange={setIsWrapVisible}
+            canvasRef={canvasRef}
+            onLoadWrap={handleLoadCommunityWrap}
+            onRemoveWrap={handleRemoveWrap}
+            onExport={handleExport}
+            onShare={handleOpenShareModal}
+            onClose={() => setIsEditorOpen(false)}
+          />
+        )}
 
         {is3DGalleryOpen && (
           <Gallery3D

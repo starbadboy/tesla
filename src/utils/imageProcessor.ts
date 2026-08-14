@@ -13,7 +13,25 @@
 const TRIM_MAX_THICKNESS_RATIO = 0.025;
 const TRIM_MIN_ASPECT = 4;
 
-export const processTemplateMask = async (imageUrl: string, bgColor: string = '#2b2b2b'): Promise<{ mask: string, lines: string, trim: string }> => {
+/**
+ * The panels a click can land in: 1 where a pixel is inside the car and not part of an
+ * outline, 0 on a line or outside. Filling one panel is a flood fill bounded by these
+ * zeroes, which is what makes a single panel colourable without cutting up the template.
+ */
+export interface FillMap {
+    data: Uint8Array;
+    width: number;
+    height: number;
+}
+
+export interface TemplateOverlays {
+    mask: string;
+    lines: string;
+    trim: string;
+    fillable: FillMap | null;
+}
+
+export const processTemplateMask = async (imageUrl: string, bgColor: string = '#2b2b2b'): Promise<TemplateOverlays> => {
     return new Promise((resolve, reject) => {
         const img = new Image();
         img.crossOrigin = "Anonymous";
@@ -149,6 +167,7 @@ export const processTemplateMask = async (imageUrl: string, bgColor: string = '#
                     mask: canvasMask.toDataURL(),
                     lines: canvasLines.toDataURL(),
                     trim: canvasTrim.toDataURL(),
+                    fillable: null,
                 });
                 return;
             }
@@ -235,15 +254,69 @@ export const processTemplateMask = async (imageUrl: string, bgColor: string = '#
             ctxMask.putImageData(maskImageData, 0, 0);
             ctxLines.putImageData(linesImageData, 0, 0);
 
+            const fillable = new Uint8Array(width * height);
+            for (let i = 0; i < width * height; i++) {
+                fillable[i] = exterior[i] === 0 && binary[i] === 1 ? 1 : 0;
+            }
+
             resolve({
                 mask: canvasMask.toDataURL(),
                 lines: canvasLines.toDataURL(),
-                trim: canvasTrim.toDataURL()
+                trim: canvasTrim.toDataURL(),
+                fillable: { data: fillable, width, height },
             });
         };
         img.onerror = (err) => reject(err);
         img.src = imageUrl;
     });
+};
+
+/**
+ * Paints the panel under (x, y) into `target`, bounded by the template's outlines.
+ *
+ * Returns false when the click landed on a line or outside the car, so the caller can
+ * leave the canvas untouched rather than filling something the user did not point at.
+ */
+export const fillRegion = (
+    map: FillMap,
+    x: number,
+    y: number,
+    colour: { r: number; g: number; b: number },
+    target: ImageData,
+): boolean => {
+    const { data: fillable, width, height } = map;
+    if (x < 0 || y < 0 || x >= width || y >= height) return false;
+
+    const start = y * width + x;
+    if (fillable[start] !== 1) return false;
+
+    // Typed queue rather than an array of points: a panel runs to millions of pixels on
+    // a 2048px template and push/pop of boxed numbers dominates the cost there.
+    const queue = new Int32Array(width * height);
+    const seen = new Uint8Array(width * height);
+    const pixels = target.data;
+    let head = 0;
+    let tail = 0;
+    queue[tail++] = start;
+    seen[start] = 1;
+
+    while (head < tail) {
+        const idx = queue[head++];
+        const at = idx * 4;
+        pixels[at] = colour.r;
+        pixels[at + 1] = colour.g;
+        pixels[at + 2] = colour.b;
+        pixels[at + 3] = 255;
+
+        const px = idx % width;
+        const py = (idx - px) / width;
+        if (px > 0 && fillable[idx - 1] === 1 && seen[idx - 1] === 0) { seen[idx - 1] = 1; queue[tail++] = idx - 1; }
+        if (px < width - 1 && fillable[idx + 1] === 1 && seen[idx + 1] === 0) { seen[idx + 1] = 1; queue[tail++] = idx + 1; }
+        if (py > 0 && fillable[idx - width] === 1 && seen[idx - width] === 0) { seen[idx - width] = 1; queue[tail++] = idx - width; }
+        if (py < height - 1 && fillable[idx + width] === 1 && seen[idx + width] === 0) { seen[idx + width] = 1; queue[tail++] = idx + width; }
+    }
+
+    return true;
 };
 
 /**
