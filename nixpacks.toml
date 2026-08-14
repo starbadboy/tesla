@@ -2,7 +2,12 @@
 nixPkgs = ["nodejs_22"]
 
 [phases.install]
-cmds = ["npm install"]
+# ci, not install: npm install skipped rolldown's linux binary when resolving against a
+# lockfile built elsewhere (npm/cli#4828) and the build died with "Cannot find native
+# binding". ci wipes node_modules and takes the lockfile literally, platform binaries and
+# all. --include=dev because the builder sets the production config, and the build needs
+# vite and typescript.
+cmds = ["npm ci --include=dev"]
 
 [phases.build]
 cmds = ["npm run build"]
