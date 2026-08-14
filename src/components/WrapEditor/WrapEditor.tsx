@@ -147,17 +147,6 @@ export function WrapEditor({
 
     const fileRef = useRef<HTMLInputElement>(null);
 
-    // Same cycle WrapStudio drives: ThreeDView binds a freshly loaded sheet to its
-    // materials only after showTexture flips, so without this the car keeps its paint.
-    // ponytail: workaround, not the root cause — remove once ThreeDView rebinds on its own.
-    useEffect(() => {
-        if (!singleLayer) return;
-        onIsWrapVisibleChange(false);
-        const settle = window.setTimeout(() => onIsWrapVisibleChange(true), 60);
-        return () => window.clearTimeout(settle);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [singleLayer]);
-
     useEffect(() => {
         const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
         window.addEventListener('keydown', onKey);

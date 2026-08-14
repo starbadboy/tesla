@@ -180,6 +180,19 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true,
         setTextureActive(showTexture);
     }, [showTexture]);
 
+    // Materials bind the wrap only as this flips, so a view that mounts with a wrap
+    // already loaded — the 3D gallery entered from the studio — otherwise shows the car
+    // half painted. Cycling once per scene covers mounting and changing car.
+    // ponytail: workaround, not the root cause — remove once the material pass rebinds
+    // on a texture change of its own accord.
+    useEffect(() => {
+        if (!showTexture) return;
+        setTextureActive(false);
+        const settle = window.setTimeout(() => setTextureActive(true), 60);
+        return () => window.clearTimeout(settle);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [scene]);
+
     const updateTexture = useCallback(() => {
         if (stageRef.current && textureActive) {
             try {

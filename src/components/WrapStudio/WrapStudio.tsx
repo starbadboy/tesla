@@ -32,6 +32,12 @@ export interface WrapStudioProps {
     onOpenGarage: () => void;
     onOpen3DGallery: () => void;
     onOpenEditor: () => void;
+    /**
+     * Set while a full-screen surface (editor, gallery) is open. Two ThreeDViews share one
+     * cached GLTF scene, so both rewrite the same meshes' materials and the visible car
+     * ends up half painted by the hidden one. Only one 3D stage may live at a time.
+     */
+    suspended?: boolean;
     onLoadCommunityWrap: (url: string, wrap?: { model?: string; name?: string }) => void | Promise<void>;
     communityRefreshTrigger?: number;
     children?: ReactNode;
@@ -48,6 +54,7 @@ export function WrapStudio({
     canvasRef, layerTransforms, onLayerTransformsChange,
     selectedLayerId, onSelectedLayerIdChange,
     onShare, onExport, onOpenGallery, onOpenGarage, onOpen3DGallery, onOpenEditor, onLoadCommunityWrap,
+    suspended = false,
     communityRefreshTrigger = 0,
     children,
 }: WrapStudioProps) {
@@ -72,19 +79,6 @@ export function WrapStudio({
             });
         return () => { cancelled = true; };
     }, [communityRefreshTrigger, currentModelName, shelfSort]);
-
-    // ThreeDView binds a newly loaded wrap to its materials only after showTexture
-    // cycles — the texture uploads (verified: 1024x1024, version climbing) and the
-    // shader compiles, yet the car keeps its base paint until the materials are
-    // rebuilt by that transition. Driving the cycle here makes a fresh wrap appear.
-    // ponytail: workaround, not the root cause — remove once ThreeDView rebinds on its own.
-    useEffect(() => {
-        if (!singleLayer) return;
-        onIsWrapVisibleChange(false);
-        const settle = window.setTimeout(() => onIsWrapVisibleChange(true), 60);
-        return () => window.clearTimeout(settle);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [singleLayer]);
 
     const visible = shelf;
 
@@ -118,7 +112,7 @@ export function WrapStudio({
                         {!singleLayer && <div className="ws-flat-sub">{t.pick2dPreview}</div>}
                     </div>
                 )}
-                {model3dPath && (
+                {model3dPath && !suspended && (
                     <ThreeDView
                         stageRef={canvasRef}
                         modelPath={model3dPath}
@@ -133,8 +127,9 @@ export function WrapStudio({
                 )}
             </div>
 
-            {/* Hidden 2D canvas — ThreeDView samples the wrap texture off it. */}
-            <div className="ws-texture-src" aria-hidden="true">
+            {/* Hidden 2D canvas — ThreeDView samples the wrap texture off it. Unmounted
+                along with the stage so the open surface owns the shared canvas ref. */}
+            {!suspended && <div className="ws-texture-src" aria-hidden="true">
                 <DesignCanvas
                     ref={canvasRef}
                     modelPath={CAR_MODELS[currentModelName]}
@@ -150,7 +145,7 @@ export function WrapStudio({
                     canvasType="car"
                     plateSize="420x200"
                 />
-            </div>
+            </div>}
 
             <div className="ws-head">
                 <div className="ws-wm">TESLA<span> STUDIO</span></div>

@@ -49,6 +49,19 @@ function App() {
 
   const seo = SEO_COPY[language];
 
+  // ThreeDView binds a newly loaded wrap to its materials only when showTexture cycles —
+  // the texture uploads and the shader compiles, yet the car keeps its previous state
+  // until that transition rebuilds them. Driving it here covers every surface: the studio
+  // and the editor each used to carry their own copy, and the 3D gallery had none, which
+  // is why a wrap picked outside came in half applied.
+  // ponytail: workaround, not the root cause — remove once ThreeDView rebinds on its own.
+  useEffect(() => {
+    if (!singleLayer) return;
+    setIsWrapVisible(false);
+    const settle = window.setTimeout(() => setIsWrapVisible(true), 60);
+    return () => window.clearTimeout(settle);
+  }, [singleLayer]);
+
   // SEO metadata
   useEffect(() => {
     document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
@@ -238,6 +251,7 @@ function App() {
           onOpenGarage={() => { setGalleryView('garage'); setIsGalleryOpen(true); }}
           onOpen3DGallery={() => setIs3DGalleryOpen(true)}
           onOpenEditor={() => setIsEditorOpen(true)}
+          suspended={isEditorOpen || is3DGalleryOpen}
           onLoadCommunityWrap={handleLoadCommunityWrap}
           communityRefreshTrigger={galleryRefreshTrigger}
         />
