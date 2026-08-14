@@ -1,5 +1,8 @@
 [phases.setup]
-nixPkgs = ["nodejs_22"]
+# 24, not 22: the pinned nodejs_22 is 22.11, which predates require(ESM), so rolldown's
+# wasm fallback died loading @emnapi/core. It also ships npm 10, whose handling of
+# optional dependencies is what lost the native binary in the first place.
+nixPkgs = ["nodejs_24"]
 
 [phases.install]
 # ci, not install: npm install skipped rolldown's linux binary when resolving against a
