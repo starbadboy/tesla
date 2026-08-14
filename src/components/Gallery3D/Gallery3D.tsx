@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type RefObject } from 'react';
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { ArrowLeft, Download } from 'lucide-react';
 import { DesignCanvas, type DesignCanvasHandle, type LayerTransform } from '../DesignCanvas';
 import { ThreeDView } from '../ThreeDView';
@@ -46,6 +46,17 @@ export function Gallery3D({
 }: Gallery3DProps) {
     const t = TRANSLATIONS[language];
     const model3dPath = CAR_3D_MODELS[currentModelName] ?? null;
+
+    // This page is the car, so only cars that have one belong in the picker.
+    const models3d = useMemo(() => Object.keys(CAR_MODELS).filter(name => CAR_3D_MODELS[name]), []);
+
+    // Arriving from the studio on a car with no 3D would leave an empty stage, so move to
+    // its closest sibling — same family where there is one, the default otherwise.
+    useEffect(() => {
+        if (model3dPath) return;
+        const family = currentModelName.split(' ').slice(0, 2).join(' ');
+        onModelChange(models3d.find(name => name.startsWith(family)) ?? models3d[0]);
+    }, [model3dPath, currentModelName, models3d, onModelChange]);
 
     const [wraps, setWraps] = useState<Wrap[]>([]);
     const [total, setTotal] = useState(0);
@@ -123,7 +134,7 @@ export function Gallery3D({
                         ariaLabel={t.modelSelection}
                         value={currentModelName}
                         onChange={onModelChange}
-                        options={Object.keys(CAR_MODELS).map(name => ({ value: name, label: name }))}
+                        options={models3d.map(name => ({ value: name, label: name }))}
                     />
                 </div>
 

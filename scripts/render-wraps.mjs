@@ -64,6 +64,7 @@ function modelFor(wrap) {
 
 async function main() {
     const args = parseArgs(process.argv);
+    const stamp = Math.floor(Date.now() / 1000);
 
     const mongoUrl = process.env.MONGO_URL;
     if (!mongoUrl) throw new Error('MONGO_URL is not set');
@@ -119,11 +120,23 @@ async function main() {
             for (const wrap of list) {
                 try {
                     await page.evaluate(imageUrl => window.__loadWrap(imageUrl), wrap.imageUrl);
-                    const canvas = page.locator('#render-stage canvas').first();
-                    const png = await canvas.screenshot({ omitBackground: true });
+                    // The page crops to the car itself; a screenshot would keep the empty
+                    // stage around it and leave the car small inside a gallery card.
+                    let dataUrl = await page.evaluate(() => window.__captureWrap());
+                    if (!dataUrl) {
+                        // Blank frame, roughly once in 400: the drawing buffer occasionally
+                        // reads back empty right after the wrap rebind. One more frame fixes it.
+                        await page.waitForTimeout(600);
+                        dataUrl = await page.evaluate(() => window.__captureWrap());
+                    }
+                    if (!dataUrl) throw new Error('capture returned nothing');
+                    const png = Buffer.from(dataUrl.split(',')[1], 'base64');
 
                     const key = `renders/${model.replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase()}/${wrap._id}.png`;
-                    const renderUrl = await uploadToR2(png, key, 'image/png');
+                    const uploaded = await uploadToR2(png, key, 'image/png');
+                    // Re-rendering overwrites the same object, so without a version the
+                    // browser and the CDN keep serving the previous shot forever.
+                    const renderUrl = `${uploaded}?v=${stamp}`;
                     await Wrap.updateOne({ _id: wrap._id }, { $set: { renderUrl } });
 
                     done += 1;

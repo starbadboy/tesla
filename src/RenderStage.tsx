@@ -11,10 +11,22 @@ declare global {
     interface Window {
         /** Loads a wrap sheet and resolves once it has been drawn onto the car. */
         __loadWrap?: (imageUrl: string) => Promise<void>;
+        /** Returns the current frame cropped to the car, as a PNG data URL. */
+        __captureWrap?: () => string | null;
         /** True once the car model itself is on screen. */
         __stageReady?: boolean;
     }
 }
+
+/** Breathing room around the car, as a share of its longest side. */
+const CROP_PADDING = 0.03;
+
+/**
+ * Alpha below this counts as empty stage. The GL buffer comes back with a faint wash
+ * (~2% grey) over the whole frame instead of clean zeroes, so a plain "alpha > 0" test
+ * finds the car nowhere and everywhere at once.
+ */
+const ALPHA_FLOOR = 24;
 
 /**
  * The surface `scripts/render-wraps.mjs` drives to produce the gallery thumbnails.
@@ -67,10 +79,63 @@ export function RenderStage() {
         await new Promise(resolve => window.setTimeout(resolve, 900));
     }, []);
 
+    /**
+     * Crops the frame to the car before handing it over. A plain screenshot keeps all the
+     * empty stage around it, which leaves the car small inside a gallery card, and the
+     * margin cannot be trimmed later in CSS because it is inside the PNG.
+     */
+    const capture = useCallback(() => {
+        const gl = document.querySelector<HTMLCanvasElement>('#render-stage canvas');
+        if (!gl) return null;
+
+        const flat = document.createElement('canvas');
+        flat.width = gl.width;
+        flat.height = gl.height;
+        const flatCtx = flat.getContext('2d');
+        if (!flatCtx) return null;
+        flatCtx.drawImage(gl, 0, 0);
+
+        // One pass: clear the wash so the PNG is genuinely transparent (and compresses,
+        // instead of storing 2MB of near-invisible noise) while measuring the car's bounds.
+        const frame = flatCtx.getImageData(0, 0, flat.width, flat.height);
+        const data = frame.data;
+        let minX = flat.width, minY = flat.height, maxX = -1, maxY = -1;
+        for (let y = 0; y < flat.height; y++) {
+            for (let x = 0; x < flat.width; x++) {
+                const at = (y * flat.width + x) * 4;
+                if (data[at + 3] < ALPHA_FLOOR) {
+                    data[at] = data[at + 1] = data[at + 2] = data[at + 3] = 0;
+                    continue;
+                }
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+                if (y < minY) minY = y;
+                if (y > maxY) maxY = y;
+            }
+        }
+        if (maxX < 0) return null;
+        flatCtx.putImageData(frame, 0, 0);
+
+        const pad = Math.round(Math.max(maxX - minX, maxY - minY) * CROP_PADDING);
+        const left = Math.max(0, minX - pad);
+        const top = Math.max(0, minY - pad);
+        const width = Math.min(flat.width - left, maxX - minX + 1 + pad * 2);
+        const height = Math.min(flat.height - top, maxY - minY + 1 + pad * 2);
+
+        const out = document.createElement('canvas');
+        out.width = width;
+        out.height = height;
+        const outCtx = out.getContext('2d');
+        if (!outCtx) return null;
+        outCtx.drawImage(flat, left, top, width, height, 0, 0, width, height);
+        return out.toDataURL('image/png');
+    }, []);
+
     useEffect(() => {
         window.__loadWrap = loadWrap;
-        return () => { delete window.__loadWrap; };
-    }, [loadWrap]);
+        window.__captureWrap = capture;
+        return () => { delete window.__loadWrap; delete window.__captureWrap; };
+    }, [loadWrap, capture]);
 
     useEffect(() => {
         if (!modelPath) return;
@@ -92,7 +157,9 @@ export function RenderStage() {
                     autoRotate={false}
                     hideWrapToggle
                     transparent
-                    fov={42}
+                    // Framed loose on purpose: the capture crops to the car, so spare
+                    // margin costs nothing while a tight fov clipped the front bumper.
+                    fov={54}
                 />
             )}
             <div style={{ position: 'absolute', inset: 0, opacity: 0, pointerEvents: 'none' }} aria-hidden="true">

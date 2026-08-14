@@ -153,6 +153,15 @@ function originalMaterials(mesh: THREE.Mesh): THREE.Material[] {
 }
 
 // Simplified Car that applies texture to specific material
+/**
+ * Assets that are modelled nose-the-other-way. The camera is fixed, so without this the
+ * S and X show their tail where every other car shows its face. The wheel anchors would
+ * give the forward direction for free, but these are exactly the assets that lack them.
+ */
+const BACKWARDS_MODELS = ['models_2021', 'modelx_2021', 'models_2025_plaid'];
+
+const facesBackwards = (modelPath: string) => BACKWARDS_MODELS.some(name => modelPath.includes(name));
+
 const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true, transparentStage = false }: { stageRef: React.RefObject<DesignCanvasHandle | null>, modelPath: string, showTexture?: boolean, isActive?: boolean, transparentStage?: boolean }) => {
     const { scene } = useGLTF(modelPath);
     const modelFile = modelPath.split('/').pop() || '';
@@ -507,7 +516,7 @@ const ErrorFallback = ({ error, language = 'en' }: { error?: Error, language?: '
  * Perspective FOV is vertical, so a portrait viewport loses horizontal framing and
  * crops the car's nose and tail. Widen it when the stage is taller than it is wide.
  */
-function FitFraming({ override }: { override?: number }) {
+function FitFraming({ override, modelPath }: { override?: number; modelPath: string }) {
     const { camera, size } = useThree();
     useEffect(() => {
         if (!(camera instanceof THREE.PerspectiveCamera)) return;
@@ -516,6 +525,14 @@ function FitFraming({ override }: { override?: number }) {
         camera.fov = wanted;
         camera.updateProjectionMatrix();
     }, [camera, size, override]);
+
+    // Backwards assets are viewed from the mirrored corner, so every car shows its face
+    // with the nose to the left. R3F reads the Canvas camera prop once at creation, so
+    // switching cars has to move the camera here or the second car keeps the first's view.
+    useEffect(() => {
+        camera.position.set(facesBackwards(modelPath) ? 8 : -8, 2, -9);
+    }, [camera, modelPath]);
+
     return null;
 }
 
@@ -574,7 +591,7 @@ export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive =
                     }}
                 >
                     {!transparent && <color attach="background" args={['#0c0c0e']} />}
-                    <FitFraming override={fov} />
+                    <FitFraming override={fov} modelPath={modelPath} />
                     {/* Tesla Gallery-style OrbitControls */}
                     <OrbitControls
                         makeDefault
