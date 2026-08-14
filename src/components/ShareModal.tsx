@@ -135,7 +135,9 @@ export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl, language
     const isBulk = uploadedFiles.length > 1;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        // Above the editor and the galleries, which are full-screen shells of their own —
+        // at z-50 this opened underneath them and the Share button looked dead.
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
             <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200 border border-transparent dark:border-zinc-800">
                 <div className="p-6">
                     <div className="flex justify-between items-center mb-6">
