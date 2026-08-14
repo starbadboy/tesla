@@ -163,7 +163,17 @@
   padding: 10px;
   overflow: hidden;
 }
-.wg-thumb img { max-width: 100%; max-height: 100%; object-fit: contain; }
+/* Both images share the one grid cell so the swap keeps the padding and centring. */
+.wg-thumb img {
+  grid-area: 1 / 1;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  transition: opacity .18s ease;
+}
+.wg-thumb .wg-on-car { opacity: 0; }
+.wg-card:hover .wg-thumb.is-ready .wg-on-car { opacity: 1; }
+.wg-card:hover .wg-thumb.is-ready .wg-sheet { opacity: 0; }
 .wg-thumb audio { width: 100%; }
 
 .wg-badges { position: absolute; top: 10px; left: 10px; display: flex; gap: 6px; pointer-events: none; }

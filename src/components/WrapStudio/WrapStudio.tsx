@@ -47,6 +47,21 @@ export interface WrapStudioProps {
 // the better surface than a very long horizontal scroller.
 const SHELF_SIZE = 24;
 
+/** Shelf thumbnail: the sheet, swapping to the car under the pointer. Same trade as the
+ *  gallery — the render is only fetched once a card is actually hovered. */
+function ShelfThumb({ wrap }: { wrap: Wrap }) {
+    const [wanted, setWanted] = useState(false);
+    const [ready, setReady] = useState(false);
+    return (
+        <span className={`ws-shot ${ready ? 'is-ready' : ''}`} onMouseEnter={() => setWanted(true)}>
+            <img className="ws-sheet" src={wrap.imageUrl} alt={wrap.name} loading="lazy" />
+            {wanted && wrap.renderUrl && (
+                <img className="ws-on-car" src={wrap.renderUrl} alt="" aria-hidden="true" onLoad={() => setReady(true)} />
+            )}
+        </span>
+    );
+}
+
 export function WrapStudio({
     language, onToggleLanguage,
     currentModelName, onModelChange,
@@ -220,7 +235,7 @@ export function WrapStudio({
                                 onClick={() => handlePick(wrap)}
                             >
                                 <div className="ws-thumb">
-                                    <img src={wrap.imageUrl} alt={wrap.name} loading="lazy" />
+                                    <ShelfThumb wrap={wrap} />
                                     {(() => {
                                         const { isNew, isHot } = wrapFlags(wrap);
                                         return (

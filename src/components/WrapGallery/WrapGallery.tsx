@@ -42,6 +42,33 @@ function ownerId(wrap: Wrap): string | undefined {
     return typeof wrap.user === 'string' ? wrap.user : wrap.user._id;
 }
 
+/**
+ * The flat sheet, swapping to the wrap on its car while the pointer is over the card.
+ *
+ * The render is fetched on first hover rather than with the card: a page holds 60 of
+ * them at a few hundred KB each, and most are never pointed at. The sheet stays until
+ * the render has decoded, so the swap never blinks through an empty frame.
+ */
+function WrapThumb({ wrap, alt }: { wrap: Wrap; alt: string }) {
+    const [wanted, setWanted] = useState(false);
+    const [ready, setReady] = useState(false);
+
+    return (
+        <div className={`wg-thumb ${ready ? 'is-ready' : ''}`} onMouseEnter={() => setWanted(true)}>
+            <img className="wg-sheet" src={wrap.imageUrl} alt={alt} loading="lazy" />
+            {wanted && wrap.renderUrl && (
+                <img
+                    className="wg-on-car"
+                    src={wrap.renderUrl}
+                    alt=""
+                    aria-hidden="true"
+                    onLoad={() => setReady(true)}
+                />
+            )}
+        </div>
+    );
+}
+
 export function WrapGallery({
     type, selectedModel, refreshTrigger = 0, language = 'en', onToggleLanguage,
     view = 'community', onLoadWrap, onClose,
@@ -234,11 +261,13 @@ export function WrapGallery({
 
     const renderThumb = (wrap: Wrap) => {
         if (type === 'sound') {
-            return wrap.audioUrl
-                ? <audio controls src={wrap.audioUrl} onClick={e => e.stopPropagation()} />
-                : null;
+            return (
+                <div className="wg-thumb">
+                    {wrap.audioUrl && <audio controls src={wrap.audioUrl} onClick={e => e.stopPropagation()} />}
+                </div>
+            );
         }
-        return <img src={wrap.imageUrl} alt={wrap.name} loading="lazy" />;
+        return <WrapThumb wrap={wrap} alt={wrap.name} />;
     };
 
     const canManage = (wrap: Wrap) => Boolean(user?.isAdmin || (user?.id && user.id === ownerId(wrap)));
@@ -404,7 +433,7 @@ export function WrapGallery({
                                             onClick={() => setOpenId(wrap._id)}
                                             onKeyDown={e => { if (e.key === 'Enter') setOpenId(wrap._id); }}
                                         >
-                                            <div className="wg-thumb">{renderThumb(wrap)}</div>
+                                            {renderThumb(wrap)}
                                             <div className="wg-badges">
                                                 {showNew && <span className="wg-badge wg-new"><Sparkles size={10} /> NEW</span>}
                                                 {showHot && <span className="wg-badge wg-hot"><Flame size={10} /> HOT</span>}
