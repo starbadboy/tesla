@@ -31,7 +31,6 @@ const User = require('./models/User');
 const cron = require('node-cron');
 const { scrapeAndSave } = require('./scripts/daily_scraper');
 const { scrapeTeslaWrapGallery } = require('./scripts/teslawrapgallery_scraper');
-const { renderNewWraps } = require('./scripts/render_new');
 
 const app = express();
 
@@ -39,18 +38,14 @@ const app = express();
 // Schedule Daily Scrape at Midnight (00:00)
 // Format: sec min hour day month day-of-week
 // node-cron: second(optional), minute, hour, day of month, month, day of week
-cron.schedule('0 0 * * *', async () => {
-    await scrapeAndSave().catch(err => {
+cron.schedule('0 0 * * *', () => {
+    scrapeAndSave().catch(err => {
         console.error('Daily scrape failed:', err);
     });
 
-    await scrapeTeslaWrapGallery().catch(err => {
+    scrapeTeslaWrapGallery().catch(err => {
         console.error('TeslaWrapGallery daily scrape failed:', err);
     });
-
-    // Awaited in turn, then rendered: whatever arrived tonight needs a thumbnail on its
-    // car before it shows up in the 3D gallery or under a hovered card.
-    await renderNewWraps();
 });
 
 // Run once on startup for testing/updating (Optional, can be removed in prod if not desired)
@@ -306,8 +301,6 @@ app.post('/api/admin/scrape', async (req, res) => {
         // Run asynchronously to not block response? 
         // Or await to give feedback? Await is better for testing.
         await scrapeAndSave();
-        // Same follow-up as the nightly job, so a manual scrape is not left half done.
-        await renderNewWraps();
         res.json({ message: 'Scrape completed successfully' });
     } catch (err) {
         res.status(500).json({ error: err.message });
