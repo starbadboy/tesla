@@ -1,0 +1,349 @@
+/* ============================================================
+   HOME — landing page: hero, the wall of wraps, cars, steps, FAQ.
+   Scoped to .hm-app.
+   ============================================================ */
+
+.hm-app,
+.hm-app *,
+.hm-app *::before,
+.hm-app *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+.hm-app {
+  --hm-bg: #0c0c0e;
+  --hm-surface: #141417;
+  --hm-surface-2: #1a1a1e;
+  --hm-line: #232329;
+  --hm-line-2: #33333a;
+  --hm-ink-1: #f4f4f6;
+  --hm-ink-2: #d6d6da;
+  --hm-ink-3: #9a9aa2;
+  --hm-ink-4: #74747c;
+  --hm-ink-5: #55555d;
+
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--hm-bg);
+  color: var(--hm-ink-2);
+  font-family: 'Archivo', 'Inter', -apple-system, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.hm-app button { font-family: inherit; color: inherit; }
+
+/* ============ HEAD ============ */
+.hm-head {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  height: 62px;
+  padding: 0 32px;
+  background: rgba(12, 12, 14, .88);
+  border-bottom: 1px solid var(--hm-line);
+  backdrop-filter: blur(10px);
+}
+.hm-wm {
+  border: none;
+  background: none;
+  font: 700 15px 'Archivo', sans-serif;
+  letter-spacing: .2em;
+  color: var(--hm-ink-1);
+  cursor: pointer;
+}
+.hm-wm span { font-weight: 300; color: var(--hm-ink-4); }
+
+.hm-nav { display: flex; align-items: center; gap: 22px; margin-left: auto; }
+.hm-nav button {
+  border: none;
+  background: none;
+  font: 500 13.5px 'Archivo', sans-serif;
+  color: var(--hm-ink-3);
+  cursor: pointer;
+}
+.hm-nav button:hover { color: #fff; }
+
+/* ============ HERO ============ */
+.hm-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  align-items: center;
+  gap: 40px;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 76px 32px 64px;
+}
+
+.hm-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border: 1px solid var(--hm-line);
+  border-radius: 999px;
+  background: var(--hm-surface);
+  font: 500 12.5px 'Archivo', sans-serif;
+  color: var(--hm-ink-2);
+}
+.hm-pill i { width: 7px; height: 7px; border-radius: 50%; background: #3ddc84; }
+
+.hm-hero h1 {
+  margin: 22px 0 18px;
+  font: 800 56px/1.05 'Archivo', sans-serif;
+  letter-spacing: -.02em;
+  color: var(--hm-ink-1);
+}
+.hm-hero-copy p {
+  max-width: 460px;
+  font: 400 16px/1.65 'Archivo', sans-serif;
+  color: var(--hm-ink-3);
+}
+
+.hm-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 28px;
+  padding: 14px 26px;
+  border: none;
+  border-radius: 10px;
+  background: #f0f0f2;
+  color: #0c0c0e !important;
+  font: 600 15px 'Archivo', sans-serif;
+  cursor: pointer;
+}
+.hm-cta:hover { background: #fff; }
+
+.hm-ghost {
+  padding: 14px 26px;
+  border: 1px solid var(--hm-line-2);
+  border-radius: 10px;
+  background: none;
+  font: 600 15px 'Archivo', sans-serif;
+  cursor: pointer;
+}
+.hm-ghost:hover { border-color: #55555c; color: #fff; }
+
+.hm-fine {
+  display: block;
+  margin-top: 14px;
+  font: 400 12.5px 'Archivo', sans-serif;
+  color: var(--hm-ink-5);
+}
+
+/* The stage sizes itself to its box, so the hero gives it one. The glow is what keeps a
+   black car legible against a black page — the paint has no wrap on it here. */
+.hm-hero-car {
+  height: 420px;
+  background: radial-gradient(closest-side, rgba(255, 255, 255, .07), transparent 72%);
+}
+
+/* ============ WALL ============ */
+.hm-wall { padding: 64px 0 76px; text-align: center; border-top: 1px solid var(--hm-line); }
+.hm-wall h2 {
+  padding: 0 24px;
+  font: 700 32px 'Archivo', sans-serif;
+  letter-spacing: -.01em;
+  color: var(--hm-ink-5);
+}
+.hm-wall h2 b { color: var(--hm-ink-1); font-weight: 700; }
+.hm-wall > p {
+  margin: 12px 0 32px;
+  font: 400 15px 'Archivo', sans-serif;
+  color: var(--hm-ink-4);
+}
+
+/* Fade the ends so tiles enter and leave instead of being chopped by the viewport. */
+.hm-track {
+  overflow: hidden;
+  padding: 8px 0;
+  mask-image: linear-gradient(to right, transparent, #000 5%, #000 95%, transparent);
+}
+.hm-belt {
+  display: flex;
+  gap: 18px;
+  width: max-content;
+  padding: 0 9px;
+  animation: hm-drift 70s linear infinite;
+}
+.hm-belt.is-rev { animation-direction: reverse; }
+/* Pause under the pointer so a wrap can actually be aimed at. */
+.hm-track:hover .hm-belt { animation-play-state: paused; }
+@keyframes hm-drift {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hm-belt { animation: none; }
+  .hm-track { overflow-x: auto; }
+}
+
+.hm-tile {
+  flex: 0 0 auto;
+  width: 300px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: var(--hm-surface);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color .15s, background .15s;
+}
+.hm-tile:hover { border-color: var(--hm-line-2); background: var(--hm-surface-2); }
+.hm-tile img {
+  display: block;
+  width: 100%;
+  height: 168px;
+  object-fit: contain;
+  padding: 10px 14px 0;
+}
+.hm-tile-meta { display: block; padding: 8px 14px 14px; }
+.hm-tile-meta b {
+  display: block;
+  font: 600 13.5px 'Archivo', sans-serif;
+  color: var(--hm-ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hm-tile-meta i {
+  display: block;
+  margin-top: 2px;
+  font: 400 12px 'Archivo', sans-serif;
+  font-style: normal;
+  color: var(--hm-ink-5);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hm-wall-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 34px;
+  padding: 10px 20px;
+  border: 1px solid var(--hm-line-2);
+  border-radius: 999px;
+  background: none;
+  font: 500 13.5px 'Archivo', sans-serif;
+  color: var(--hm-ink-2);
+  cursor: pointer;
+}
+.hm-wall-all:hover { color: #fff; border-color: #55555c; }
+
+/* ============ SECTIONS ============ */
+.hm-section {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 66px 32px;
+  border-top: 1px solid var(--hm-line);
+  text-align: center;
+}
+.hm-section h2 {
+  font: 700 28px 'Archivo', sans-serif;
+  letter-spacing: -.01em;
+  color: var(--hm-ink-1);
+}
+.hm-sub {
+  margin: 10px 0 34px;
+  font: 400 14.5px 'Archivo', sans-serif;
+  color: var(--hm-ink-4);
+}
+
+.hm-cars { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+.hm-car {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 18px;
+  border: 1px solid var(--hm-line);
+  border-radius: 12px;
+  background: var(--hm-surface);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color .15s, background .15s;
+}
+.hm-car:hover { border-color: var(--hm-line-2); background: var(--hm-surface-2); }
+.hm-car b { font: 600 13.5px 'Archivo', sans-serif; color: var(--hm-ink-1); }
+.hm-car-tag {
+  padding: 3px 7px;
+  border-radius: 5px;
+  background: #232329;
+  font: 600 10px 'Archivo', sans-serif;
+  color: var(--hm-ink-4);
+}
+.hm-car-tag.is-3d { background: #1d3557; color: #9ec5fe; }
+
+.hm-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+.hm-step {
+  position: relative;
+  padding: 24px 20px;
+  border: 1px solid var(--hm-line);
+  border-radius: 14px;
+  background: var(--hm-surface);
+  text-align: left;
+}
+.hm-step-n {
+  position: absolute;
+  top: 16px;
+  right: 18px;
+  font: 700 22px 'Archivo', sans-serif;
+  color: #232329;
+}
+.hm-step b {
+  display: block;
+  margin: 12px 0 8px;
+  font: 600 15px 'Archivo', sans-serif;
+  color: var(--hm-ink-1);
+}
+.hm-step p { font: 400 13.5px/1.6 'Archivo', sans-serif; color: var(--hm-ink-4); }
+
+.hm-faq { display: grid; gap: 10px; text-align: left; }
+.hm-faq details {
+  border: 1px solid var(--hm-line);
+  border-radius: 12px;
+  background: var(--hm-surface);
+  padding: 16px 20px;
+}
+.hm-faq summary {
+  font: 600 14.5px 'Archivo', sans-serif;
+  color: var(--hm-ink-1);
+  cursor: pointer;
+  list-style: none;
+}
+.hm-faq summary::-webkit-details-marker { display: none; }
+.hm-faq summary::after { content: '+'; float: right; color: var(--hm-ink-4); }
+.hm-faq details[open] summary::after { content: '–'; }
+.hm-faq details p { margin-top: 12px; font: 400 13.5px/1.7 'Archivo', sans-serif; color: var(--hm-ink-3); }
+
+.hm-end {
+  padding: 76px 32px 90px;
+  border-top: 1px solid var(--hm-line);
+  text-align: center;
+}
+.hm-end h2 {
+  font: 700 30px 'Archivo', sans-serif;
+  color: var(--hm-ink-1);
+  margin-bottom: 26px;
+}
+.hm-end-actions { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
+.hm-end .hm-cta { margin-top: 0; }
+
+@media (max-width: 900px) {
+  .hm-head { padding: 0 16px; gap: 14px; }
+  .hm-nav { gap: 14px; font-size: 12px; }
+  .hm-hero { grid-template-columns: minmax(0, 1fr); padding: 44px 20px 40px; gap: 24px; }
+  .hm-hero h1 { font-size: 36px; }
+  .hm-hero-car { height: 260px; order: -1; }
+  .hm-wall { padding: 44px 0 56px; }
+  .hm-wall h2 { font-size: 22px; }
+  .hm-tile { width: 220px; }
+  .hm-tile img { height: 124px; }
+  .hm-section { padding: 48px 20px; }
+  .hm-section h2 { font-size: 22px; }
+}

@@ -32,6 +32,7 @@ export interface WrapStudioProps {
     onOpenGarage: () => void;
     onOpen3DGallery: () => void;
     onOpenEditor: () => void;
+    onOpenHome: () => void;
     /**
      * Set while a full-screen surface (editor, gallery) is open. Two ThreeDViews share one
      * cached GLTF scene, so both rewrite the same meshes' materials and the visible car
@@ -68,7 +69,7 @@ export function WrapStudio({
     singleLayer, loadedWrapName, isWrapVisible, onIsWrapVisibleChange,
     canvasRef, layerTransforms, onLayerTransformsChange,
     selectedLayerId, onSelectedLayerIdChange,
-    onShare, onExport, onOpenGallery, onOpenGarage, onOpen3DGallery, onOpenEditor, onLoadCommunityWrap,
+    onShare, onExport, onOpenGallery, onOpenGarage, onOpen3DGallery, onOpenEditor, onOpenHome, onLoadCommunityWrap,
     suspended = false,
     communityRefreshTrigger = 0,
     children,
@@ -165,6 +166,7 @@ export function WrapStudio({
             <div className="ws-head">
                 <div className="ws-wm">TESLA<span> STUDIO</span></div>
                 <nav className="ws-nav">
+                    <button type="button" onClick={onOpenHome}>{t.home}</button>
                     <span className="ws-on">{t.preview3d}</span>
                     <button type="button" onClick={onOpen3DGallery}>{t.gallery3d}</button>
                     <button type="button" onClick={onOpenGallery}>{t.community}</button>

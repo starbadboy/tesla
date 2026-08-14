@@ -5,6 +5,7 @@ import { ShareModal } from './components/ShareModal';
 import { WrapGallery } from './components/WrapGallery/WrapGallery';
 import { Gallery3D } from './components/Gallery3D/Gallery3D';
 import { WrapEditor } from './components/WrapEditor/WrapEditor';
+import { Home } from './components/Home/Home';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { SEO_COPY, SITE_IMAGE, SITE_URL } from './seo';
@@ -43,6 +44,7 @@ function App() {
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [is3DGalleryOpen, setIs3DGalleryOpen] = useState(false);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [isHomeOpen, setIsHomeOpen] = useState(false);
   const [galleryView, setGalleryView] = useState<'community' | 'garage'>('community');
 
   const canvasRef = useRef<DesignCanvasHandle>(null);
@@ -251,10 +253,29 @@ function App() {
           onOpenGarage={() => { setGalleryView('garage'); setIsGalleryOpen(true); }}
           onOpen3DGallery={() => setIs3DGalleryOpen(true)}
           onOpenEditor={() => setIsEditorOpen(true)}
-          suspended={isEditorOpen || is3DGalleryOpen}
+          onOpenHome={() => setIsHomeOpen(true)}
+          // One 3D stage at a time: two views share the cached GLTF scene and would
+          // rewrite the same meshes' materials.
+          suspended={isEditorOpen || is3DGalleryOpen || isHomeOpen}
           onLoadCommunityWrap={handleLoadCommunityWrap}
           communityRefreshTrigger={galleryRefreshTrigger}
         />
+
+        {isHomeOpen && (
+          <Home
+            language={language}
+            onToggleLanguage={toggleLanguage}
+            currentModelName={currentModelName}
+            onStart={model => { if (model) handleModelChange(model); setIsHomeOpen(false); }}
+            onOpenGallery={() => { setGalleryView('community'); setIsGalleryOpen(true); }}
+            onOpenGarage={() => { setGalleryView('garage'); setIsGalleryOpen(true); }}
+            onOpen3DGallery={() => setIs3DGalleryOpen(true)}
+            onOpenEditor={() => setIsEditorOpen(true)}
+            onLoadWrap={handleLoadCommunityWrap}
+            canvasRef={canvasRef}
+            refreshTrigger={galleryRefreshTrigger}
+          />
+        )}
 
         {isEditorOpen && (
           <WrapEditor
