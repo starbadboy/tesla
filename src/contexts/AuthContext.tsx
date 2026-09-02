@@ -15,6 +15,8 @@ interface AuthContextType {
     loading: boolean;
     login: (token: string, user: User) => void;
     logout: () => void;
+    /** Re-read the current user from the server, e.g. after a purchase or a generation. */
+    refreshUser: () => Promise<void>;
     isAuthenticated: boolean;
 }
 
@@ -31,28 +33,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(null);
     }
 
+    // /me answers { user: {...} }, unlike login/register which hand the user back bare.
+    // Unwrapping here keeps the stored shape the same on both paths.
+    const refreshUser = async () => {
+        const storedToken = localStorage.getItem('token');
+        if (!storedToken) return;
+        try {
+            const res = await axios.get('/api/auth/me', {
+                headers: { Authorization: `Bearer ${storedToken}` }
+            });
+            setUser(res.data.user ?? res.data);
+            setToken(storedToken);
+        } catch (err) {
+            console.error("Auth check failed:", err);
+            logout();
+        }
+    };
+
     useEffect(() => {
         const checkAuth = async () => {
-            const storedToken = localStorage.getItem('token');
-            if (storedToken) {
-                try {
-                    // Normalize URL: ensure no double slashes if running locally/production
-                    // Assuming relative path /api usually works if proxied, or use window.location.origin
-                    // Using '/api/auth/me' directly
-                    const res = await axios.get('/api/auth/me', {
-                        headers: { Authorization: `Bearer ${storedToken}` }
-                    });
-                    // /me endpoint returns the user object directly
-                    setUser(res.data);
-                    setToken(storedToken);
-                } catch (err) {
-                    console.error("Auth check failed:", err);
-                    logout();
-                }
-            }
+            await refreshUser();
             setLoading(false);
         };
         checkAuth();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const login = (newToken: string, newUser: User) => {
@@ -62,7 +66,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     return (
-        <AuthContext.Provider value={{ user, token, loading, login, logout, isAuthenticated: !!user }}>
+        <AuthContext.Provider value={{ user, token, loading, login, logout, refreshUser, isAuthenticated: !!user }}>
             {children}
         </AuthContext.Provider>
     );
