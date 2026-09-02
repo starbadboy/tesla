@@ -13,7 +13,8 @@ React + Vite client in `src/`, Express + Mongoose API in `server/` (one process 
 ## Conventions
 
 - In a React effect, put the state update after an `await` inside an inner async function; the `set-state-in-effect` lint rule flags any setter reached synchronously from the effect body, including through a `useCallback`.
-
+- Build every URL that leaves the server (emailed links, payment return URLs) from `APP_PUBLIC_URL`; never from the request's `Origin` or `Host` header.
+- Mint login tokens only through `generateToken` in `server/routes/auth.js`, so every token carries the same claims (`id`, `username`, `isAdmin`).
 - Server files are CommonJS; client files are TypeScript modules. Server tests import CommonJS modules from ESM test files, which Vitest handles.
 - Money and credit movements go through `server/utils/credits.js` and leave a row in `CreditTransaction`.
 - Public wrap listings spread `publicMatch()` from `server/utils/visibility.js` so private generations never leak.

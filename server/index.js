@@ -35,6 +35,8 @@ const { scrapeAndSave } = require('./scripts/daily_scraper');
 const { scrapeTeslaWrapGallery } = require('./scripts/teslawrapgallery_scraper');
 
 const app = express();
+// Railway terminates TLS one hop in front of us; req.ip is then the real client.
+app.set('trust proxy', 1);
 
 
 // Schedule Daily Scrape at Midnight (00:00)
