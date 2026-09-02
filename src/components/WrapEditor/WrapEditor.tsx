@@ -13,10 +13,11 @@ import { OptionMenu } from '../ui/OptionMenu';
 import { WRAP_PRESETS, gradientCss, gradientToDataUrl } from '../TeslaStudio/wraps';
 import { CAR_3D_MODELS, CAR_MODELS } from '../../constants';
 import { TRANSLATIONS } from '../../translations';
-import { generateImage } from '../../utils/gemini';
+import { generateImage } from '../../utils/aiImage';
 import { fetchMyGenerations, saveGeneration } from '../../utils/wrapApi';
 import type { Wrap } from '../Gallery';
 import { useAuth } from '../../contexts/AuthContext';
+import { AuthModal } from '../Auth/AuthModal';
 import '../../styles/wrap-editor.css';
 
 const LAYER_ID = 'Full Wrap';
@@ -182,12 +183,20 @@ export function WrapEditor({
     // Only designers who have bought credits may keep a generation out of the gallery.
     const canGoPrivate = Boolean(user?.hasPurchased);
     const [shareToGallery, setShareToGallery] = useState(true);
+    const [authOpen, setAuthOpen] = useState(false);
+
+    // Pro spends credits, so it needs an account; ask for one and stay on Free meanwhile.
+    const chooseProvider = (next: 'puter' | 'openai') => {
+        if (next === 'openai' && !isAuthenticated) { setAuthOpen(true); return; }
+        setProvider(next);
+    };
     // Signed in: the server's copy of their generations. Anonymous: this session only —
     // a generation is a data URL of a megabyte or more, far past what localStorage holds.
     const [generations, setGenerations] = useState<Generation[]>([]);
 
+    // Re-read when the panel opens so a wrap saved elsewhere (or a second tab) shows up.
     useEffect(() => {
-        if (!isAuthenticated) return;
+        if (!isAuthenticated || panel !== 'generations') return;
         const load = async () => {
             try {
                 setGenerations(toGenerations(await fetchMyGenerations()));
@@ -196,7 +205,7 @@ export function WrapEditor({
             }
         };
         load();
-    }, [isAuthenticated]);
+    }, [isAuthenticated, panel]);
 
     const fileRef = useRef<HTMLInputElement>(null);
 
@@ -233,17 +242,18 @@ export function WrapEditor({
                 reader.readAsDataURL(blob);
             });
 
-            const url = await generateImage(prompt, templateBase64, currentModelName, provider, 'gpt-image-1.5');
+            const isPublic = canGoPrivate ? shareToGallery : true;
+            const url = await generateImage(prompt, templateBase64, currentModelName, provider, isPublic);
             setGenerations(current => [{ url, prompt }, ...current]);
             await onLoadWrap(url, { name: prompt.slice(0, 40) });
             if (isAuthenticated) {
-                // Best effort: a save that fails leaves the generation in this session's
-                // list, which is what an anonymous designer gets anyway.
+                // Pro is saved by the server; Free is saved from here. Best effort: a save
+                // that fails leaves the generation in this session's list, which is what
+                // an anonymous designer gets anyway.
                 try {
-                    await saveGeneration({
-                        url, prompt, model: currentModelName,
-                        isPublic: canGoPrivate ? shareToGallery : true,
-                    });
+                    if (provider === 'puter') {
+                        await saveGeneration({ url, prompt, model: currentModelName, isPublic });
+                    }
                     setGenerations(toGenerations(await fetchMyGenerations()));
                 } catch (error) {
                     console.warn('Could not save generation:', error);
@@ -369,16 +379,24 @@ export function WrapEditor({
                         </div>
 
                         <h3>{t.modelProvider}</h3>
-                        <OptionMenu
-                            className="we-model"
-                            ariaLabel={t.modelProvider}
-                            value={provider}
-                            onChange={next => setProvider(next as typeof provider)}
-                            options={[
-                                { value: 'puter', label: t.computerAI },
-                                { value: 'openai', label: t.openai },
-                            ]}
-                        />
+                        <div className="we-tier" role="group" aria-label={t.modelProvider}>
+                            <button
+                                type="button"
+                                className={provider === 'puter' ? 'is-on' : ''}
+                                aria-pressed={provider === 'puter'}
+                                onClick={() => chooseProvider('puter')}
+                            >
+                                {t.freeTier}<small>{t.freeTierHint}</small>
+                            </button>
+                            <button
+                                type="button"
+                                className={provider === 'openai' ? 'is-on' : ''}
+                                aria-pressed={provider === 'openai'}
+                                onClick={() => chooseProvider('openai')}
+                            >
+                                {t.proTier}<small>{t.proTierHint}</small>
+                            </button>
+                        </div>
 
                         {isAuthenticated && (
                             <>
@@ -663,6 +681,7 @@ export function WrapEditor({
                     </button>
                 </div>
             </main>
+            <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} />
         </div>
     );
 }

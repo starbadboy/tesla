@@ -583,43 +583,56 @@ app.delete('/api/wraps/:id', async (req, res) => {
     }
 });
 
-// POST /api/generate-image - Generate image via OpenAI
+// POST /api/generate-image - Pro tier: GPT Image 2 laying the brief onto the car's template.
+// Signed-in only; the result is kept as one of the designer's wraps.
 app.post('/api/generate-image', async (req, res) => {
+    if (!req.user) {
+        return res.status(401).json({ error: 'Sign in to use the Pro generator' });
+    }
+    if (!process.env.OPENAI_API_KEY) {
+        return res.status(500).json({ error: 'OpenAI API key not configured on server' });
+    }
+
+    const { prompt, image, carModel, userPrompt, isPublic } = req.body;
+    if (!prompt || typeof prompt !== 'string') {
+        return res.status(400).json({ error: 'prompt is required' });
+    }
+    const template = (image || '').match(/^data:(image\/\w+);base64,(.+)$/);
+    if (!template) {
+        return res.status(400).json({ error: 'image must be a data URL of the wrap template' });
+    }
+
     try {
-        const { prompt, model, size, quality, n } = req.body;
-
-        if (!process.env.OPENAI_API_KEY) {
-            return res.status(500).json({ error: 'OpenAI API key not configured on server' });
-        }
-
-        const response = await openai.images.generate({
-            model: model || "dall-e-3", // Default to dall-e-3 if not specified, but user provided model will override
-            prompt: prompt,
-            n: n || 1,
-            size: size || "1024x1024",
-            quality: quality || "high",
+        const response = await openai.images.edit({
+            model: 'gpt-image-2',
+            image: await OpenAI.toFile(Buffer.from(template[2], 'base64'), 'template.png', { type: template[1] }),
+            prompt,
+            quality: 'high',
+            n: 1,
         });
 
-        // Return the first image
-        const image = response.data[0];
-
-        // Handle URL response (default behavior)
-        if (image.url) {
-            res.json({ url: image.url });
-        } else if (image.b64_json) {
-            res.json({ url: `data:image/png;base64,${image.b64_json}` });
-        } else {
-            res.status(500).json({ error: "No image data received from OpenAI" });
+        const b64 = response.data?.[0]?.b64_json;
+        if (!b64) {
+            return res.status(500).json({ error: 'No image data received from OpenAI' });
         }
 
+        const imageUrl = await uploadToR2(Buffer.from(b64, 'base64'), `wraps/ai-${Date.now()}.png`, 'image/png');
+        const wrap = await new Wrap({
+            name: (userPrompt || prompt).slice(0, 100),
+            author: req.user.username,
+            user: req.user.id,
+            imageUrl,
+            models: carModel ? [carModel] : [],
+            source: 'ai',
+            prompt: (userPrompt || '').slice(0, 500),
+            isPublic: isPublic === false ? false : true,
+        }).save();
+
+        res.json({ url: imageUrl, wrapId: wrap._id });
     } catch (err) {
-        console.error("OpenAI Generation Error:", err);
-        // Handle OpenAI specific errors gracefully
-        if (err.response) {
-            res.status(err.response.status).json({ error: err.response.data });
-        } else {
-            res.status(500).json({ error: err.message });
-        }
+        console.error('OpenAI Generation Error:', err);
+        const status = err.status || err.response?.status || 500;
+        res.status(status).json({ error: err.message });
     }
 });
 

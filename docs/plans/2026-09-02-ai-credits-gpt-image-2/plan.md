@@ -116,6 +116,7 @@ Each task is a vertical slice and demoable alone. Blocking edges are listed.
 - Slowest live path: time one `gpt-image-2` edit call and post it on the PR.
 
 ## Risks & Mitigations
+- **Slowest live path:** one `gpt-image-2` edit at high quality took 121 s end to end; the panel shows "Generating…" for that long. Follow-up candidate: a progress hint or medium quality.
 - **Riskiest task: 5 (webhook).** Signature verification needs the raw body; the `verify` hook must run for the webhook path (it will, JSON content type). Mitigation: test with the Stripe CLI before pushing; log the event id on every webhook.
 - **Puter result is not a data URL.** Free-tier save fails silently and stays session-only (spec Further Notes). Mitigation: catch and `console.warn`, never surface as an error.
 - **Body size.** Template base64 already flows today at 50 MB limit; unchanged.
@@ -130,8 +131,12 @@ Each task is a vertical slice and demoable alone. Blocking edges are listed.
 - [ ] Tri-axis review findings and fix-pass verdict on the PR.
 
 ## Record
-- **Branch:** `feat/ai-credits-gpt-image-2` · **PR:** pending (opened after first implementation commit)
+- **Branch:** `feat/ai-credits-gpt-image-2` · **PR:** https://github.com/starbadboy/tesla/pull/1
+- **Evidence location:** screenshots and the live Pro output live in `evidence/` beside this plan and are linked from PR comments — the PR tool cannot upload images directly.
 - **Interrogation pass:** 4 findings fixed — (1) Task 2 originally let any signed-in user set `isPublic:false` before `hasPurchased` existed; noted as temporary and tightened in Task 4. (2) A separate `/api/credits/balance` endpoint duplicated `/me`; removed. (3) Task 3 verify step said "credits deducted" before credits existed; moved to Task 4. (4) Task ordering put Task 2 parallel with Task 1 though both edit `WrapEditor.tsx`; made sequential.
-- **Departures:** (none yet)
+- **Departures:**
+  - `input_fidelity: 'high'` dropped from the edit call — the live API answers 400 "gpt-image-2 does not support input_fidelity"; the SDK types allow it, the model does not.
+  - My Generations re-reads the server when the panel opens, not only at mount — the first check showed a stale empty list after a wrap was saved elsewhere.
+  - `User` type gained `credits`/`hasPurchased` in Task 2 rather than Task 4 — the share checkbox needed `hasPurchased` to render its locked state.
 - **Declined review findings:** (none yet)
 - **Follow-ups:** (none yet)
