@@ -70,6 +70,41 @@ export function wrapFlags(wrap: Wrap): { isNew: boolean; isHot: boolean } {
     };
 }
 
+export interface GenerationToSave {
+    /** The generated image, as a data URL or a URL the browser can fetch. */
+    url: string;
+    prompt: string;
+    model: string;
+    isPublic: boolean;
+}
+
+/**
+ * Keep a signed-in designer's generation as one of their wraps, through the same
+ * upload the share dialog uses. Anonymous callers have nowhere to attach it.
+ */
+export async function saveGeneration({ url, prompt, model, isPublic }: GenerationToSave): Promise<Wrap> {
+    const blob = await (await fetch(url)).blob();
+    const form = new FormData();
+    form.append('image', blob, 'generation.png');
+    form.append('name', prompt.slice(0, 100));
+    form.append('models', JSON.stringify([model]));
+    form.append('type', 'car');
+    form.append('source', 'ai');
+    form.append('prompt', prompt);
+    form.append('isPublic', String(isPublic));
+    const res = await fetch('/api/wraps', { method: 'POST', headers: authHeaders(), body: form });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+}
+
+/** The signed-in designer's saved generations, newest first. */
+export async function fetchMyGenerations(): Promise<Wrap[]> {
+    const res = await fetch('/api/user/garage?type=my-uploads&source=ai', { headers: authHeaders() });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+}
+
 export type GarageTab = 'my-uploads' | 'liked';
 
 /** The signed-in user's own uploads, or the wraps they liked. Requires a token. */

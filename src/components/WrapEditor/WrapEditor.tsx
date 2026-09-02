@@ -14,6 +14,9 @@ import { WRAP_PRESETS, gradientCss, gradientToDataUrl } from '../TeslaStudio/wra
 import { CAR_3D_MODELS, CAR_MODELS } from '../../constants';
 import { TRANSLATIONS } from '../../translations';
 import { generateImage } from '../../utils/gemini';
+import { fetchMyGenerations, saveGeneration } from '../../utils/wrapApi';
+import type { Wrap } from '../Gallery';
+import { useAuth } from '../../contexts/AuthContext';
 import '../../styles/wrap-editor.css';
 
 const LAYER_ID = 'Full Wrap';
@@ -56,6 +59,11 @@ export interface WrapEditorProps {
 }
 
 type Panel = 'library' | 'ai' | 'generations' | 'layers';
+
+type Generation = { url: string; prompt: string };
+
+const toGenerations = (wraps: Wrap[]): Generation[] =>
+    wraps.map(w => ({ url: w.imageUrl ?? '', prompt: w.prompt ?? w.name }));
 
 type Tool = 'select' | 'draw' | 'fill' | 'text' | 'rect' | 'ellipse';
 
@@ -166,13 +174,29 @@ export function WrapEditor({
         commit({ ...doc, objects: [...rest.slice(0, to), selectedObject, ...rest.slice(to)] });
     };
 
+    const { user, isAuthenticated } = useAuth();
     const [prompt, setPrompt] = useState('');
     const [provider, setProvider] = useState<'puter' | 'openai'>('puter');
     const [generating, setGenerating] = useState(false);
     const [aiError, setAiError] = useState<string | null>(null);
-    // Session-only: a generation is a data URL of a megabyte or more, far past what
-    // localStorage holds. Persisting them needs the server, not this component.
-    const [generations, setGenerations] = useState<{ url: string; prompt: string }[]>([]);
+    // Only designers who have bought credits may keep a generation out of the gallery.
+    const canGoPrivate = Boolean(user?.hasPurchased);
+    const [shareToGallery, setShareToGallery] = useState(true);
+    // Signed in: the server's copy of their generations. Anonymous: this session only —
+    // a generation is a data URL of a megabyte or more, far past what localStorage holds.
+    const [generations, setGenerations] = useState<Generation[]>([]);
+
+    useEffect(() => {
+        if (!isAuthenticated) return;
+        const load = async () => {
+            try {
+                setGenerations(toGenerations(await fetchMyGenerations()));
+            } catch (error) {
+                console.warn('Could not load generations:', error);
+            }
+        };
+        load();
+    }, [isAuthenticated]);
 
     const fileRef = useRef<HTMLInputElement>(null);
 
@@ -212,6 +236,19 @@ export function WrapEditor({
             const url = await generateImage(prompt, templateBase64, currentModelName, provider, 'gpt-image-1.5');
             setGenerations(current => [{ url, prompt }, ...current]);
             await onLoadWrap(url, { name: prompt.slice(0, 40) });
+            if (isAuthenticated) {
+                // Best effort: a save that fails leaves the generation in this session's
+                // list, which is what an anonymous designer gets anyway.
+                try {
+                    await saveGeneration({
+                        url, prompt, model: currentModelName,
+                        isPublic: canGoPrivate ? shareToGallery : true,
+                    });
+                    setGenerations(toGenerations(await fetchMyGenerations()));
+                } catch (error) {
+                    console.warn('Could not save generation:', error);
+                }
+            }
         } catch (error) {
             setAiError(error instanceof Error ? error.message : t.error);
         } finally {
@@ -342,6 +379,21 @@ export function WrapEditor({
                                 { value: 'openai', label: t.openai },
                             ]}
                         />
+
+                        {isAuthenticated && (
+                            <>
+                                <label className={`we-check ${canGoPrivate ? '' : 'is-locked'}`}>
+                                    <input
+                                        type="checkbox"
+                                        checked={canGoPrivate ? shareToGallery : true}
+                                        disabled={!canGoPrivate}
+                                        onChange={e => setShareToGallery(e.target.checked)}
+                                    />
+                                    {t.shareToGallery}
+                                </label>
+                                {!canGoPrivate && <p className="we-hint">{t.unlockPrivate}</p>}
+                            </>
+                        )}
 
                         <button
                             type="button"

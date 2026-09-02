@@ -7,6 +7,8 @@ interface User {
     username: string;
     email: string;
     isAdmin?: boolean;
+    credits?: number;
+    hasPurchased?: boolean;
 }
 
 interface AuthContextType {

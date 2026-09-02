@@ -113,6 +113,8 @@ export const TRANSLATIONS = {
         modelProvider: "Model Provider",
         computerAI: "Puter AI (Free)",
         openai: "OpenAI (gpt-image-1.5)",
+        shareToGallery: "Share to Gallery",
+        unlockPrivate: "Purchase credits to unlock private mode",
         connecting: "Connecting to AI Service...",
 
         // Gallery
@@ -317,6 +319,8 @@ export const TRANSLATIONS = {
         modelProvider: "模型提供商",
         computerAI: "Puter AI (免费)",
         openai: "OpenAI (gpt-image-1.5)",
+        shareToGallery: "分享到画廊",
+        unlockPrivate: "购买积分以解锁私密模式",
         connecting: "连接 AI 服务中...",
 
         // Gallery

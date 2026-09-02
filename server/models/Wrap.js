@@ -51,6 +51,23 @@ const WrapSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
+    // Where the sheet came from: a designer's upload, or the AI panel.
+    source: {
+        type: String,
+        enum: ['upload', 'ai'],
+        default: 'upload'
+    },
+    // False keeps a wrap out of every public listing; only purchasers may set it.
+    isPublic: {
+        type: Boolean,
+        default: true
+    },
+    // The brief a generation was made from, shown in My Generations.
+    prompt: {
+        type: String,
+        trim: true,
+        maxLength: 500
+    },
     createdAt: {
         type: Date,
         default: Date.now

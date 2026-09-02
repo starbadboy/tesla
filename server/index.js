@@ -9,6 +9,7 @@ const multer = require('multer');
 
 const fs = require('fs');
 const { uploadToR2, deleteFromR2, getR2KeyFromUrl, getMimeType } = require('./utils/r2');
+const { publicMatch } = require('./utils/visibility');
 
 const Wrap = require('./models/Wrap');
 
@@ -162,6 +163,9 @@ app.get('/api/wraps', async (req, res) => {
             pipeline.unshift({ $match: { type: type } });
         }
 
+        // Private generations never reach a public listing.
+        pipeline.unshift({ $match: publicMatch() });
+
         // 2. Determine sort object
         let sortStage = {};
         if (sort === 'downloads') {
@@ -242,7 +246,7 @@ app.post('/api/wraps', upload.single('image'), async (req, res) => {
             return res.status(400).json({ error: 'No image file uploaded' });
         }
 
-        const { name, author, models, type } = req.body;
+        const { name, author, models, type, source, prompt, isPublic } = req.body;
 
         // Upload to Cloudflare R2
         const sanitizedName = req.file.originalname.replace(/\s+/g, '-');
@@ -260,6 +264,14 @@ app.post('/api/wraps', upload.single('image'), async (req, res) => {
         if (req.user) {
             wrapData.user = req.user.id;
             wrapData.author = req.user.username;
+            if (source === 'ai') {
+                wrapData.source = 'ai';
+                wrapData.prompt = prompt;
+            }
+            // FormData carries booleans as strings.
+            if (isPublic === 'false' || isPublic === false) {
+                wrapData.isPublic = false;
+            }
         }
 
         // Parse models JSON string if sent as string from FormData
@@ -440,8 +452,10 @@ app.get('/api/user/garage', async (req, res) => {
             // User.likedWraps will be an array of Wrap documents now
             return res.json(user.likedWraps.reverse()); // Show newest first
         } else {
-            // Default: My Uploads
-            const wraps = await Wrap.find({ user: req.user.id }).sort({ createdAt: -1 });
+            // Default: My Uploads, optionally narrowed to one source (e.g. the AI panel).
+            const filter = { user: req.user.id };
+            if (req.query.source) filter.source = req.query.source;
+            const wraps = await Wrap.find(filter).sort({ createdAt: -1 });
             res.json(wraps);
         }
     } catch (err) {

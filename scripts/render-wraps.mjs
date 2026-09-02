@@ -27,6 +27,7 @@ const serverRequire = createRequire(path.join(here, '..', 'server', 'index.js'))
 serverRequire('dotenv').config({ path: path.join(here, '..', '.env') });
 const mongoose = serverRequire('mongoose');
 const Wrap = serverRequire('./models/Wrap.js');
+const { publicMatch } = serverRequire('./utils/visibility.js');
 const { uploadToR2 } = serverRequire('./utils/r2.js');
 
 function parseArgs(argv) {
@@ -80,7 +81,7 @@ async function main() {
     await mongoose.connect(mongoUrl);
     console.log('Connected to MongoDB');
 
-    const query = { type: { $in: ['car', null] }, imageUrl: { $exists: true, $ne: null } };
+    const query = { ...publicMatch(), type: { $in: ['car', null] }, imageUrl: { $exists: true, $ne: null } };
     if (!args.force) query.renderUrl = { $in: [null, ''] };
     let wraps = await Wrap.find(query).sort({ likes: -1, downloads: -1 }).lean();
     if (args.model) wraps = wraps.filter(wrap => modelFor(wrap) === args.model);

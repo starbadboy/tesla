@@ -21,6 +21,11 @@ export interface Wrap {
     forceNew?: boolean | null;
     forceHot?: boolean | null;
     user?: string | { _id: string };
+    /** 'ai' when it came out of the AI panel; absent or 'upload' otherwise. */
+    source?: 'upload' | 'ai';
+    /** False keeps it out of public listings. Absent means public. */
+    isPublic?: boolean;
+    prompt?: string;
 }
 
 export interface GalleryProps {
