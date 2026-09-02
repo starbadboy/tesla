@@ -306,6 +306,19 @@
 }
 
 /* ---- ai: share toggle ---- */
+.we-reference {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--we-line-strong);
+  border-radius: 10px;
+}
+.we-reference-preview { display: flex; align-items: center; gap: 10px; }
+.we-reference-preview img { width: 64px; height: 64px; object-fit: contain; border-radius: 6px; background: #fff; }
+.we-reference-preview div { display: grid; gap: 4px; min-width: 0; }
+.we-reference-preview strong { font-size: 12px; color: var(--we-ink-1); }
+.we-reference-preview span, .we-reference p { margin: 0; font-size: 11px; line-height: 1.5; color: var(--we-ink-3); }
+
 .we-check {
   display: flex;
   align-items: center;

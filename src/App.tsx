@@ -11,7 +11,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { SEO_COPY, SITE_IMAGE, SITE_URL } from './seo';
 
 import { WrapStudio } from './components/WrapStudio/WrapStudio';
-import { TESLA_PAINTS } from './constants';
+import { FACTORY_PAINT } from './constants';
 import { proxiedMediaUrl } from './utils/wrapApi';
 
 /**
@@ -42,7 +42,6 @@ function App() {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [shareImageBlob, setShareImageBlob] = useState<string | null>(null);
   const [isWrapVisible, setIsWrapVisible] = useState(true);
-  const [paintColor, setPaintColor] = useState(TESLA_PAINTS[0].hex);
   const [galleryRefreshTrigger, setGalleryRefreshTrigger] = useState(0);
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [is3DGalleryOpen, setIs3DGalleryOpen] = useState(false);
@@ -258,8 +257,6 @@ function App() {
           onOpen3DGallery={() => setIs3DGalleryOpen(true)}
           onOpenEditor={() => setIsEditorOpen(true)}
           onOpenHome={() => setIsHomeOpen(true)}
-          paintColor={paintColor}
-          onPaintColorChange={setPaintColor}
           // One 3D stage at a time: two views share the cached GLTF scene and would
           // rewrite the same meshes' materials.
           suspended={isEditorOpen || is3DGalleryOpen || isHomeOpen}
@@ -294,7 +291,7 @@ function App() {
             onSelectedLayerIdChange={setSelectedLayerId}
             isWrapVisible={isWrapVisible}
             onIsWrapVisibleChange={setIsWrapVisible}
-            paintColor={paintColor}
+            paintColor={FACTORY_PAINT.hex}
             canvasRef={canvasRef}
             onLoadWrap={handleLoadCommunityWrap}
             onRemoveWrap={handleRemoveWrap}

@@ -14,6 +14,7 @@ import { WRAP_PRESETS, gradientCss, gradientToDataUrl } from '../TeslaStudio/wra
 import { CAR_3D_MODELS, CAR_MODELS } from '../../constants';
 import { TRANSLATIONS } from '../../translations';
 import { generateImage } from '../../utils/aiImage';
+import { MODEL3_REFERENCE } from '../../../shared/wrapGeneration';
 import { fetchMyGenerations, fetchOrder, saveGeneration } from '../../utils/wrapApi';
 import { BuyCreditsModal } from './BuyCreditsModal';
 import type { Wrap } from '../Gallery';
@@ -191,6 +192,8 @@ export function WrapEditor({
     const [prompt, setPrompt] = useState('');
     const [provider, setProvider] = useState<'puter' | 'openai'>(checkoutReturn ? 'openai' : 'puter');
     const [generating, setGenerating] = useState(false);
+    const [useReference, setUseReference] = useState(true);
+    const hasLayoutReference = currentModelName === MODEL3_REFERENCE.carModel;
     const [aiError, setAiError] = useState<string | null>(null);
     // Only designers who have bought credits may keep a generation out of the gallery.
     const canGoPrivate = Boolean(user?.hasPurchased);
@@ -280,6 +283,7 @@ export function WrapEditor({
             // The template goes along as the input image so the generator lays the design
             // out on the real panels instead of inventing its own sheet.
             const response = await fetch(CAR_MODELS[currentModelName]);
+            if (!response.ok) throw new Error('Could not load the wrap template. Please try again.');
             const blob = await response.blob();
             const templateBase64 = await new Promise<string>((resolve, reject) => {
                 const reader = new FileReader();
@@ -289,9 +293,9 @@ export function WrapEditor({
             });
 
             const isPublic = canGoPrivate ? shareToGallery : true;
-            const { url, saved } = await generateImage(prompt, templateBase64, currentModelName, provider, isPublic);
+            const { url, saved } = await generateImage(prompt, templateBase64, currentModelName, provider, isPublic, hasLayoutReference && useReference);
             setGenerations(current => [{ url, prompt }, ...current]);
-            await onLoadWrap(url, { name: prompt.slice(0, 40) });
+            await onLoadWrap(url, { model: currentModelName, name: prompt.slice(0, 40) });
             // Pro is saved by the server; Free is saved from here. Best effort: a save that
             // fails leaves the generation in this session's list, which is what an anonymous
             // designer gets anyway — so the server list only replaces it once it holds it.
@@ -445,6 +449,23 @@ export function WrapEditor({
                                 {t.proTier}<small>{t.proTierHint}</small>
                             </button>
                         </div>
+
+                        {hasLayoutReference && (
+                            <div className="we-reference">
+                                <label className="we-check">
+                                    <input type="checkbox" checked={useReference} disabled={generating} onChange={e => setUseReference(e.target.checked)} />
+                                    {t.useLayoutReference}
+                                </label>
+                                <div className="we-reference-preview">
+                                    <img src={MODEL3_REFERENCE.imagePath} alt={MODEL3_REFERENCE.name} />
+                                    <div>
+                                        <strong>{MODEL3_REFERENCE.name}</strong>
+                                        <span>{MODEL3_REFERENCE.author} · {MODEL3_REFERENCE.downloads.toLocaleString()} {t.referenceDownloads}</span>
+                                    </div>
+                                </div>
+                                <p>{t.layoutReferenceHint}</p>
+                            </div>
+                        )}
 
                         {isAuthenticated && (
                             <>

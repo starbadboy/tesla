@@ -1,4 +1,18 @@
 import { authHeaders } from './wrapApi';
+import { MODEL3_REFERENCE, model3TexturePrompt } from '../../shared/wrapGeneration';
+
+async function loadReferenceImage(): Promise<string> {
+    const response = await fetch(MODEL3_REFERENCE.imagePath);
+    if (!response.ok) throw new Error('Could not load the reference wrap. Please try again.');
+    const blob = await response.blob();
+    if (blob.type !== 'image/png') throw new Error('The reference wrap must be a PNG image.');
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error('Could not read the reference wrap.'));
+        reader.readAsDataURL(blob);
+    });
+}
 
 export interface GeneratedImage {
     url: string;
@@ -15,6 +29,7 @@ export interface GeneratedImage {
  * @param modelName The car model name.
  * @param provider The AI provider to use ('puter' for the free tier, 'openai' for Pro).
  * @param isPublic Pro only: whether the server should list the saved wrap publicly.
+ * @param useReference Whether the Model 3 experiment includes its pinned layout example.
  * @returns The generated image URL (data URL for Puter, R2 URL for Pro) and, for Pro,
  *          whether the server managed to keep it as a wrap.
  */
@@ -23,11 +38,13 @@ export async function generateImage(
     inputImageBase64?: string,
     modelName: string = "Car",
     provider: 'puter' | 'openai' = 'puter',
-    isPublic: boolean = true
+    isPublic: boolean = true,
+    useReference: boolean = true
 ): Promise<GeneratedImage> {
 
     // Enhance prompt for car wrap context
-    const enhancedPrompt = `You are a professional automotive graphic designer specializing in vehicle wraps.
+    const isModel3Experiment = modelName === MODEL3_REFERENCE.carModel;
+    const enhancedPrompt = isModel3Experiment ? model3TexturePrompt(prompt, useReference) : `You are a professional automotive graphic designer specializing in vehicle wraps.
 
 Design a high-resolution car wrap for a Tesla ${modelName} using the provided official wrap template.
 
@@ -64,6 +81,7 @@ A complete wrap design that fully adheres to the template format and accurately 
                     carModel: modelName,
                     userPrompt: prompt,
                     isPublic,
+                    useReference: isModel3Experiment && useReference,
                 }),
             });
 
@@ -89,7 +107,13 @@ A complete wrap design that fully adheres to the template format and accurately 
                 model: 'gemini-2.5-flash-image-preview'
             };
 
-            if (inputImageBase64) {
+            if (isModel3Experiment) {
+                if (!inputImageBase64) throw new Error('The Model 3 template is required.');
+                options.ratio = { w: 1, h: 1 };
+                options.input_images = useReference
+                    ? [inputImageBase64, await loadReferenceImage()]
+                    : [inputImageBase64];
+            } else if (inputImageBase64) {
                 // Remove data URI prefix if present, as some APIs might just want the base64 data
                 // But usually for passing to a JS library, the full string or just the data part depends on the lib.
                 // Puter example shows: input_image: "iVBORw0KGgo..." (assuming raw base64)
@@ -100,10 +124,20 @@ A complete wrap design that fully adheres to the template format and accurately 
             }
 
             const imageElement = await window.puter.ai.txt2img(enhancedPrompt, options);
+            if (isModel3Experiment) {
+                await imageElement.decode();
+                if (!imageElement.naturalWidth || imageElement.naturalWidth !== imageElement.naturalHeight) {
+                    throw new Error('AI returned a non-square image instead of a wrap texture. Please try again.');
+                }
+            }
             return { url: imageElement.src };
         } catch (error) {
             console.error("Puter.js Image Generation Error:", error);
-            throw error;
+            // Puter can reject with a plain object; preserve its message for the UI.
+            if (error instanceof Error) throw error;
+            const detail = error as { message?: unknown; error?: { message?: unknown } } | null;
+            const message = typeof error === 'string' ? error : detail?.message ?? detail?.error?.message;
+            throw new Error(typeof message === 'string' ? message : 'Puter image generation failed. Please try again.', { cause: error });
         }
     }
 }
