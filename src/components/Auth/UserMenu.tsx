@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { AuthModal } from './AuthModal';
+import { RESET_TOKEN } from '../../utils/resetLink';
 import { LogOut, Car, User as UserIcon } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { TRANSLATIONS } from '../../translations';
@@ -13,7 +14,8 @@ interface UserMenuProps {
 export const UserMenu: React.FC<UserMenuProps> = ({ onOpenGarage, language = 'en' }) => {
     const t = TRANSLATIONS[language];
     const { user, logout, isAuthenticated } = useAuth();
-    const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+    // A reset link opens the dialog straight away, on its reset view.
+    const [isAuthModalOpen, setIsAuthModalOpen] = useState(() => Boolean(RESET_TOKEN));
     const [authTab, setAuthTab] = useState<'login' | 'register'>('login');
     const [isOpen, setIsOpen] = useState(false);
 
