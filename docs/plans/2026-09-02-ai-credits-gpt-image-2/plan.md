@@ -141,7 +141,14 @@ Each task is a vertical slice and demoable alone. Blocking edges are listed.
   - Buy Credits button landed with its modal in Task 5, not alone in Task 4 — a button with no handler failed the unused-state build check.
   - Purchase notice renders above the Generate button, not below Buy Credits — below the fold in the scrolling panel it was invisible.
   - `CLAUDE.md` created (repo had none) to hold the Commands section the flow requires.
-- **Declined review findings:** (none yet)
+  - Post-checkout poll is 5 attempts at 1.5 s (plan said 4 at 1.2 s) — the webhook can lag a few seconds behind the redirect.
+  - Pro request fields are `carModel` and `userPrompt` (plan said `model`) — `prompt` already carried the enhanced text; the names say which is which.
+  - The string `gemini-2.5-flash-image-preview` stays in the Free tier — it is Puter's own model id, and AC3 forbids changing Free behaviour.
+  - Review fixes (one commit): webhook claims the order with a conditional update before crediting; `settle` returns `pending` for unfunded sessions and the webhook handles `async_payment_succeeded/failed`; a failed balance write rolls the claim back so Stripe retries; ledger rows are logged, not fatal; `refreshUser` signs out only on 401; `APP_PUBLIC_URL` required in production; one `mayGoPrivate()` rule for both routes; Pro route validates types, caps the prompt, refunds only when no image was produced, and keeps a produced image even if persistence fails; Buy Credits modal reuses the AuthModal shell; `isPublicDoc` deleted; balance line shows on both tiers; checkout return consumed once.
+- **Declined review findings:**
+  - Integration test for two concurrent webhook deliveries — DB-level tests were skipped in the ladder pass; the claim was exercised by a three-way race script against the real database (1 of 3 won).
+  - Sharing the `?checkout=` parser between `App.tsx` and the editor — App needs one boolean at boot; importing the editor module for it couples the shell to the editor.
+  - Serving `GENERATION_COST` from `/api/credits/packs` — marked with a `ponytail:` comment naming that upgrade path instead.
 - **Follow-ups:**
   - Real Stripe webhook (signature check → settle → addPurchase) is unverified: no Stripe keys exist locally or in the partner repo. The same settle → addPurchase path was exercised by a local stand-in script and the replay reported `duplicate`. Verify with test keys and `stripe listen` before go-live.
   - Free-tier Puter generation could not complete in headless Chromium (Puter auth popup); unchanged code, needs one manual click-through.

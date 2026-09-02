@@ -1,3 +1,5 @@
+import { authHeaders } from './wrapApi';
+
 
 /**
  * Generates an image using the selected AI provider.
@@ -46,13 +48,9 @@ A complete wrap design that fully adheres to the template format and accurately 
         try {
             // The server picks the model, spends the credits, and keeps the result as a
             // wrap. The template rides along so the design lands on the real panels.
-            const token = localStorage.getItem('token');
             const response = await fetch('/api/generate-image', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                },
+                headers: { 'Content-Type': 'application/json', ...authHeaders() },
                 body: JSON.stringify({
                     prompt: enhancedPrompt,
                     image: inputImageBase64,

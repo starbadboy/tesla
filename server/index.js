@@ -9,7 +9,7 @@ const multer = require('multer');
 
 const fs = require('fs');
 const { uploadToR2, deleteFromR2, getR2KeyFromUrl, getMimeType } = require('./utils/r2');
-const { publicMatch } = require('./utils/visibility');
+const { publicMatch, mayGoPrivate } = require('./utils/visibility');
 const { GENERATION_COST } = require('./utils/packs');
 const { reserve, refund } = require('./utils/credits');
 
@@ -273,10 +273,9 @@ app.post('/api/wraps', upload.single('image'), async (req, res) => {
                 wrapData.source = 'ai';
                 wrapData.prompt = prompt;
             }
-            // FormData carries booleans as strings. Private is a purchaser's privilege.
-            if (isPublic === 'false' || isPublic === false) {
-                const owner = await User.findById(req.user.id).select('hasPurchased');
-                wrapData.isPublic = !owner?.hasPurchased;
+            // FormData carries booleans as strings.
+            if ((isPublic === 'false' || isPublic === false) && await mayGoPrivate(req.user.id)) {
+                wrapData.isPublic = false;
             }
         }
 
@@ -600,10 +599,13 @@ app.post('/api/generate-image', async (req, res) => {
     }
 
     const { prompt, image, carModel, userPrompt, isPublic } = req.body;
-    if (!prompt || typeof prompt !== 'string') {
-        return res.status(400).json({ error: 'prompt is required' });
+    if (!prompt || typeof prompt !== 'string' || prompt.length > 4000) {
+        return res.status(400).json({ error: 'prompt is required (max 4000 characters)' });
     }
-    const template = (image || '').match(/^data:(image\/\w+);base64,(.+)$/);
+    if ((carModel !== undefined && typeof carModel !== 'string') || (userPrompt !== undefined && typeof userPrompt !== 'string')) {
+        return res.status(400).json({ error: 'carModel and userPrompt must be strings' });
+    }
+    const template = (typeof image === 'string' ? image : '').match(/^data:(image\/\w+);base64,(.+)$/);
     if (!template) {
         return res.status(400).json({ error: 'image must be a data URL of the wrap template' });
     }
@@ -614,6 +616,7 @@ app.post('/api/generate-image', async (req, res) => {
         return res.status(402).json({ error: `Not enough credits: a Pro generation costs ${GENERATION_COST}`, balance: credits });
     }
 
+    let b64;
     try {
         const response = await openai.images.edit({
             model: 'gpt-image-2',
@@ -622,13 +625,29 @@ app.post('/api/generate-image', async (req, res) => {
             quality: 'high',
             n: 1,
         });
-
-        const b64 = response.data?.[0]?.b64_json;
-        if (!b64) {
-            throw new Error('No image data received from OpenAI');
+        b64 = response.data?.[0]?.b64_json;
+        if (!b64) throw new Error('No image data received from OpenAI');
+    } catch (err) {
+        // Nothing was produced, so nothing is owed: give the credits back.
+        console.error('OpenAI Generation Error:', err);
+        let balance = null;
+        try {
+            balance = await refund(req.user.id, GENERATION_COST, 'Pro generation failed');
+        } catch (refundErr) {
+            console.error(`Refund failed — reconcile manually: user ${req.user.id} amount ${GENERATION_COST}`, refundErr);
         }
+        return res.status(502).json({ error: err.message, balance });
+    }
 
-        const imageUrl = await uploadToR2(Buffer.from(b64, 'base64'), `wraps/ai-${Date.now()}.png`, 'image/png');
+    // The image exists and was paid for; a persistence failure must not throw it away.
+    let imageUrl;
+    try {
+        imageUrl = await uploadToR2(Buffer.from(b64, 'base64'), `wraps/ai-${Date.now()}.png`, 'image/png');
+    } catch (err) {
+        console.error('Generated image upload failed; returning it inline:', err);
+        return res.json({ url: `data:image/png;base64,${b64}`, saved: false, balance: balanceAfterReserve });
+    }
+    try {
         const wrap = await new Wrap({
             name: (userPrompt || prompt).slice(0, 100),
             author: req.user.username,
@@ -637,16 +656,12 @@ app.post('/api/generate-image', async (req, res) => {
             models: carModel ? [carModel] : [],
             source: 'ai',
             prompt: (userPrompt || '').slice(0, 500),
-            // Private is a purchaser's privilege; anyone with credits to spend has purchased.
-            isPublic: isPublic === false ? false : true,
+            isPublic: isPublic === false ? !(await mayGoPrivate(req.user.id)) : true,
         }).save();
-
-        res.json({ url: imageUrl, wrapId: wrap._id, balance: balanceAfterReserve });
+        res.json({ url: imageUrl, wrapId: wrap._id, saved: true, balance: balanceAfterReserve });
     } catch (err) {
-        console.error('OpenAI Generation Error:', err);
-        const balance = await refund(req.user.id, GENERATION_COST, 'Pro generation failed');
-        const status = err.status || err.response?.status || 500;
-        res.status(status).json({ error: err.message, balance });
+        console.error('Generated wrap save failed; image kept at', imageUrl, err);
+        res.json({ url: imageUrl, saved: false, balance: balanceAfterReserve });
     }
 });
 

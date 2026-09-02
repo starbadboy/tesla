@@ -296,59 +296,6 @@
 .we-app .we-secondary:hover { border-color: var(--we-accent); }
 .we-app .we-secondary.is-urgent { border-color: var(--we-accent); color: var(--we-accent); }
 
-/* ---- buy credits modal ---- */
-.we-modal-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  display: grid;
-  place-items: center;
-  background: rgba(0, 0, 0, .6);
-  backdrop-filter: blur(6px);
-}
-.we-modal {
-  display: grid;
-  gap: 14px;
-  width: min(420px, calc(100vw - 32px));
-  padding: 20px;
-  border: 1px solid var(--we-line);
-  border-radius: 14px;
-  background: var(--we-surface);
-  color: var(--we-ink-1);
-}
-.we-modal header { display: flex; align-items: center; justify-content: space-between; }
-.we-modal header h2 { font: 600 15px 'Archivo', sans-serif; }
-.we-modal header button {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border: none;
-  border-radius: 50%;
-  background: var(--we-surface-2);
-  color: var(--we-ink-2);
-  cursor: pointer;
-}
-.we-packs { display: grid; gap: 10px; }
-.we-pack {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  grid-template-areas: "credits price" "name price";
-  align-items: center;
-  gap: 2px 12px;
-  padding: 12px 14px;
-  border: 1px solid var(--we-line);
-  border-radius: 10px;
-  background: var(--we-surface-2);
-  color: var(--we-ink-1);
-  text-align: left;
-  cursor: pointer;
-}
-.we-pack:hover { border-color: var(--we-accent); }
-.we-pack:disabled { opacity: .6; cursor: wait; }
-.we-pack b { grid-area: credits; font: 600 14px 'Archivo', sans-serif; }
-.we-pack span { grid-area: name; font: 400 11.5px 'Archivo', sans-serif; color: var(--we-ink-4); }
-.we-pack em { grid-area: price; font: 600 14px 'Archivo', sans-serif; font-style: normal; color: var(--we-accent); }
 .we-notice {
   padding: 10px 12px;
   border: 1px solid var(--we-accent);

@@ -30,7 +30,9 @@ router.post('/checkout', requireUser, async (req, res) => {
             user: req.user.id, packId: pack.id, amount: pack.amount, currency: pack.currency, credits: pack.credits,
         });
         // Back to the app root; the editor opens itself when it sees these parameters.
-        const base = (process.env.APP_PUBLIC_URL || req.get('origin') || '').replace(/\/$/, '');
+        // The Origin header is only trusted outside production, where it is localhost.
+        const base = (process.env.APP_PUBLIC_URL || (process.env.NODE_ENV !== 'production' && req.get('origin')) || '').replace(/\/$/, '');
+        if (!base) return res.status(503).json({ error: 'APP_PUBLIC_URL is not configured' });
         const session = await stripe.checkout.sessions.create({
             mode: 'payment',
             client_reference_id: String(order._id),
@@ -88,21 +90,32 @@ router.post('/webhook', async (req, res) => {
             return res.json({ received: true });
         }
 
-        if (event.type === 'checkout.session.completed') {
+        if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
             const outcome = settle(order, session);
             console.log(`Stripe event ${event.id}: order ${order._id} ${outcome}`);
             if (outcome === 'paid') {
-                order.status = 'paid';
-                order.paidAt = new Date();
-                await order.save();
-                await addPurchase(order.user, order.credits, order._id);
+                // One conditional update claims the order; a concurrent or replayed delivery
+                // finds it already claimed and credits nothing.
+                const claimed = await PaymentOrder.findOneAndUpdate(
+                    { _id: order._id, status: 'pending' },
+                    { $set: { status: 'paid', paidAt: new Date() } },
+                    { new: true },
+                );
+                if (claimed) {
+                    try {
+                        await addPurchase(claimed.user, claimed.credits, claimed._id);
+                    } catch (err) {
+                        // Give the claim back so Stripe's retry credits the customer.
+                        await PaymentOrder.updateOne({ _id: claimed._id, status: 'paid' }, { $set: { status: 'pending' }, $unset: { paidAt: 1 } });
+                        throw err;
+                    }
+                }
             } else if (outcome === 'mismatch') {
-                order.status = 'failed';
-                await order.save();
+                await PaymentOrder.updateOne({ _id: order._id, status: 'pending' }, { $set: { status: 'failed' } });
             }
-        } else if (event.type === 'checkout.session.expired' && order.status === 'pending') {
-            order.status = 'expired';
-            await order.save();
+        } else if ((event.type === 'checkout.session.expired' || event.type === 'checkout.session.async_payment_failed')) {
+            const to = event.type === 'checkout.session.expired' ? 'expired' : 'failed';
+            await PaymentOrder.updateOne({ _id: order._id, status: 'pending' }, { $set: { status: to } });
         }
         res.json({ received: true });
     } catch (err) {

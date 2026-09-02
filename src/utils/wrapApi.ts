@@ -6,7 +6,7 @@ import { compressBlob } from './imageProcessor';
 export type WrapType = 'car' | 'plate' | 'sound';
 export type SortOption = 'popular' | 'downloads' | 'newest';
 
-function authHeaders(): Record<string, string> {
+export function authHeaders(): Record<string, string> {
     const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
     return token ? { Authorization: `Bearer ${token}` } : {};
 }

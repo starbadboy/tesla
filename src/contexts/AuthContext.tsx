@@ -47,8 +47,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setUser(res.data.user ?? res.data);
             setToken(storedToken);
         } catch (err) {
-            console.error("Auth check failed:", err);
-            logout();
+            // Only a rejected token means signed out; a network blip or a 5xx keeps the cached user.
+            if (axios.isAxiosError(err) && err.response?.status === 401) {
+                logout();
+            } else {
+                console.error("Auth refresh failed:", err);
+            }
         }
     };
 

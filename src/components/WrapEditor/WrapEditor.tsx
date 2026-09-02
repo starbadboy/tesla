@@ -24,6 +24,7 @@ import '../../styles/wrap-editor.css';
 const LAYER_ID = 'Full Wrap';
 
 /** Credits one Pro generation costs; the server enforces the same number. */
+// ponytail: copied from server/utils/packs.js for the button label; serve it from /api/credits/packs if the price ever moves.
 const GENERATION_COST = 10;
 
 const FLAT_LAYER: LayerTransform = { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1 };
@@ -70,8 +71,8 @@ type Generation = { url: string; prompt: string };
 const toGenerations = (wraps: Wrap[]): Generation[] =>
     wraps.map(w => ({ url: w.imageUrl ?? '', prompt: w.prompt ?? w.name }));
 
-/** Stripe sends the designer back with ?checkout=success|cancel&orderId=…; read it once. */
-const CHECKOUT_RETURN = (() => {
+/** Stripe sends the designer back with ?checkout=success|cancel&orderId=…; consumed by the first editor mount. */
+let checkoutReturn: { outcome: string; orderId: string | null } | null = (() => {
     const params = new URLSearchParams(window.location.search);
     const outcome = params.get('checkout');
     return outcome ? { outcome, orderId: params.get('orderId') } : null;
@@ -113,7 +114,7 @@ export function WrapEditor({
     const t = TRANSLATIONS[language];
     const model3dPath = CAR_3D_MODELS[currentModelName] ?? null;
 
-    const [panel, setPanel] = useState<Panel | null>(CHECKOUT_RETURN ? 'ai' : 'library');
+    const [panel, setPanel] = useState<Panel | null>(checkoutReturn ? 'ai' : 'library');
     const [tool, setTool] = useState<Tool>('select');
     const [brushColor, setBrushColor] = useState('#ff3b30');
     const [brushSize, setBrushSize] = useState(8);
@@ -188,7 +189,7 @@ export function WrapEditor({
 
     const { user, isAuthenticated, refreshUser } = useAuth();
     const [prompt, setPrompt] = useState('');
-    const [provider, setProvider] = useState<'puter' | 'openai'>(CHECKOUT_RETURN ? 'openai' : 'puter');
+    const [provider, setProvider] = useState<'puter' | 'openai'>(checkoutReturn ? 'openai' : 'puter');
     const [generating, setGenerating] = useState(false);
     const [aiError, setAiError] = useState<string | null>(null);
     // Only designers who have bought credits may keep a generation out of the gallery.
@@ -197,8 +198,8 @@ export function WrapEditor({
     const [authOpen, setAuthOpen] = useState(false);
     const [buyOpen, setBuyOpen] = useState(false);
     const [purchaseNotice, setPurchaseNotice] = useState<string | null>(() => {
-        if (!CHECKOUT_RETURN) return null;
-        return CHECKOUT_RETURN.outcome === 'success' && CHECKOUT_RETURN.orderId ? t.purchasePending : t.purchaseCancelled;
+        if (!checkoutReturn) return null;
+        return checkoutReturn.outcome === 'success' && checkoutReturn.orderId ? t.purchasePending : t.purchaseCancelled;
     });
     const credits = user?.credits ?? 0;
     const isPro = provider === 'openai';
@@ -207,9 +208,11 @@ export function WrapEditor({
     // Back from Stripe with a paid checkout: poll the order until the webhook lands, then
     // refresh the balance. The address bar is cleaned so a reload does not replay this.
     useEffect(() => {
-        if (!CHECKOUT_RETURN) return;
+        if (!checkoutReturn) return;
+        const { outcome, orderId } = checkoutReturn;
+        // Consumed: reopening the editor later must not replay the notice or the poll.
+        checkoutReturn = null;
         window.history.replaceState({}, '', window.location.pathname);
-        const { outcome, orderId } = CHECKOUT_RETURN;
         if (outcome !== 'success' || !orderId) return;
         const confirm = async () => {
             for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -469,12 +472,14 @@ export function WrapEditor({
                             <Sparkles size={15} />
                             {generating ? t.generating : isPro ? `${t.generate} — ${GENERATION_COST} ${t.credits}` : t.generate}
                         </button>
+                        {isAuthenticated && (
+                            <p className={`we-balance ${shortOnCredits ? 'is-short' : ''}`}>
+                                <span>{t.balance}</span>
+                                <b>{credits} {t.credits}</b>
+                            </p>
+                        )}
                         {isPro && isAuthenticated && (
                             <>
-                                <p className={`we-balance ${shortOnCredits ? 'is-short' : ''}`}>
-                                    <span>{t.balance}</span>
-                                    <b>{credits} {t.credits}</b>
-                                </p>
                                 {shortOnCredits && <p className="we-error">{t.notEnoughCredits}</p>}
                                 <button
                                     type="button"
