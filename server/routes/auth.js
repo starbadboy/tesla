@@ -10,8 +10,11 @@ const { resetEmail, sendMail } = require('../utils/mail');
 const SECRET_KEY = process.env.JWT_SECRET || 'your-secret-key-123';
 
 // Three reset requests per address and per client every fifteen minutes; ten attempts to
-// redeem a token per client. req.ip is trustworthy because the app sets `trust proxy`.
-const allowForgot = createThrottle({ limit: 3, windowMs: 15 * 60 * 1000 });
+// redeem a token per client. req.ip is the last X-Forwarded-For hop (`trust proxy`, 1),
+// which is only trustworthy while exactly one proxy — Railway's — sits in front.
+// Separate instances so a flood of addresses cannot crowd out the per-client counters.
+const allowForgotIp = createThrottle({ limit: 3, windowMs: 15 * 60 * 1000 });
+const allowForgotEmail = createThrottle({ limit: 3, windowMs: 15 * 60 * 1000 });
 const allowReset = createThrottle({ limit: 10, windowMs: 15 * 60 * 1000 });
 const RESET_SENT = 'If an account exists for that address, a reset link is on its way.';
 const TOO_MANY = 'Too many reset requests. Please try again later.';
@@ -152,10 +155,10 @@ router.get('/me', async (req, res) => {
 router.post('/forgot', async (req, res) => {
     const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
     if (!email.includes('@')) return res.status(400).json({ error: 'Please enter a valid email address' });
-    // Both counters always tick, so a client hammering one address still builds IP history.
-    const emailOk = allowForgot(`email:${email}`);
-    const ipOk = allowForgot(`ip:${req.ip}`);
-    if (!emailOk || !ipOk) return res.status(429).json({ error: TOO_MANY });
+    // Client first: a refused client creates no address key, so one client can mint at most
+    // `limit` address keys per window and cannot fill the fail-closed cap for everyone else.
+    if (!allowForgotIp(req.ip)) return res.status(429).json({ error: TOO_MANY });
+    if (!allowForgotEmail(email)) return res.status(429).json({ error: TOO_MANY });
 
     // The link's host comes only from configuration; a request header could point the
     // email at an attacker's site. Without it nothing is sent, and the answer is unchanged.
@@ -182,7 +185,7 @@ router.post('/forgot', async (req, res) => {
 
 // POST /reset { token, password } — replaces the password and signs the designer in.
 router.post('/reset', async (req, res) => {
-    if (!allowReset(`ip:${req.ip}`)) return res.status(429).json({ error: TOO_MANY });
+    if (!allowReset(req.ip)) return res.status(429).json({ error: TOO_MANY });
     const { token, password } = req.body || {};
     if (typeof token !== 'string' || !token) return res.status(400).json({ error: 'Missing reset token', code: 'RESET_INVALID' });
     if (typeof password !== 'string' || password.length < 8) {

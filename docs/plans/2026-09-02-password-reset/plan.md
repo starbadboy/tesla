@@ -6,7 +6,7 @@
 **Goal:** A designer can request a one-hour, single-use reset link by email and set a new password that signs them in; nothing reveals which emails exist.
 **Architecture:** Express + Mongoose auth router gains two endpoints backed by a pure token helper, a pure throttle, and a Resend mail helper; the React login dialog gains forgot and reset views; the user menu opens it from a URL token.
 **Complexity Path:** `Simplified TDD path` — no E2E infrastructure in this repo.
-**Status:** In Progress
+**Status:** Complete
 
 ## Architecture Review
 
@@ -96,9 +96,10 @@ None. The auth router and dialog take the additions without untangling.
   - Route tests on `mongodb-memory-server` — DB-level tests are a recorded skip for this repo (a binary download); the routes were exercised against the real database with curl and the browser, transcript on the PR.
   - Extracting the forgot and reset views into separate components — the explicit `View` union plus the button map removed the compound conditions; a split can follow when a third dialog variant arrives.
   - Using `req.ip` in `anonFingerprint` too — adjacent code outside this feature's scope; it still reads the first forwarded hop by hand and stays spoofable (follow-up).
-- **Verification:** round 1 → *New problems* (throttle eviction could drop the key being counted; fixed in round 2 with a test that fails on the old code); round 2 verdict recorded on the PR.
+- **Verification:** round 1 → *New problems* (throttle eviction could drop the key being counted; fixed in round 2 with a test that fails on the old code); round 2 → *New problems* (fail-closed cap plus email-key-before-IP ordering let one client fill the map and lock everyone out of recovery). Round 2 is the last verification round per policy; the two-line fix — check the client counter first so a refused client mints no address key, and give addresses and clients separate throttle instances — is applied in the closing commit **without a further verifier pass**. Verify with the script the verifier described (one IP, rotating addresses past the cap, then a fresh IP and address must still be allowed) before merging.
 - **Follow-ups:**
   - `anonFingerprint` in `server/index.js` should use `req.ip` now that `trust proxy` is set; the hand-parsed first hop is forgeable.
+  - `trust proxy` is set to exactly one hop. If the process is ever exposed without Railway's proxy, or behind two, `req.ip` becomes forgeable or collapses onto one address; pin the trust boundary if the deployment shape changes.
   - Invalidate existing login sessions on password change (password-version claim in the JWT), because accounts hold credits.
   - `/register` enforces no password minimum; the reset path requires 8. Align at registration (out of scope here).
   - PR #1 (`feat/ai-credits-gpt-image-2`) builds Stripe return URLs from the Origin header outside production — same class of issue as the one fixed here; tighten to `APP_PUBLIC_URL` only.
