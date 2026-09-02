@@ -28,7 +28,10 @@ const UserSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Wrap'
     }],
-    isAdmin: { type: Boolean, default: false }
+    isAdmin: { type: Boolean, default: false },
+    // Password reset: only the token's hash is kept; a new request overwrites both fields.
+    resetTokenHash: { type: String, select: false },
+    resetTokenExpires: { type: Date, select: false }
 });
 
 module.exports = mongoose.model('User', UserSchema);
