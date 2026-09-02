@@ -18,8 +18,10 @@ const UserSchema = new mongoose.Schema({
     },
     passwordHash: {
         type: String,
-        required: true
+        required: function () { return !this.googleId; }
     },
+    // Google's stable subject, not an email address. Sparse keeps password accounts valid.
+    googleId: { type: String, unique: true, sparse: true },
     createdAt: {
         type: Date,
         default: Date.now
