@@ -37,7 +37,7 @@ async function sendMail({ to, subject, text, html }) {
         throw new Error(`Resend answered ${res.status}: ${(await res.text()).slice(0, 200)}`);
     }
     const { id } = await res.json();
-    console.log(`Mail "${subject}" to ${to} accepted by Resend as ${id}`);
+    console.log(`Mail "${subject}" accepted by Resend as ${id}`);
     return { sent: true, id };
 }
 

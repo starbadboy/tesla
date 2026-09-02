@@ -95,8 +95,10 @@ None. The auth router and dialog take the additions without untangling.
 - **Declined review findings:**
   - Route tests on `mongodb-memory-server` — DB-level tests are a recorded skip for this repo (a binary download); the routes were exercised against the real database with curl and the browser, transcript on the PR.
   - Extracting the forgot and reset views into separate components — the explicit `View` union plus the button map removed the compound conditions; a split can follow when a third dialog variant arrives.
-  - Using `req.ip` in `anonFingerprint` too — adjacent code outside this feature's scope; `trust proxy` now makes it correct as written.
+  - Using `req.ip` in `anonFingerprint` too — adjacent code outside this feature's scope; it still reads the first forwarded hop by hand and stays spoofable (follow-up).
+- **Verification:** round 1 → *New problems* (throttle eviction could drop the key being counted; fixed in round 2 with a test that fails on the old code); round 2 verdict recorded on the PR.
 - **Follow-ups:**
+  - `anonFingerprint` in `server/index.js` should use `req.ip` now that `trust proxy` is set; the hand-parsed first hop is forgeable.
   - Invalidate existing login sessions on password change (password-version claim in the JWT), because accounts hold credits.
   - `/register` enforces no password minimum; the reset path requires 8. Align at registration (out of scope here).
   - PR #1 (`feat/ai-credits-gpt-image-2`) builds Stripe return URLs from the Origin header outside production — same class of issue as the one fixed here; tighten to `APP_PUBLIC_URL` only.

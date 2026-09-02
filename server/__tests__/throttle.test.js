@@ -22,12 +22,25 @@ describe('request throttle', () => {
         expect(allow('a@x.io')).toBe(false);
     });
 
-    it('caps the number of keys it remembers, dropping the oldest first', () => {
-        const allow = createThrottle({ limit: 1, windowMs: 60_000, maxKeys: 3, now: () => start });
-        for (let i = 0; i < 10; i += 1) allow(`k${i}`);
+    it('caps the keys it remembers and refuses newcomers while full, never evicting a live key', () => {
+        let now = start;
+        const allow = createThrottle({ limit: 1, windowMs: 60_000, maxKeys: 3, now: () => now });
+        const results = [];
+        for (let i = 0; i < 10; i += 1) results.push(allow(`k${i}`));
+        expect(results).toEqual([true, true, true, false, false, false, false, false, false, false]);
         expect(allow.size()).toBe(3);
-        expect(allow('k0')).toBe(true);   // k0 was evicted, so it counts as new
-        expect(allow('k9')).toBe(false);  // k9 is still remembered and at its limit
+        expect(allow('k0')).toBe(false);  // still tracked and at its limit
+        now = start + 60_000;             // window over: stale keys swept, room again
+        expect(allow('k9')).toBe(true);
+    });
+
+    it('never evicts the key it is counting, so a padded map cannot reset a limit', () => {
+        const allow = createThrottle({ limit: 3, windowMs: 60_000, maxKeys: 4, now: () => start });
+        expect(allow('victim')).toBe(true);
+        for (let i = 0; i < 20; i += 1) allow(`pad${i}`);   // flood with throwaway keys
+        expect(allow('victim')).toBe(true);
+        expect(allow('victim')).toBe(true);
+        expect(allow('victim')).toBe(false);                 // still capped at 3 in the window
     });
 
     it('forgets stale keys instead of growing forever', () => {

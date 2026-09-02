@@ -121,6 +121,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTa
     };
 
     const hasTabs = activeTab === 'login' || activeTab === 'register';
+    const next = NAVIGATE[activeTab];
 
     // Portalled to the document root: the studio and gallery shells reset padding
     // and margin on every descendant, which would flatten this Tailwind layout.
@@ -251,8 +252,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTa
                         <p className="text-xs text-gray-500 dark:text-zinc-400">Enter the email on your account and we will send a link to choose a new password.</p>
                     )}
 
-                    {NAVIGATE[activeTab] ? (
-                        <Button type="button" fullWidth size="lg" className={BUTTON} onClick={() => switchTo(NAVIGATE[activeTab] as View)}>
+                    {next ? (
+                        <Button type="button" fullWidth size="lg" className={BUTTON} onClick={() => switchTo(next)}>
                             {SUBMIT[activeTab]}
                         </Button>
                     ) : (
