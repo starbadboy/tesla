@@ -162,9 +162,10 @@ export async function likeWrap(id: string, type: WrapType): Promise<{ likes: num
     return { likes: data.likes as number, liked: Boolean(data.liked) };
 }
 
-/** R2 CDN URLs need the server proxy or the fetch trips CORS. */
+/** Images on our storage hosts (r2.dev, the CDN) send no CORS headers, so any cross-origin URL goes through the server proxy. */
 export function proxiedMediaUrl(url: string): string {
-    return url.includes('.r2.dev/') ? `/api/proxy-image?url=${encodeURIComponent(url)}` : url;
+    const crossOrigin = /^https?:\/\//.test(url) && !url.startsWith(window.location.origin);
+    return crossOrigin ? `/api/proxy-image?url=${encodeURIComponent(url)}` : url;
 }
 
 /** Tracks the download server-side, then saves the file locally. */

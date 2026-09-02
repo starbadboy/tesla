@@ -12,6 +12,7 @@ import { SEO_COPY, SITE_IMAGE, SITE_URL } from './seo';
 
 import { WrapStudio } from './components/WrapStudio/WrapStudio';
 import { TESLA_PAINTS } from './constants';
+import { proxiedMediaUrl } from './utils/wrapApi';
 
 /**
  * A newly loaded sheet starts from a clean transform. DesignCanvas fits each image to
@@ -186,9 +187,9 @@ function App() {
     }
     setLoadedWrapName(wrap?.name ?? null);
     setIsWrapVisible(true);
-    if (url.includes('.r2.dev/')) {
+    const proxyUrl = proxiedMediaUrl(url);
+    if (proxyUrl !== url) {
       try {
-        const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(url)}`;
         const resp = await fetch(proxyUrl);
         const blob = await resp.blob();
         const blobUrl = URL.createObjectURL(blob);

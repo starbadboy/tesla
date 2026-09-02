@@ -7,7 +7,7 @@ import { WrapWall } from './WrapWall';
 import { CAR_3D_MODELS, CAR_MODELS } from '../../constants';
 import { TRANSLATIONS } from '../../translations';
 import { SEO_COPY } from '../../seo';
-import { fetchWraps } from '../../utils/wrapApi';
+import { fetchWraps, proxiedMediaUrl } from '../../utils/wrapApi';
 import type { Wrap } from '../Gallery';
 import '../../styles/home.css';
 
@@ -82,11 +82,7 @@ export function Home({
 
     // The raw R2 domain sends no CORS headers, so a canvas cannot read those sheets; the
     // server proxies them, exactly as loading a wrap into the studio does.
-    const heroSheet = hero?.imageUrl
-        ? (hero.imageUrl.includes('.r2.dev/')
-            ? `/api/proxy-image?url=${encodeURIComponent(hero.imageUrl)}`
-            : hero.imageUrl)
-        : null;
+    const heroSheet = hero?.imageUrl ? proxiedMediaUrl(hero.imageUrl) : null;
 
     const steps = [
         { icon: Layers, title: t.stepPick, body: t.stepPickBody },

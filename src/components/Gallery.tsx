@@ -5,6 +5,7 @@ import { TRANSLATIONS } from '../translations';
 import { useAuth } from '../contexts/AuthContext';
 import { compressBlob } from '../utils/imageProcessor';
 import { WrapDetailModal } from './WrapDetailModal';
+import { proxiedMediaUrl } from '../utils/wrapApi';
 
 export interface Wrap {
     _id: string;
@@ -139,11 +140,7 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
             setWraps(prev => prev.map(w => w._id === wrap._id ? { ...w, downloads: w.downloads + 1 } : w));
 
             // 2. Trigger download
-            let mediaUrl = type === 'sound' ? wrap.audioUrl! : wrap.imageUrl!;
-            // Proxy R2 CDN URLs to avoid CORS issues
-            if (mediaUrl.includes('.r2.dev/')) {
-                mediaUrl = `/api/proxy-image?url=${encodeURIComponent(mediaUrl)}`;
-            }
+            const mediaUrl = proxiedMediaUrl(type === 'sound' ? wrap.audioUrl! : wrap.imageUrl!);
             const response = await fetch(mediaUrl);
             const blob = await response.blob();
 
