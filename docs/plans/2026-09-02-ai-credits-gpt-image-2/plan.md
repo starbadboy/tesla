@@ -138,5 +138,11 @@ Each task is a vertical slice and demoable alone. Blocking edges are listed.
   - `input_fidelity: 'high'` dropped from the edit call — the live API answers 400 "gpt-image-2 does not support input_fidelity"; the SDK types allow it, the model does not.
   - My Generations re-reads the server when the panel opens, not only at mount — the first check showed a stale empty list after a wrap was saved elsewhere.
   - `User` type gained `credits`/`hasPurchased` in Task 2 rather than Task 4 — the share checkbox needed `hasPurchased` to render its locked state.
+  - Buy Credits button landed with its modal in Task 5, not alone in Task 4 — a button with no handler failed the unused-state build check.
+  - Purchase notice renders above the Generate button, not below Buy Credits — below the fold in the scrolling panel it was invisible.
+  - `CLAUDE.md` created (repo had none) to hold the Commands section the flow requires.
 - **Declined review findings:** (none yet)
-- **Follow-ups:** (none yet)
+- **Follow-ups:**
+  - Real Stripe webhook (signature check → settle → addPurchase) is unverified: no Stripe keys exist locally or in the partner repo. The same settle → addPurchase path was exercised by a local stand-in script and the replay reported `duplicate`. Verify with test keys and `stripe listen` before go-live.
+  - Free-tier Puter generation could not complete in headless Chromium (Puter auth popup); unchanged code, needs one manual click-through.
+  - 121 s Pro generation with no progress hint; consider medium quality or a progress line.

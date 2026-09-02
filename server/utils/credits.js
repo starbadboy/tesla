@@ -37,4 +37,18 @@ async function addPurchase(userId, credits, orderId) {
     return user.credits;
 }
 
-module.exports = { reserve, refund, addPurchase };
+/**
+ * What a completed-checkout event means for the order it names. Pure, so the
+ * webhook's money decision can be tested without Stripe or Mongo.
+ *   paid       — pending order, session paid exactly what the order asked
+ *   duplicate  — already settled; a replayed event must add nothing
+ *   mismatch   — amount or currency differ; never credit, mark the order failed
+ */
+function settle(order, session) {
+    if (order.status === 'paid') return 'duplicate';
+    const sameAmount = Number.isInteger(session.amount_total) && session.amount_total === order.amount;
+    const sameCurrency = typeof session.currency === 'string' && session.currency.toLowerCase() === order.currency.toLowerCase();
+    return sameAmount && sameCurrency ? 'paid' : 'mismatch';
+}
+
+module.exports = { reserve, refund, addPurchase, settle };

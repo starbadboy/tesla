@@ -66,7 +66,8 @@ const openai = new OpenAI({
 
 // Middleware
 app.use(cors());
-app.use(bodyParser.json({ limit: '50mb' }));
+// verify keeps the raw bytes: the Stripe webhook checks its signature against them.
+app.use(bodyParser.json({ limit: '50mb', verify: (req, _res, buf) => { req.rawBody = buf; } }));
 app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
 // Middleware to optionally attach user to request if token is present
@@ -94,8 +95,10 @@ app.use('/uploads', express.static(process.env.UPLOAD_DIR ? path.resolve(process
 app.use('/api/auth', authRoutes);
 const commentRoutes = require('./routes/comments');
 const soundRoutes = require('./routes/sounds');
+const creditRoutes = require('./routes/credits');
 app.use('/api', commentRoutes);
 app.use('/api/sounds', soundRoutes);
+app.use('/api/credits', creditRoutes);
 
 // Ensure uploads directory exists
 const uploadsDir = process.env.UPLOAD_DIR

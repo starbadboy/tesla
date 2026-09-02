@@ -45,7 +45,8 @@ function App() {
   const [galleryRefreshTrigger, setGalleryRefreshTrigger] = useState(0);
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [is3DGalleryOpen, setIs3DGalleryOpen] = useState(false);
-  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  // Stripe sends the designer back to the root with ?checkout=…; the editor owns that flow.
+  const [isEditorOpen, setIsEditorOpen] = useState(() => new URLSearchParams(window.location.search).has('checkout'));
   const [isHomeOpen, setIsHomeOpen] = useState(false);
   const [galleryView, setGalleryView] = useState<'community' | 'garage'>('community');
 

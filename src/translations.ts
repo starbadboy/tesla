@@ -121,6 +121,11 @@ export const TRANSLATIONS = {
         balance: "Balance",
         buyCredits: "Buy Credits",
         notEnoughCredits: "Not enough credits for a Pro generation",
+        buyCreditsHint: "Credits never expire. Payment is handled by Stripe.",
+        purchaseSuccess: "Payment received — credits added to your balance.",
+        purchasePending: "Payment received — confirming your credits…",
+        purchaseCancelled: "Checkout cancelled. Nothing was charged.",
+        purchaseFailed: "This payment could not be confirmed. Please contact support.",
         connecting: "Connecting to AI Service...",
 
         // Gallery
@@ -333,6 +338,11 @@ export const TRANSLATIONS = {
         balance: "余额",
         buyCredits: "购买积分",
         notEnoughCredits: "积分不足，无法进行专业版生成",
+        buyCreditsHint: "积分永不过期。支付由 Stripe 处理。",
+        purchaseSuccess: "支付成功，积分已添加到您的余额。",
+        purchasePending: "支付已收到，正在确认积分…",
+        purchaseCancelled: "已取消支付，未产生扣款。",
+        purchaseFailed: "无法确认此次支付，请联系支持。",
         connecting: "连接 AI 服务中...",
 
         // Gallery

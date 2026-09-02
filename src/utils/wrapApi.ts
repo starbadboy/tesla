@@ -105,6 +105,41 @@ export async function fetchMyGenerations(): Promise<Wrap[]> {
     return Array.isArray(data) ? data : [];
 }
 
+export interface CreditPack {
+    id: string;
+    name: string;
+    credits: number;
+    /** Smallest currency unit, e.g. cents. */
+    amount: number;
+    currency: string;
+}
+
+export async function fetchPacks(): Promise<CreditPack[]> {
+    const res = await fetch('/api/credits/packs');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return (await res.json()).packs ?? [];
+}
+
+/** Opens an order and returns the hosted checkout URL to send the browser to. */
+export async function startCheckout(packId: string): Promise<string> {
+    const res = await fetch('/api/credits/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ packId }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.checkoutUrl) throw new Error(data.error || `HTTP ${res.status}`);
+    return data.checkoutUrl;
+}
+
+export type OrderStatus = 'pending' | 'paid' | 'expired' | 'failed';
+
+export async function fetchOrder(orderId: string): Promise<{ status: OrderStatus; credits: number }> {
+    const res = await fetch(`/api/credits/orders/${orderId}`, { headers: authHeaders() });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+}
+
 export type GarageTab = 'my-uploads' | 'liked';
 
 /** The signed-in user's own uploads, or the wraps they liked. Requires a token. */

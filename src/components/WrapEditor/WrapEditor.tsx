@@ -14,7 +14,8 @@ import { WRAP_PRESETS, gradientCss, gradientToDataUrl } from '../TeslaStudio/wra
 import { CAR_3D_MODELS, CAR_MODELS } from '../../constants';
 import { TRANSLATIONS } from '../../translations';
 import { generateImage } from '../../utils/aiImage';
-import { fetchMyGenerations, saveGeneration } from '../../utils/wrapApi';
+import { fetchMyGenerations, fetchOrder, saveGeneration } from '../../utils/wrapApi';
+import { BuyCreditsModal } from './BuyCreditsModal';
 import type { Wrap } from '../Gallery';
 import { useAuth } from '../../contexts/AuthContext';
 import { AuthModal } from '../Auth/AuthModal';
@@ -69,6 +70,13 @@ type Generation = { url: string; prompt: string };
 const toGenerations = (wraps: Wrap[]): Generation[] =>
     wraps.map(w => ({ url: w.imageUrl ?? '', prompt: w.prompt ?? w.name }));
 
+/** Stripe sends the designer back with ?checkout=success|cancel&orderId=…; read it once. */
+const CHECKOUT_RETURN = (() => {
+    const params = new URLSearchParams(window.location.search);
+    const outcome = params.get('checkout');
+    return outcome ? { outcome, orderId: params.get('orderId') } : null;
+})();
+
 type Tool = 'select' | 'draw' | 'fill' | 'text' | 'rect' | 'ellipse';
 
 /** Everything an edit can change, and therefore everything undo restores. */
@@ -105,7 +113,7 @@ export function WrapEditor({
     const t = TRANSLATIONS[language];
     const model3dPath = CAR_3D_MODELS[currentModelName] ?? null;
 
-    const [panel, setPanel] = useState<Panel | null>('library');
+    const [panel, setPanel] = useState<Panel | null>(CHECKOUT_RETURN ? 'ai' : 'library');
     const [tool, setTool] = useState<Tool>('select');
     const [brushColor, setBrushColor] = useState('#ff3b30');
     const [brushSize, setBrushSize] = useState(8);
@@ -180,16 +188,45 @@ export function WrapEditor({
 
     const { user, isAuthenticated, refreshUser } = useAuth();
     const [prompt, setPrompt] = useState('');
-    const [provider, setProvider] = useState<'puter' | 'openai'>('puter');
+    const [provider, setProvider] = useState<'puter' | 'openai'>(CHECKOUT_RETURN ? 'openai' : 'puter');
     const [generating, setGenerating] = useState(false);
     const [aiError, setAiError] = useState<string | null>(null);
     // Only designers who have bought credits may keep a generation out of the gallery.
     const canGoPrivate = Boolean(user?.hasPurchased);
     const [shareToGallery, setShareToGallery] = useState(true);
     const [authOpen, setAuthOpen] = useState(false);
+    const [buyOpen, setBuyOpen] = useState(false);
+    const [purchaseNotice, setPurchaseNotice] = useState<string | null>(() => {
+        if (!CHECKOUT_RETURN) return null;
+        return CHECKOUT_RETURN.outcome === 'success' && CHECKOUT_RETURN.orderId ? t.purchasePending : t.purchaseCancelled;
+    });
     const credits = user?.credits ?? 0;
     const isPro = provider === 'openai';
     const shortOnCredits = isPro && credits < GENERATION_COST;
+
+    // Back from Stripe with a paid checkout: poll the order until the webhook lands, then
+    // refresh the balance. The address bar is cleaned so a reload does not replay this.
+    useEffect(() => {
+        if (!CHECKOUT_RETURN) return;
+        window.history.replaceState({}, '', window.location.pathname);
+        const { outcome, orderId } = CHECKOUT_RETURN;
+        if (outcome !== 'success' || !orderId) return;
+        const confirm = async () => {
+            for (let attempt = 0; attempt < 5; attempt += 1) {
+                try {
+                    const order = await fetchOrder(orderId);
+                    if (order.status === 'paid') { await refreshUser(); setPurchaseNotice(t.purchaseSuccess); return; }
+                    if (order.status === 'failed' || order.status === 'expired') { setPurchaseNotice(t.purchaseFailed); return; }
+                } catch (error) {
+                    console.warn('Could not read order:', error);
+                }
+                await new Promise(resolve => setTimeout(resolve, 1500));
+            }
+            await refreshUser();
+        };
+        confirm();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // Pro spends credits, so it needs an account; ask for one and stay on Free meanwhile.
     const chooseProvider = (next: 'puter' | 'openai') => {
@@ -421,6 +458,8 @@ export function WrapEditor({
                             </>
                         )}
 
+                        {purchaseNotice && <p className="we-notice">{purchaseNotice}</p>}
+
                         <button
                             type="button"
                             className="we-primary"
@@ -437,6 +476,13 @@ export function WrapEditor({
                                     <b>{credits} {t.credits}</b>
                                 </p>
                                 {shortOnCredits && <p className="we-error">{t.notEnoughCredits}</p>}
+                                <button
+                                    type="button"
+                                    className={`we-secondary ${shortOnCredits ? 'is-urgent' : ''}`}
+                                    onClick={() => setBuyOpen(true)}
+                                >
+                                    {t.buyCredits}
+                                </button>
                             </>
                         )}
                         {aiError && <p className="we-error">{aiError}</p>}
@@ -700,6 +746,7 @@ export function WrapEditor({
                 </div>
             </main>
             <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} />
+            <BuyCreditsModal isOpen={buyOpen} onClose={() => setBuyOpen(false)} language={language} />
         </div>
     );
 }
