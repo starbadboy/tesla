@@ -23,7 +23,6 @@ function anonFingerprint(req) {
     return crypto.createHash('sha256').update(`${salt}:${address}`).digest('hex').slice(0, 32);
 }
 const OpenAI = require('openai');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
 const authRoutes = require('./routes/auth');
 const jwt = require('jsonwebtoken');
 const User = require('./models/User');
@@ -61,10 +60,6 @@ const mongoUrl = process.env.MONGO_URL || 'test-rul';
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY || "dummy-key",
 });
-
-// Initialize Gemini
-// Note: This requires GEMINI_API_KEY environment variable to be set
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "dummy-key");
 
 // Middleware
 app.use(cors());
@@ -611,72 +606,6 @@ app.post('/api/generate-image', async (req, res) => {
         } else {
             res.status(500).json({ error: err.message });
         }
-    }
-});
-
-// POST /api/generate-image-gemini - Generate image via Gemini
-app.post('/api/generate-image-gemini', async (req, res) => {
-    try {
-        const { prompt, model, image } = req.body;
-
-        if (!process.env.GEMINI_API_KEY) {
-            return res.status(500).json({ error: 'Gemini API key not configured on server' });
-        }
-
-        // Use the gemini-3-pro-image-preview model for image generation
-        const imagenModel = genAI.getGenerativeModel({ model: model || "gemini-3-pro-image-preview" });
-
-        let contentParts = [{ text: prompt }];
-
-        if (image) {
-            // Check if it's a data URL and strip prefix
-            const matches = image.match(/^data:(.+);base64,(.+)$/);
-            if (matches) {
-                contentParts.push({
-                    inlineData: {
-                        mimeType: matches[1],
-                        data: matches[2]
-                    }
-                });
-            } else {
-                // Assume raw base64, default to png if not provided (risky but common)
-                contentParts.push({
-                    inlineData: {
-                        mimeType: "image/png",
-                        data: image
-                    }
-                });
-            }
-        }
-
-        const result = await imagenModel.generateContent({
-            contents: [{ role: 'user', parts: contentParts }]
-        });
-        const response = await result.response;
-
-        let base64Image = null;
-        let mimeType = "image/png";
-
-        if (response.candidates && response.candidates[0] && response.candidates[0].content && response.candidates[0].content.parts) {
-            for (const part of response.candidates[0].content.parts) {
-                if (part.inlineData) {
-                    base64Image = part.inlineData.data;
-                    mimeType = part.inlineData.mimeType || "image/png";
-                    break;
-                }
-            }
-        }
-
-        if (base64Image) {
-            res.json({ url: `data:${mimeType};base64,${base64Image}` });
-        } else {
-            console.error("Gemini response did not contain inlineData. Full response:", JSON.stringify(response, null, 2));
-            res.status(500).json({ error: "No image data found in Gemini response" });
-        }
-
-    } catch (err) {
-        console.error("Gemini Generation Error:", err);
-        res.status(500).json({ error: err.message });
     }
 });
 

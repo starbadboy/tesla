@@ -167,7 +167,7 @@ export function WrapEditor({
     };
 
     const [prompt, setPrompt] = useState('');
-    const [provider, setProvider] = useState<'puter' | 'openai' | 'gemini'>('puter');
+    const [provider, setProvider] = useState<'puter' | 'openai'>('puter');
     const [generating, setGenerating] = useState(false);
     const [aiError, setAiError] = useState<string | null>(null);
     // Session-only: a generation is a data URL of a megabyte or more, far past what
@@ -340,7 +340,6 @@ export function WrapEditor({
                             options={[
                                 { value: 'puter', label: t.computerAI },
                                 { value: 'openai', label: t.openai },
-                                { value: 'gemini', label: 'Gemini 3 Pro Image' },
                             ]}
                         />
 
