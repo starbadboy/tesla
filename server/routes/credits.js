@@ -108,7 +108,7 @@ router.post('/webhook', async (req, res) => {
                         if (err.code === 'NO_USER') {
                             // Nobody to credit; settle the order as failed once rather than retrying for days.
                             console.error(`Stripe event ${event.id}: order ${claimed._id} paid but user ${claimed.user} is gone — refund manually`);
-                            await PaymentOrder.updateOne({ _id: claimed._id }, { $set: { status: 'failed' } });
+                            await PaymentOrder.updateOne({ _id: claimed._id, status: 'paid' }, { $set: { status: 'failed' } });
                         } else {
                             // Give the claim back so Stripe's retry credits the customer.
                             await PaymentOrder.updateOne({ _id: claimed._id, status: 'paid' }, { $set: { status: 'pending' }, $unset: { paidAt: 1 } });

@@ -7,7 +7,7 @@ const CreditTransactionSchema = new mongoose.Schema({
     // Signed: purchases and refunds positive, consumption negative.
     amount: { type: Number, required: true },
     balanceAfter: { type: Number, required: true },
-    order: { type: mongoose.Schema.Types.ObjectId, ref: 'PaymentOrder' },
+    order: { type: mongoose.Schema.Types.ObjectId, ref: 'PaymentOrder', index: true },
     note: { type: String, trim: true, maxLength: 200 },
     createdAt: { type: Date, default: Date.now },
 });

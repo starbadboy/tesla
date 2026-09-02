@@ -26,15 +26,19 @@ async function refund(userId, amount, note) {
 }
 
 /**
- * Credit a paid order and remember that this user has purchased. The balance write is
- * what the customer paid for and is allowed to throw (the caller rolls the order back so
- * Stripe retries); the ledger row is bookkeeping and is only logged if it fails.
+ * Credit a paid order and remember that this user has purchased. Returns the new balance,
+ * or null when this order was already credited. The balance write is what the customer
+ * paid for and is allowed to throw (the caller rolls the order back so Stripe retries);
+ * the ledger row is bookkeeping and is only logged if it fails.
  */
 async function addPurchase(userId, credits, orderId) {
     // A ledger row for this order means the balance already moved on an earlier attempt.
     // ponytail: the row is written after the $inc, so a write that commits unacknowledged can
     // still credit twice on retry; move both into a transaction if charge volume justifies it.
-    if (await CreditTransaction.exists({ order: orderId, type: 'purchase' })) return null;
+    if (await CreditTransaction.exists({ order: orderId, type: 'purchase' })) {
+        console.warn(`addPurchase: order ${orderId} already credited, skipping`);
+        return null;
+    }
     const user = await User.findByIdAndUpdate(
         userId,
         { $inc: { credits }, $set: { hasPurchased: true } },

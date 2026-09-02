@@ -1,5 +1,11 @@
 import { authHeaders } from './wrapApi';
 
+export interface GeneratedImage {
+    url: string;
+    /** Pro only. False means the image was produced and billed but could not be stored as a wrap. */
+    saved?: boolean;
+}
+
 
 /**
  * Generates an image using the selected AI provider.
@@ -12,12 +18,6 @@ import { authHeaders } from './wrapApi';
  * @returns The generated image URL (data URL for Puter, R2 URL for Pro) and, for Pro,
  *          whether the server managed to keep it as a wrap.
  */
-export interface GeneratedImage {
-    url: string;
-    /** Pro only. False means the image was produced and billed but could not be stored as a wrap. */
-    saved?: boolean;
-}
-
 export async function generateImage(
     prompt: string,
     inputImageBase64?: string,

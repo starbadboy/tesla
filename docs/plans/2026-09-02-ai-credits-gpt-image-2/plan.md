@@ -6,7 +6,7 @@
 **Goal:** Two-tier AI panel (Free Puter, Pro GPT Image 2 with template), Gemini removed, credits bought via Stripe Checkout and spent per Pro generation, generations persisted with a private option for purchasers.
 **Architecture:** Express + Mongoose server (`server/`), React + Vite client (`src/`). Payments ported from the partner project's order → Checkout → webhook → ledger shape.
 **Complexity Path:** `Simplified TDD path` — no E2E infrastructure in this repo.
-**Status:** In Progress
+**Status:** Complete
 
 ## Architecture Review
 
@@ -151,7 +151,9 @@ Each task is a vertical slice and demoable alone. Blocking edges are listed.
   - Serving `GENERATION_COST` from `/api/credits/packs` — marked with a `ponytail:` comment naming that upgrade path instead.
   - Extracting a shared modal shell for AuthModal and BuyCreditsModal — two call sites; extract at the third.
 - **Fix round 2 (final):** `addPurchase` skips an order that already has a purchase ledger row and marks the unacknowledged-commit ceiling with a `ponytail:` comment; a paid order whose user is gone is marked failed once instead of retried for days; an unclaimed funded event logs the order's status; the client keeps a billed-but-unsaved Pro image in the session list instead of refetching it away.
+- **Verification:** round 1 → *New problems* (2 Important, fixed in `0148b00`); round 2 → *Clean with nits* (4 code nits applied in the closing commit; the fifth, a commit-message body overstating the `addPurchase` guard, stands as written — the `ponytail:` comment in the code is the accurate text).
 - **Follow-ups:**
+  - Close the remaining double-credit ceiling for real: partial unique index on `{ order, type: 'purchase' }` and write the ledger row before the `$inc` (or a transaction) if charge volume ever justifies it.
   - Real Stripe webhook (signature check → settle → addPurchase) is unverified: no Stripe keys exist locally or in the partner repo. The same settle → addPurchase path was exercised by a local stand-in script and the replay reported `duplicate`. Verify with test keys and `stripe listen` before go-live.
   - Free-tier Puter generation could not complete in headless Chromium (Puter auth popup); unchanged code, needs one manual click-through.
   - 121 s Pro generation with no progress hint; consider medium quality or a progress line.
