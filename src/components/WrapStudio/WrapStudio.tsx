@@ -3,7 +3,7 @@ import { ArrowDownToLine, Heart, Sparkles, Flame, Pencil } from 'lucide-react';
 import { OptionMenu } from '../ui/OptionMenu';
 import { DesignCanvas, type DesignCanvasHandle, type LayerTransform } from '../DesignCanvas';
 import { ThreeDView } from '../ThreeDView';
-import { CAR_3D_MODELS, CAR_MODELS, TESLA_PAINTS } from '../../constants';
+import { CAR_3D_MODELS, CAR_MODELS, FACTORY_PAINT } from '../../constants';
 import { TRANSLATIONS } from '../../translations';
 import { UserMenu } from '../Auth/UserMenu';
 import { fetchWraps, hasThreeD, wrapFlags, type SortOption } from '../../utils/wrapApi';
@@ -33,8 +33,6 @@ export interface WrapStudioProps {
     onOpen3DGallery: () => void;
     onOpenEditor: () => void;
     onOpenHome: () => void;
-    paintColor: string;
-    onPaintColorChange: (hex: string) => void;
     /**
      * Set while a full-screen surface (editor, gallery) is open. Two ThreeDViews share one
      * cached GLTF scene, so both rewrite the same meshes' materials and the visible car
@@ -72,7 +70,6 @@ export function WrapStudio({
     canvasRef, layerTransforms, onLayerTransformsChange,
     selectedLayerId, onSelectedLayerIdChange,
     onShare, onExport, onOpenGallery, onOpenGarage, onOpen3DGallery, onOpenEditor, onOpenHome, onLoadCommunityWrap,
-    paintColor, onPaintColorChange,
     suspended = false,
     communityRefreshTrigger = 0,
     children,
@@ -108,8 +105,7 @@ export function WrapStudio({
         await onLoadCommunityWrap(wrap.imageUrl, { name: wrap.name, model: wrap.models?.[0] });
     };
 
-    const paint = TESLA_PAINTS.find(entry => entry.hex === paintColor) ?? TESLA_PAINTS[0];
-    const paintName = language === 'zh' ? paint.nameZh : paint.name;
+    const paintName = language === 'zh' ? FACTORY_PAINT.nameZh : FACTORY_PAINT.name;
 
     const subtitle = !isWrapVisible
         ? `${t.basePaint} · ${paintName}`
@@ -142,7 +138,7 @@ export function WrapStudio({
                         showTexture={isWrapVisible}
                         onToggleWrap={onIsWrapVisibleChange}
                         language={language}
-                        paintColor={paintColor}
+                        paintColor={FACTORY_PAINT.hex}
                         autoRotate={autoRotate}
                         autoRotateSpeed={0.8}
                         hideWrapToggle
@@ -213,25 +209,6 @@ export function WrapStudio({
                         {t.basePaint}
                     </button>
                 </div>
-
-                {/* The colours Tesla sells, so factory paint is a choice and not just black.
-                    Beside the segment rather than under it: the band between here and the
-                    shelf is only tall enough for one row. The name is in the subtitle. */}
-                {!isWrapVisible && (
-                    <span className="ws-paint-row">
-                        {TESLA_PAINTS.map(entry => (
-                            <button
-                                key={entry.id}
-                                type="button"
-                                className={`ws-paint ${entry.hex === paintColor ? 'ws-on' : ''}`}
-                                style={{ background: entry.hex }}
-                                title={language === 'zh' ? entry.nameZh : entry.name}
-                                aria-label={language === 'zh' ? entry.nameZh : entry.name}
-                                onClick={() => onPaintColorChange(entry.hex)}
-                            />
-                        ))}
-                    </span>
-                )}
             </div>}
 
             <div className="ws-shelf">

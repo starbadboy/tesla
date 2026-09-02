@@ -12,6 +12,7 @@ const { uploadToR2, deleteFromR2, getR2KeyFromUrl, getMimeType } = require('./ut
 const { publicMatch, mayGoPrivate } = require('./utils/visibility');
 const { GENERATION_COST } = require('./utils/packs');
 const { reserve, refund } = require('./utils/credits');
+const { buildWrapEditRequest, validateWrapEditResult } = require('./utils/wrapGeneration');
 
 const Wrap = require('./models/Wrap');
 
@@ -600,7 +601,7 @@ app.post('/api/generate-image', async (req, res) => {
         return res.status(500).json({ error: 'OpenAI API key not configured on server' });
     }
 
-    const { prompt, image, carModel, userPrompt, isPublic } = req.body;
+    const { prompt, image, carModel, userPrompt, isPublic, useReference } = req.body;
     if (!prompt || typeof prompt !== 'string' || prompt.length > 4000) {
         return res.status(400).json({ error: 'prompt is required (max 4000 characters)' });
     }
@@ -611,6 +612,17 @@ app.post('/api/generate-image', async (req, res) => {
     if (!template) {
         return res.status(400).json({ error: 'image must be a data URL of the wrap template' });
     }
+    if (typeof userPrompt === 'string' && userPrompt.length > 4000) {
+        return res.status(400).json({ error: 'Design theme is too long (max 4000 characters)' });
+    }
+
+    // Validate the experiment's template and load its reference before spending credits.
+    let editRequest;
+    try {
+        editRequest = await buildWrapEditRequest({ prompt, template, carModel, userPrompt, useReference });
+    } catch (err) {
+        return res.status(400).json({ error: err.message });
+    }
 
     const balanceAfterReserve = await reserve(req.user.id, GENERATION_COST, `Pro generation: ${(userPrompt || '').slice(0, 60)}`);
     if (balanceAfterReserve === null) {
@@ -620,17 +632,12 @@ app.post('/api/generate-image', async (req, res) => {
 
     let b64;
     try {
-        const response = await openai.images.edit({
-            model: 'gpt-image-2',
-            image: await OpenAI.toFile(Buffer.from(template[2], 'base64'), 'template.png', { type: template[1] }),
-            prompt,
-            quality: 'high',
-            n: 1,
-        });
+        const response = await openai.images.edit(editRequest);
         b64 = response.data?.[0]?.b64_json;
         if (!b64) throw new Error('No image data received from OpenAI');
+        await validateWrapEditResult(b64, carModel);
     } catch (err) {
-        // Nothing was produced, so nothing is owed: give the credits back.
+        // Failed generation or invalid texture dimensions: return the reserved credits.
         console.error('OpenAI Generation Error:', err);
         let balance = null;
         try {
