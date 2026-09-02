@@ -70,9 +70,11 @@ const FORCE_TRIM_MESHES: Record<string, Set<string>> = {
 };
 
 /**
- * True when a mesh's wrap UVs collapse to a point: the asset never mapped it into the
- * template, so sampling would smear one texel over the whole panel. The Model Y (2025
- * Base) GLB does this to 450k of its 500k verts, including its main skin. Measured once
+ * Whether a mesh's wrap UVs can be sampled, mirroring teslawrapgallery.com. Tesla
+ * collapses the UVs of trim-adjacent paint meshes (A-pillars, roof rails, mirror caps,
+ * PaintRough and ExteriorFade accents) to one point *inside* the template as a "tint
+ * from wrap" marker: the whole piece takes that one texel. Only a point that lies
+ * outside the template (wheel wells, undercarriage) is really unmapped. Measured once
  * per geometry and cached.
  */
 function hasMappedWrapUv(geometry: THREE.BufferGeometry, wrapUv: THREE.BufferAttribute | THREE.InterleavedBufferAttribute): boolean {
@@ -88,7 +90,11 @@ function hasMappedWrapUv(geometry: THREE.BufferGeometry, wrapUv: THREE.BufferAtt
         if (v < minV) minV = v;
         if (v > maxV) maxV = v;
     }
-    cache.wrapUvMapped = maxU - minU > 0.001 && maxV - minV > 0.001;
+    const area = (maxU - minU) * (maxV - minV);
+    const centerU = (minU + maxU) / 2;
+    const centerV = (minV + maxV) / 2;
+    const insideTemplate = centerU >= 0 && centerU <= 1 && centerV >= 0 && centerV <= 1;
+    cache.wrapUvMapped = area > 0.001 || insideTemplate;
     return cache.wrapUvMapped;
 }
 
@@ -110,52 +116,12 @@ const isBodyMaterial = (name?: string) =>
     BODY_MATERIAL.test(name ?? '') && !NOT_BODY_MATERIAL.test(name ?? '');
 
 /**
- * Only a plain "Paint"/"CarPaint" names a panel's main skin. The "Fade" and "Rough"
- * variants are small accents: the classic Model Y tailgate is 1950 verts of
- * "ExteriorFade" skin next to a 52-vert "PaintFade", and the classic Model 3 rear
- * doors are all "Exterior" beside a thin "PaintRough".
- */
-const isPrimaryPaint = (name?: string) =>
-    isPaintMaterial(name) && !/rough|fade/i.test(name ?? '');
-
-/**
- * How much of a panel the paint-named mesh must cover before its "Exterior" sibling
- * is read as trim. Guards against models that name a sliver "Paint" while the real
- * skin sits under another name — leaving a panel unwrapped is far worse than
- * wrapping a strip of trim.
- */
-const MIN_PAINT_SHARE = 0.2;
-
-/**
- * Tesla splits a panel across materials — "Paint" for the skin, "Exterior" for the
- * black trim beside it (B-pillar, window surrounds, wheel arches). GLTFLoader imports
- * those as sibling meshes named `mesh_22`, `mesh_22_1`, … under a parent named for the
- * panel, so the parent is the panel identity; standalone nodes keep their own name.
+ * GLTFLoader imports a panel's parts as sibling meshes named `mesh_22`, `mesh_22_1`, …
+ * under a parent named for the panel, so the parent is the panel identity; standalone
+ * nodes keep their own name.
  */
 const panelKeyOf = (mesh: THREE.Mesh) =>
     (/^mesh_\d+(_\d+)?$/.test(mesh.name) ? mesh.parent?.name : mesh.name) || mesh.name;
-
-/** Panels whose painted skin is named as such — there "Exterior" is trim. */
-function paintedPanels(scene: { traverse(callback: (object: unknown) => void): void }): Set<string> {
-    const sizes = new Map<string, { biggest: number; paint: number }>();
-    scene.traverse((child) => {
-        if (!(child instanceof THREE.Mesh)) return;
-        const verts = child.geometry?.attributes.position?.count ?? 0;
-        const key = panelKeyOf(child);
-        const seen = sizes.get(key) ?? { biggest: 0, paint: 0 };
-        const isPaint = originalMaterials(child).some(m => isPrimaryPaint(m?.name));
-        sizes.set(key, {
-            biggest: Math.max(seen.biggest, verts),
-            paint: isPaint ? Math.max(seen.paint, verts) : seen.paint,
-        });
-    });
-
-    const panels = new Set<string>();
-    for (const [key, { biggest, paint }] of sizes) {
-        if (paint > 0 && paint >= MIN_PAINT_SHARE * biggest) panels.add(key);
-    }
-    return panels;
-}
 
 /**
  * Material(s) as authored. Stashed on first read because the base-paint pass swaps
@@ -251,14 +217,6 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true,
         }
     }, [isActive, textureActive, stageRef, texture, updateTexture]);
 
-
-    const painted = useMemo(() => paintedPanels(scene), [scene]);
-
-    /** True when the mesh is a panel's painted skin rather than the trim beside it. */
-    const takesPaint = useCallback((mesh: THREE.Mesh) => {
-        if (!painted.has(panelKeyOf(mesh))) return true;
-        return originalMaterials(mesh).some(m => isPaintMaterial(m?.name));
-    }, [painted]);
 
     // Setup initial material properties for realism (this useEffect remains for base material setup)
     useEffect(() => {
@@ -375,7 +333,7 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true,
                     const m = new THREE.MeshStandardMaterial({ color: 0x0f0f0f, roughness: 0.6, metalness: 0.2 });
                     m.name = 'Unnamed';
                     mesh.material = m;
-                } else if (!isInterior && !isTrim && takesPaint(mesh) && originals.some(m => isBodyMaterial(m?.name))) {
+                } else if (!isInterior && !isTrim && originals.some(m => isBodyMaterial(m?.name))) {
                     // Bodywork: takes the factory colour.
                     const oldMat = originals.find(m => isPaintMaterial(m?.name)) ?? originals[0];
 
@@ -402,7 +360,7 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true,
                 }
             }
         });
-    }, [scene, modelFile, takesPaint, paintColor]);
+    }, [scene, modelFile, paintColor]);
 
     // Apply texture to meshes
     useEffect(() => {
@@ -445,7 +403,7 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true,
                     : mesh.geometry.attributes.uv1 ?? (modelHasWrapUv ? null : mesh.geometry.attributes.uv);
                 const shouldWrap = !isGlass && !isLight && !isWheel && !isInterior && !isTrim && !isMisc
                     && !FORCE_TRIM_MESHES[modelFile]?.has(mesh.name)
-                    && takesPaint(mesh) && !!wrapUv
+                    && originals.some(m => isBodyMaterial(m?.name)) && !!wrapUv
                     && hasMappedWrapUv(mesh.geometry, wrapUv);
 
                 if (shouldWrap) {
@@ -528,7 +486,7 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true,
             }
         });
         // console.log("Wrapped parts:", wrappedParts);
-    }, [scene, textureActive, texture, takesPaint, paintColor]);
+    }, [scene, textureActive, texture, paintColor]);
 
     useFrame((state) => {
         // Only update loop when active to save perf

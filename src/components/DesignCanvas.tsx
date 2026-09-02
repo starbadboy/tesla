@@ -285,7 +285,6 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
     const [ownFills, setOwnFills] = useState<FillOp[]>([]);
     const fillOps = fills ?? ownFills;
     const [maskImage] = useImage(overlays.mask || '', 'anonymous');
-    const [trimImage] = useImage(overlays.trim || '', 'anonymous');
     const [linesImage] = useImage(overlays.lines || '', 'anonymous');
 
     // Drawing state. Controlled when the editor passes strokes in; otherwise local, so
@@ -351,11 +350,12 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
                 if (bgNode) bgNode.show();
                 transformers.forEach(t => t.show());
 
-                // 2. Cut everything the wrap must not paint, so the car keeps its
-                // factory finish there: the space outside the template panels, plus
-                // the trim strips (B-pillar covers) the template lays out separately.
-                const cuts = [maskImage, trimImage].filter(Boolean) as HTMLImageElement[];
-                if (cuts.length === 0) return baseCanvas;
+                // 2. Cut the space outside the template panels, so the car keeps its
+                // factory finish there. The thin strips the template lays out separately
+                // (A-pillars, roof rails, B-pillar covers) stay in: Tesla maps real body
+                // geometry onto them, and cutting them left the pillars in factory paint.
+                if (!maskImage) return baseCanvas;
+                const cuts = [maskImage];
 
                 const resultCanvas = document.createElement('canvas');
                 resultCanvas.width = baseCanvas.width;
