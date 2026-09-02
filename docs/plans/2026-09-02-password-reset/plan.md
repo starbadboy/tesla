@@ -87,6 +87,16 @@ None. The auth router and dialog take the additions without untangling.
 - **Interrogation pass:** 3 findings fixed — (1) the throttle test needed an injected clock or it could not test the window; added `now` to the factory. (2) Task 2's "first render cleans the URL" must run once, not on every render; specified as a module-level read plus a one-shot effect. (3) `req.ip` behind the proxy would collapse all clients to one key; specified the forwarded-for hop, as the existing anonymous fingerprint does.
 - **Departures:**
   - Dialog strings stay English (Round 1 item 9 said both languages) — `AuthModal.tsx` has no translation keys today; matching the file.
-- **Declined review findings:** (none yet)
+- **Review fixes (one commit):** link base comes only from `APP_PUBLIC_URL` (the Origin fallback let a request header aim a real reset email at another host); `generateToken` carries `isAdmin` and register/login use it; `trust proxy` set and throttles key on `req.ip`; throttle map capped at 5000 keys; `/forgot` answers before the lookup and send so timing says nothing; `/reset` throttled per client and `resetTokenHash` indexed; dead `isLive`/`LIFETIME_MS` removed with their test; Resend fetch has a 10 s timeout, the link is HTML-escaped, the Resend id is logged; the dialog's views are explicit (`forgot-sent`, `reset-invalid`) with one button map; register's email input stays `text`; other query params survive the URL clean.
+- **Departures:**
+  - AC4 changed on security grounds: the link is logged only when `NODE_ENV` is explicitly `development`, never merely "not production" — Railway does not guarantee `NODE_ENV`, so the old rule could have written live tokens to production logs. Local `.env` sets `NODE_ENV=development` and `APP_PUBLIC_URL=http://localhost:5173`.
+  - `RESET_TOKEN` lives in `src/utils/resetLink.ts` rather than inside `AuthModal.tsx` — fast-refresh lint forbids non-component exports from component files, and `UserMenu` needs the same value.
+  - Throttle is a fixed window, not rolling: six requests can land within fifteen minutes across a window edge. Accepted; the plan's test wording already described the fixed window.
+- **Declined review findings:**
+  - Route tests on `mongodb-memory-server` — DB-level tests are a recorded skip for this repo (a binary download); the routes were exercised against the real database with curl and the browser, transcript on the PR.
+  - Extracting the forgot and reset views into separate components — the explicit `View` union plus the button map removed the compound conditions; a split can follow when a third dialog variant arrives.
+  - Using `req.ip` in `anonFingerprint` too — adjacent code outside this feature's scope; `trust proxy` now makes it correct as written.
 - **Follow-ups:**
   - Invalidate existing login sessions on password change (password-version claim in the JWT), because accounts hold credits.
+  - `/register` enforces no password minimum; the reset path requires 8. Align at registration (out of scope here).
+  - PR #1 (`feat/ai-credits-gpt-image-2`) builds Stripe return URLs from the Origin header outside production — same class of issue as the one fixed here; tighten to `APP_PUBLIC_URL` only.

@@ -27,9 +27,9 @@ Server settings live in `.env` at the repo root (see `server/index.js`):
 | `MONGO_URL` | MongoDB connection string |
 | `OPENAI_API_KEY` | AI image generation |
 | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `R2_PUBLIC_URL` | Cloudflare R2 media storage |
-| `RESEND_API_KEY` | Password-reset email through Resend; without it the link is logged (never sent) outside production |
+| `RESEND_API_KEY` | Password-reset email through Resend. Without it nothing is sent; the link is logged only when `NODE_ENV=development` |
 | `MAIL_FROM` | Sender for reset email, e.g. `Tesla Studio <noreply@your-verified-domain>`; defaults to Resend's onboarding sender, which reaches only the account owner |
-| `APP_PUBLIC_URL` | Public site URL used in emailed links (defaults to the request origin outside production) |
+| `APP_PUBLIC_URL` | Public site URL used in emailed links, e.g. `https://teslastudio.online`. Required for reset emails; never taken from the request |
 | `JWT_SECRET` | Signs login tokens |
 
 ## Tech Stack

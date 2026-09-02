@@ -30,7 +30,7 @@ const UserSchema = new mongoose.Schema({
     }],
     isAdmin: { type: Boolean, default: false },
     // Password reset: only the token's hash is kept; a new request overwrites both fields.
-    resetTokenHash: { type: String, select: false },
+    resetTokenHash: { type: String, select: false, index: true, sparse: true },
     resetTokenExpires: { type: Date, select: false }
 });
 

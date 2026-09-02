@@ -22,6 +22,14 @@ describe('request throttle', () => {
         expect(allow('a@x.io')).toBe(false);
     });
 
+    it('caps the number of keys it remembers, dropping the oldest first', () => {
+        const allow = createThrottle({ limit: 1, windowMs: 60_000, maxKeys: 3, now: () => start });
+        for (let i = 0; i < 10; i += 1) allow(`k${i}`);
+        expect(allow.size()).toBe(3);
+        expect(allow('k0')).toBe(true);   // k0 was evicted, so it counts as new
+        expect(allow('k9')).toBe(false);  // k9 is still remembered and at its limit
+    });
+
     it('forgets stale keys instead of growing forever', () => {
         let now = start;
         const allow = createThrottle({ limit: 1, windowMs: 1000, now: () => now });

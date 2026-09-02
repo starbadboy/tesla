@@ -10,14 +10,28 @@ const INPUT = 'w-full pl-9 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-b
 const LABEL = 'text-xs font-bold uppercase text-gray-500 dark:text-zinc-400';
 const LINK = 'text-xs text-gray-500 dark:text-zinc-400 hover:text-black dark:hover:text-white underline';
 
-type View = 'login' | 'register' | 'forgot' | 'reset';
+type View = 'login' | 'register' | 'forgot' | 'forgot-sent' | 'reset' | 'reset-invalid';
 
 const TITLES: Record<View, string> = {
     login: 'Welcome Back',
     register: 'Create Account',
     forgot: 'Reset Password',
+    'forgot-sent': 'Reset Password',
     reset: 'Set New Password',
+    'reset-invalid': 'Set New Password',
 };
+
+/** What the one button at the bottom says on each view; the two -sent/-invalid views navigate instead of submitting. */
+const SUBMIT: Record<View, string> = {
+    login: 'Sign In',
+    register: 'Create Account',
+    forgot: 'Send reset link',
+    'forgot-sent': 'Back to login',
+    reset: 'Set new password',
+    'reset-invalid': 'Request a new link',
+};
+const NAVIGATE: Partial<Record<View, View>> = { 'forgot-sent': 'login', 'reset-invalid': 'forgot' };
+const BUTTON = 'mt-2 dark:bg-white dark:text-black dark:hover:bg-zinc-200';
 
 interface AuthModalProps {
     isOpen: boolean;
@@ -36,14 +50,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTa
     const [error, setError] = useState('');
     const [notice, setNotice] = useState('');
     const [loading, setLoading] = useState(false);
-    // The token stays valid for an hour, but it does not belong in the address bar.
-    const [resetToken, setResetToken] = useState<string | null>(RESET_TOKEN);
     const { login } = useAuth();
 
+    // The token stays valid for an hour, but it does not belong in the address bar.
     useEffect(() => {
-        if (RESET_TOKEN && window.location.search.includes('reset=')) {
-            window.history.replaceState({}, '', window.location.pathname);
-        }
+        if (!RESET_TOKEN) return;
+        const params = new URLSearchParams(window.location.search);
+        if (!params.has('reset')) return;
+        params.delete('reset');
+        const rest = params.toString();
+        window.history.replaceState({}, '', window.location.pathname + (rest ? `?${rest}` : ''));
     }, []);
 
     if (!isOpen) return null;
@@ -68,12 +84,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTa
             if (activeTab === 'forgot') {
                 const res = await axios.post('/api/auth/forgot', { email: formData.email });
                 setNotice(res.data.message);
+                setActiveTab('forgot-sent');
                 return;
             }
             if (activeTab === 'reset') {
                 if (formData.password.length < 8) { setError('Password must be at least 8 characters'); return; }
                 if (formData.password !== formData.confirm) { setError('The two passwords do not match'); return; }
-                const res = await axios.post('/api/auth/reset', { token: resetToken, password: formData.password });
+                const res = await axios.post('/api/auth/reset', { token: RESET_TOKEN, password: formData.password });
                 login(res.data.token, res.data.user);
                 onClose();
                 return;
@@ -90,9 +107,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTa
         } catch (err: unknown) {
             if (axios.isAxiosError(err)) {
                 if (err.response?.data?.code === 'RESET_INVALID') {
-                    setResetToken(null);
-                    setError('');
                     setNotice('This reset link is no longer valid. Request a new one below.');
+                    setActiveTab('reset-invalid');
                 } else {
                     setError(err.response?.data?.error || 'An error occurred. Please try again.');
                 }
@@ -104,7 +120,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTa
         }
     };
 
-    const isAuthView = activeTab === 'login' || activeTab === 'register';
+    const hasTabs = activeTab === 'login' || activeTab === 'register';
 
     // Portalled to the document root: the studio and gallery shells reset padding
     // and margin on every descendant, which would flatten this Tailwind layout.
@@ -122,7 +138,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTa
                 </div>
 
                 {/* Tabs */}
-                {isAuthView && <div className="flex border-b dark:border-zinc-800">
+                {hasTabs && <div className="flex border-b dark:border-zinc-800">
                     <button
                         className={`flex-1 py-3 text-sm font-bold uppercase tracking-wider transition-colors ${activeTab === 'login' ? 'bg-black text-white dark:bg-white dark:text-black' : 'hover:bg-gray-50 dark:hover:bg-zinc-800 text-gray-500 dark:text-zinc-400'}`}
                         onClick={() => switchTo('login')}
@@ -168,7 +184,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTa
                         </div>
                     )}
 
-                    {(isAuthView || (activeTab === 'forgot' && !notice)) && (
+                    {(hasTabs || activeTab === 'forgot') && (
                         <div className="space-y-1">
                             <label className={LABEL}>
                                 {activeTab === 'login' ? 'Email or Username' : 'Email'}
@@ -176,7 +192,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTa
                             <div className="relative">
                                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                                 <input
-                                    type={activeTab === 'login' ? 'text' : 'email'}
+                                    type={activeTab === 'forgot' ? 'email' : 'text'}
                                     name="email" // using 'email' state for both email/username in login
                                     required
                                     className={INPUT}
@@ -188,7 +204,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTa
                         </div>
                     )}
 
-                    {(isAuthView || (activeTab === 'reset' && resetToken)) && (
+                    {(hasTabs || activeTab === 'reset') && (
                         <div className="space-y-1">
                             <label className={LABEL}>{activeTab === 'reset' ? 'New Password' : 'Password'}</label>
                             <div className="relative">
@@ -212,7 +228,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTa
                         </div>
                     )}
 
-                    {activeTab === 'reset' && resetToken && (
+                    {activeTab === 'reset' && (
                         <div className="space-y-1">
                             <label className={LABEL}>Confirm Password</label>
                             <div className="relative">
@@ -231,29 +247,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTa
                         </div>
                     )}
 
-                    {activeTab === 'forgot' && !notice && (
+                    {activeTab === 'forgot' && (
                         <p className="text-xs text-gray-500 dark:text-zinc-400">Enter the email on your account and we will send a link to choose a new password.</p>
                     )}
 
-                    {activeTab === 'reset' && !resetToken ? (
-                        <Button type="button" fullWidth size="lg" className="mt-2 dark:bg-white dark:text-black dark:hover:bg-zinc-200" onClick={() => switchTo('forgot')}>
-                            Request a new link
-                        </Button>
-                    ) : activeTab === 'forgot' && notice ? (
-                        <Button type="button" fullWidth size="lg" className="mt-2 dark:bg-white dark:text-black dark:hover:bg-zinc-200" onClick={() => switchTo('login')}>
-                            Back to login
+                    {NAVIGATE[activeTab] ? (
+                        <Button type="button" fullWidth size="lg" className={BUTTON} onClick={() => switchTo(NAVIGATE[activeTab] as View)}>
+                            {SUBMIT[activeTab]}
                         </Button>
                     ) : (
-                        <Button fullWidth disabled={loading} size="lg" className="mt-2 dark:bg-white dark:text-black dark:hover:bg-zinc-200">
-                            {loading ? <Loader className="animate-spin" />
-                                : activeTab === 'login' ? 'Sign In'
-                                : activeTab === 'register' ? 'Create Account'
-                                : activeTab === 'forgot' ? 'Send reset link'
-                                : 'Set new password'}
+                        <Button fullWidth disabled={loading} size="lg" className={BUTTON}>
+                            {loading ? <Loader className="animate-spin" /> : SUBMIT[activeTab]}
                         </Button>
                     )}
 
-                    {(activeTab === 'forgot' || activeTab === 'reset') && !notice && (
+                    {(activeTab === 'forgot' || activeTab === 'reset') && (
                         <div className="text-center">
                             <button type="button" className={LINK} onClick={() => switchTo('login')}>Back to login</button>
                         </div>

@@ -9,20 +9,17 @@ const { resetEmail, sendMail } = require('../utils/mail');
 
 const SECRET_KEY = process.env.JWT_SECRET || 'your-secret-key-123';
 
-// Three reset requests per address and per client every fifteen minutes.
-const allowReset = createThrottle({ limit: 3, windowMs: 15 * 60 * 1000 });
+// Three reset requests per address and per client every fifteen minutes; ten attempts to
+// redeem a token per client. req.ip is trustworthy because the app sets `trust proxy`.
+const allowForgot = createThrottle({ limit: 3, windowMs: 15 * 60 * 1000 });
+const allowReset = createThrottle({ limit: 10, windowMs: 15 * 60 * 1000 });
 const RESET_SENT = 'If an account exists for that address, a reset link is on its way.';
+const TOO_MANY = 'Too many reset requests. Please try again later.';
 
-/** Behind Railway's proxy the first X-Forwarded-For hop is the client, as elsewhere in the server. */
-function clientAddress(req) {
-    const forwarded = (req.headers['x-forwarded-for'] || '').toString().split(',')[0].trim();
-    return forwarded || req.ip || 'unknown';
-}
-
-// Helper to generate token
+// The one place the login token's claims are defined; authorization reads isAdmin off it.
 const generateToken = (user) => {
     return jwt.sign(
-        { id: user._id, username: user.username },
+        { id: user._id, username: user.username, isAdmin: user.isAdmin },
         SECRET_KEY,
         { expiresIn: '7d' }
     );
@@ -60,14 +57,8 @@ router.post('/register', async (req, res) => {
 
         await user.save();
 
-        const token = jwt.sign(
-            { id: user._id, username: user.username, isAdmin: user.isAdmin },
-            SECRET_KEY,
-            { expiresIn: '7d' }
-        );
-
         res.status(201).json({
-            token,
+            token: generateToken(user),
             user: {
                 id: user._id,
                 username: user.username,
@@ -117,14 +108,8 @@ router.post('/login', async (req, res) => {
             return res.status(400).json({ error: 'Invalid credentials' });
         }
 
-        const token = jwt.sign(
-            { id: user._id, username: user.username, isAdmin: user.isAdmin },
-            SECRET_KEY,
-            { expiresIn: '7d' }
-        );
-
         res.json({
-            token,
+            token: generateToken(user),
             user: {
                 id: user._id,
                 username: user.username,
@@ -167,27 +152,37 @@ router.get('/me', async (req, res) => {
 router.post('/forgot', async (req, res) => {
     const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
     if (!email.includes('@')) return res.status(400).json({ error: 'Please enter a valid email address' });
-    if (!allowReset(`email:${email}`) || !allowReset(`ip:${clientAddress(req)}`)) {
-        return res.status(429).json({ error: 'Too many reset requests. Please try again later.' });
-    }
+    // Both counters always tick, so a client hammering one address still builds IP history.
+    const emailOk = allowForgot(`email:${email}`);
+    const ipOk = allowForgot(`ip:${req.ip}`);
+    if (!emailOk || !ipOk) return res.status(429).json({ error: TOO_MANY });
+
+    // The link's host comes only from configuration; a request header could point the
+    // email at an attacker's site. Without it nothing is sent, and the answer is unchanged.
+    const base = (process.env.APP_PUBLIC_URL || '').replace(/\/$/, '');
+
+    // Answer before the lookup and the send, so response time says nothing about whether
+    // the address is registered.
+    res.json({ message: RESET_SENT });
 
     try {
         const user = await User.findOne({ email });
-        if (user) {
-            const { token, hash, expiresAt } = issue();
-            await User.updateOne({ _id: user._id }, { $set: { resetTokenHash: hash, resetTokenExpires: expiresAt } });
-            const base = (process.env.APP_PUBLIC_URL || (process.env.NODE_ENV !== 'production' && req.get('origin')) || '').replace(/\/$/, '');
-            await sendMail({ to: user.email, ...resetEmail(`${base}/?reset=${token}`) });
+        if (!user) return;
+        if (!base) {
+            console.error(`APP_PUBLIC_URL is not set; reset link for ${email} not sent.`);
+            return;
         }
+        const { token, hash, expiresAt } = issue();
+        await User.updateOne({ _id: user._id }, { $set: { resetTokenHash: hash, resetTokenExpires: expiresAt } });
+        await sendMail({ to: user.email, ...resetEmail(`${base}/?reset=${token}`) });
     } catch (err) {
-        // The designer still gets the generic answer; the failure is ours to see.
         console.error('Password reset request failed:', err);
     }
-    res.json({ message: RESET_SENT });
 });
 
 // POST /reset { token, password } — replaces the password and signs the designer in.
 router.post('/reset', async (req, res) => {
+    if (!allowReset(`ip:${req.ip}`)) return res.status(429).json({ error: TOO_MANY });
     const { token, password } = req.body || {};
     if (typeof token !== 'string' || !token) return res.status(400).json({ error: 'Missing reset token', code: 'RESET_INVALID' });
     if (typeof password !== 'string' || password.length < 8) {

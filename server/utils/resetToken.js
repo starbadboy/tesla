@@ -7,14 +7,13 @@ function hashToken(token) {
     return createHash('sha256').update(token).digest('hex');
 }
 
-/** A fresh single-use token, its stored hash, and when it stops working. */
+/**
+ * A fresh single-use token, its stored hash, and when it stops working. Expiry is
+ * enforced by the lookup (`resetTokenExpires: { $gt: now }`), not by a JS check.
+ */
 function issue(now = new Date()) {
     const token = randomBytes(32).toString('hex');
     return { token, hash: hashToken(token), expiresAt: new Date(now.getTime() + LIFETIME_MS) };
 }
 
-function isLive(expiresAt, now = new Date()) {
-    return Boolean(expiresAt) && now.getTime() < expiresAt.getTime();
-}
-
-module.exports = { issue, hashToken, isLive, LIFETIME_MS };
+module.exports = { issue, hashToken };

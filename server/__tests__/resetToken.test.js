@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { hashToken, isLive, issue } from '../utils/resetToken.js';
+import { hashToken, issue } from '../utils/resetToken.js';
 
 const NOW = new Date('2026-09-02T10:00:00Z');
 
@@ -21,13 +21,5 @@ describe('reset token', () => {
 
     it('issues a different token every time', () => {
         expect(issue(NOW).token).not.toBe(issue(NOW).token);
-    });
-
-    it('is live strictly before expiry, not at or after it', () => {
-        const { expiresAt } = issue(NOW);
-        expect(isLive(expiresAt, new Date(expiresAt.getTime() - 1))).toBe(true);
-        expect(isLive(expiresAt, expiresAt)).toBe(false);
-        expect(isLive(expiresAt, new Date(expiresAt.getTime() + 1))).toBe(false);
-        expect(isLive(undefined, NOW)).toBe(false);
     });
 });
