@@ -31,12 +31,20 @@ async function refund(userId, amount, note) {
  * Stripe retries); the ledger row is bookkeeping and is only logged if it fails.
  */
 async function addPurchase(userId, credits, orderId) {
+    // A ledger row for this order means the balance already moved on an earlier attempt.
+    // ponytail: the row is written after the $inc, so a write that commits unacknowledged can
+    // still credit twice on retry; move both into a transaction if charge volume justifies it.
+    if (await CreditTransaction.exists({ order: orderId, type: 'purchase' })) return null;
     const user = await User.findByIdAndUpdate(
         userId,
         { $inc: { credits }, $set: { hasPurchased: true } },
         { new: true },
     );
-    if (!user) throw new Error(`addPurchase: user ${userId} not found`);
+    if (!user) {
+        const err = new Error(`addPurchase: user ${userId} not found`);
+        err.code = 'NO_USER';
+        throw err;
+    }
     await recordOrLog({ user: userId, type: 'purchase', amount: credits, balanceAfter: user.credits, order: orderId });
     return user.credits;
 }

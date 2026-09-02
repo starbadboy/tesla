@@ -289,13 +289,13 @@ export function WrapEditor({
             });
 
             const isPublic = canGoPrivate ? shareToGallery : true;
-            const url = await generateImage(prompt, templateBase64, currentModelName, provider, isPublic);
+            const { url, saved } = await generateImage(prompt, templateBase64, currentModelName, provider, isPublic);
             setGenerations(current => [{ url, prompt }, ...current]);
             await onLoadWrap(url, { name: prompt.slice(0, 40) });
-            if (isAuthenticated) {
-                // Pro is saved by the server; Free is saved from here. Best effort: a save
-                // that fails leaves the generation in this session's list, which is what
-                // an anonymous designer gets anyway.
+            // Pro is saved by the server; Free is saved from here. Best effort: a save that
+            // fails leaves the generation in this session's list, which is what an anonymous
+            // designer gets anyway — so the server list only replaces it once it holds it.
+            if (isAuthenticated && saved !== false) {
                 try {
                     if (provider === 'puter') {
                         await saveGeneration({ url, prompt, model: currentModelName, isPublic });

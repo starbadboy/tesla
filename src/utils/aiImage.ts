@@ -9,15 +9,22 @@ import { authHeaders } from './wrapApi';
  * @param modelName The car model name.
  * @param provider The AI provider to use ('puter' for the free tier, 'openai' for Pro).
  * @param isPublic Pro only: whether the server should list the saved wrap publicly.
- * @returns A promise that resolves to the generated image URL (data URL for Puter, R2 URL for Pro).
+ * @returns The generated image URL (data URL for Puter, R2 URL for Pro) and, for Pro,
+ *          whether the server managed to keep it as a wrap.
  */
+export interface GeneratedImage {
+    url: string;
+    /** Pro only. False means the image was produced and billed but could not be stored as a wrap. */
+    saved?: boolean;
+}
+
 export async function generateImage(
     prompt: string,
     inputImageBase64?: string,
     modelName: string = "Car",
     provider: 'puter' | 'openai' = 'puter',
     isPublic: boolean = true
-): Promise<string> {
+): Promise<GeneratedImage> {
 
     // Enhance prompt for car wrap context
     const enhancedPrompt = `You are a professional automotive graphic designer specializing in vehicle wraps.
@@ -66,7 +73,7 @@ A complete wrap design that fully adheres to the template format and accurately 
             }
 
             const data = await response.json();
-            return data.url;
+            return { url: data.url, saved: data.saved !== false };
         } catch (error) {
             console.error("OpenAI Image Generation Error:", error);
             throw error;
@@ -93,7 +100,7 @@ A complete wrap design that fully adheres to the template format and accurately 
             }
 
             const imageElement = await window.puter.ai.txt2img(enhancedPrompt, options);
-            return imageElement.src;
+            return { url: imageElement.src };
         } catch (error) {
             console.error("Puter.js Image Generation Error:", error);
             throw error;

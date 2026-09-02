@@ -149,6 +149,8 @@ Each task is a vertical slice and demoable alone. Blocking edges are listed.
   - Integration test for two concurrent webhook deliveries — DB-level tests were skipped in the ladder pass; the claim was exercised by a three-way race script against the real database (1 of 3 won).
   - Sharing the `?checkout=` parser between `App.tsx` and the editor — App needs one boolean at boot; importing the editor module for it couples the shell to the editor.
   - Serving `GENERATION_COST` from `/api/credits/packs` — marked with a `ponytail:` comment naming that upgrade path instead.
+  - Extracting a shared modal shell for AuthModal and BuyCreditsModal — two call sites; extract at the third.
+- **Fix round 2 (final):** `addPurchase` skips an order that already has a purchase ledger row and marks the unacknowledged-commit ceiling with a `ponytail:` comment; a paid order whose user is gone is marked failed once instead of retried for days; an unclaimed funded event logs the order's status; the client keeps a billed-but-unsaved Pro image in the session list instead of refetching it away.
 - **Follow-ups:**
   - Real Stripe webhook (signature check → settle → addPurchase) is unverified: no Stripe keys exist locally or in the partner repo. The same settle → addPurchase path was exercised by a local stand-in script and the replay reported `duplicate`. Verify with test keys and `stripe listen` before go-live.
   - Free-tier Puter generation could not complete in headless Chromium (Puter auth popup); unchanged code, needs one manual click-through.

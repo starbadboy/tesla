@@ -105,10 +105,19 @@ router.post('/webhook', async (req, res) => {
                     try {
                         await addPurchase(claimed.user, claimed.credits, claimed._id);
                     } catch (err) {
-                        // Give the claim back so Stripe's retry credits the customer.
-                        await PaymentOrder.updateOne({ _id: claimed._id, status: 'paid' }, { $set: { status: 'pending' }, $unset: { paidAt: 1 } });
-                        throw err;
+                        if (err.code === 'NO_USER') {
+                            // Nobody to credit; settle the order as failed once rather than retrying for days.
+                            console.error(`Stripe event ${event.id}: order ${claimed._id} paid but user ${claimed.user} is gone — refund manually`);
+                            await PaymentOrder.updateOne({ _id: claimed._id }, { $set: { status: 'failed' } });
+                        } else {
+                            // Give the claim back so Stripe's retry credits the customer.
+                            await PaymentOrder.updateOne({ _id: claimed._id, status: 'paid' }, { $set: { status: 'pending' }, $unset: { paidAt: 1 } });
+                            throw err;
+                        }
                     }
+                } else {
+                    const current = await PaymentOrder.findById(order._id).select('status');
+                    console.warn(`Stripe event ${event.id}: order ${order._id} not claimed, status is ${current?.status}`);
                 }
             } else if (outcome === 'mismatch') {
                 await PaymentOrder.updateOne({ _id: order._id, status: 'pending' }, { $set: { status: 'failed' } });
