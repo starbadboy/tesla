@@ -28,7 +28,11 @@ const UserSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Wrap'
     }],
-    isAdmin: { type: Boolean, default: false }
+    isAdmin: { type: Boolean, default: false },
+    // Pro generation credits. Never negative: the reserve is a conditional update.
+    credits: { type: Number, default: 0, min: 0 },
+    // Set by the first paid order; unlocks private generations.
+    hasPurchased: { type: Boolean, default: false }
 });
 
 module.exports = mongoose.model('User', UserSchema);

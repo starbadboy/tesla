@@ -59,7 +59,9 @@ router.post('/register', async (req, res) => {
                 id: user._id,
                 username: user.username,
                 email: user.email,
-                isAdmin: user.isAdmin
+                isAdmin: user.isAdmin,
+                credits: user.credits,
+                hasPurchased: user.hasPurchased
             }
         });
 
@@ -117,7 +119,9 @@ router.post('/login', async (req, res) => {
                 username: user.username,
                 email: user.email,
                 likedWraps: user.likedWraps,
-                isAdmin: user.isAdmin
+                isAdmin: user.isAdmin,
+                credits: user.credits,
+                hasPurchased: user.hasPurchased
             }
         });
     } catch (err) {
@@ -142,7 +146,9 @@ router.get('/me', async (req, res) => {
                 id: user._id,
                 username: user.username,
                 email: user.email,
-                isAdmin: user.isAdmin
+                isAdmin: user.isAdmin,
+                credits: user.credits,
+                hasPurchased: user.hasPurchased
             }
         });
     } catch (err) {

@@ -275,6 +275,27 @@
 .we-tier button.is-on { background: #e6e6e8; color: #0c0c0e; }
 .we-tier button.is-on small { color: #4a4a52; }
 
+/* ---- ai: credits ---- */
+.we-balance {
+  display: flex;
+  justify-content: space-between;
+  font: 500 12px 'Archivo', sans-serif;
+  color: var(--we-ink-3);
+}
+.we-balance b { color: var(--we-ink-1); font-weight: 600; }
+.we-balance.is-short b { color: #ff8080; }
+.we-app .we-secondary {
+  padding: 11px 16px;
+  border: 1px solid var(--we-line-strong);
+  border-radius: 10px;
+  background: none;
+  color: var(--we-ink-1);
+  font: 600 13px 'Archivo', sans-serif;
+  cursor: pointer;
+}
+.we-app .we-secondary:hover { border-color: var(--we-accent); }
+.we-app .we-secondary.is-urgent { border-color: var(--we-accent); color: var(--we-accent); }
+
 /* ---- ai: share toggle ---- */
 .we-check {
   display: flex;

@@ -10,6 +10,8 @@ const multer = require('multer');
 const fs = require('fs');
 const { uploadToR2, deleteFromR2, getR2KeyFromUrl, getMimeType } = require('./utils/r2');
 const { publicMatch } = require('./utils/visibility');
+const { GENERATION_COST } = require('./utils/packs');
+const { reserve, refund } = require('./utils/credits');
 
 const Wrap = require('./models/Wrap');
 
@@ -268,9 +270,10 @@ app.post('/api/wraps', upload.single('image'), async (req, res) => {
                 wrapData.source = 'ai';
                 wrapData.prompt = prompt;
             }
-            // FormData carries booleans as strings.
+            // FormData carries booleans as strings. Private is a purchaser's privilege.
             if (isPublic === 'false' || isPublic === false) {
-                wrapData.isPublic = false;
+                const owner = await User.findById(req.user.id).select('hasPurchased');
+                wrapData.isPublic = !owner?.hasPurchased;
             }
         }
 
@@ -602,6 +605,12 @@ app.post('/api/generate-image', async (req, res) => {
         return res.status(400).json({ error: 'image must be a data URL of the wrap template' });
     }
 
+    const balanceAfterReserve = await reserve(req.user.id, GENERATION_COST, `Pro generation: ${(userPrompt || '').slice(0, 60)}`);
+    if (balanceAfterReserve === null) {
+        const { credits } = await User.findById(req.user.id).select('credits') || { credits: 0 };
+        return res.status(402).json({ error: `Not enough credits: a Pro generation costs ${GENERATION_COST}`, balance: credits });
+    }
+
     try {
         const response = await openai.images.edit({
             model: 'gpt-image-2',
@@ -613,7 +622,7 @@ app.post('/api/generate-image', async (req, res) => {
 
         const b64 = response.data?.[0]?.b64_json;
         if (!b64) {
-            return res.status(500).json({ error: 'No image data received from OpenAI' });
+            throw new Error('No image data received from OpenAI');
         }
 
         const imageUrl = await uploadToR2(Buffer.from(b64, 'base64'), `wraps/ai-${Date.now()}.png`, 'image/png');
@@ -625,14 +634,16 @@ app.post('/api/generate-image', async (req, res) => {
             models: carModel ? [carModel] : [],
             source: 'ai',
             prompt: (userPrompt || '').slice(0, 500),
+            // Private is a purchaser's privilege; anyone with credits to spend has purchased.
             isPublic: isPublic === false ? false : true,
         }).save();
 
-        res.json({ url: imageUrl, wrapId: wrap._id });
+        res.json({ url: imageUrl, wrapId: wrap._id, balance: balanceAfterReserve });
     } catch (err) {
         console.error('OpenAI Generation Error:', err);
+        const balance = await refund(req.user.id, GENERATION_COST, 'Pro generation failed');
         const status = err.status || err.response?.status || 500;
-        res.status(status).json({ error: err.message });
+        res.status(status).json({ error: err.message, balance });
     }
 });
 

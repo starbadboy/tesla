@@ -22,6 +22,9 @@ import '../../styles/wrap-editor.css';
 
 const LAYER_ID = 'Full Wrap';
 
+/** Credits one Pro generation costs; the server enforces the same number. */
+const GENERATION_COST = 10;
+
 const FLAT_LAYER: LayerTransform = { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1 };
 
 /** Starting points that read as a wrap brief rather than a bare noun. */
@@ -175,7 +178,7 @@ export function WrapEditor({
         commit({ ...doc, objects: [...rest.slice(0, to), selectedObject, ...rest.slice(to)] });
     };
 
-    const { user, isAuthenticated } = useAuth();
+    const { user, isAuthenticated, refreshUser } = useAuth();
     const [prompt, setPrompt] = useState('');
     const [provider, setProvider] = useState<'puter' | 'openai'>('puter');
     const [generating, setGenerating] = useState(false);
@@ -184,6 +187,9 @@ export function WrapEditor({
     const canGoPrivate = Boolean(user?.hasPurchased);
     const [shareToGallery, setShareToGallery] = useState(true);
     const [authOpen, setAuthOpen] = useState(false);
+    const credits = user?.credits ?? 0;
+    const isPro = provider === 'openai';
+    const shortOnCredits = isPro && credits < GENERATION_COST;
 
     // Pro spends credits, so it needs an account; ask for one and stay on Free meanwhile.
     const chooseProvider = (next: 'puter' | 'openai') => {
@@ -263,6 +269,8 @@ export function WrapEditor({
             setAiError(error instanceof Error ? error.message : t.error);
         } finally {
             setGenerating(false);
+            // Pro spent (or refunded) credits; the balance line reads from the user.
+            if (provider === 'openai') refreshUser();
         }
     };
 
@@ -416,11 +424,21 @@ export function WrapEditor({
                         <button
                             type="button"
                             className="we-primary"
-                            disabled={!prompt.trim() || generating}
+                            disabled={!prompt.trim() || generating || shortOnCredits}
                             onClick={handleGenerate}
                         >
-                            <Sparkles size={15} /> {generating ? t.generating : t.generate}
+                            <Sparkles size={15} />
+                            {generating ? t.generating : isPro ? `${t.generate} — ${GENERATION_COST} ${t.credits}` : t.generate}
                         </button>
+                        {isPro && isAuthenticated && (
+                            <>
+                                <p className={`we-balance ${shortOnCredits ? 'is-short' : ''}`}>
+                                    <span>{t.balance}</span>
+                                    <b>{credits} {t.credits}</b>
+                                </p>
+                                {shortOnCredits && <p className="we-error">{t.notEnoughCredits}</p>}
+                            </>
+                        )}
                         {aiError && <p className="we-error">{aiError}</p>}
                     </>
                 )}

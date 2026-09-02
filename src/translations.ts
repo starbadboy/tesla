@@ -117,6 +117,10 @@ export const TRANSLATIONS = {
         proTierHint: "GPT Image 2",
         shareToGallery: "Share to Gallery",
         unlockPrivate: "Purchase credits to unlock private mode",
+        credits: "credits",
+        balance: "Balance",
+        buyCredits: "Buy Credits",
+        notEnoughCredits: "Not enough credits for a Pro generation",
         connecting: "Connecting to AI Service...",
 
         // Gallery
@@ -325,6 +329,10 @@ export const TRANSLATIONS = {
         proTierHint: "GPT Image 2",
         shareToGallery: "分享到画廊",
         unlockPrivate: "购买积分以解锁私密模式",
+        credits: "积分",
+        balance: "余额",
+        buyCredits: "购买积分",
+        notEnoughCredits: "积分不足，无法进行专业版生成",
         connecting: "连接 AI 服务中...",
 
         // Gallery
