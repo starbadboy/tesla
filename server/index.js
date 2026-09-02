@@ -9,6 +9,9 @@ const multer = require('multer');
 
 const fs = require('fs');
 const { uploadToR2, deleteFromR2, getR2KeyFromUrl, getMimeType } = require('./utils/r2');
+const { publicMatch, mayGoPrivate } = require('./utils/visibility');
+const { GENERATION_COST } = require('./utils/packs');
+const { reserve, refund } = require('./utils/credits');
 
 const Wrap = require('./models/Wrap');
 
@@ -23,7 +26,6 @@ function anonFingerprint(req) {
     return crypto.createHash('sha256').update(`${salt}:${address}`).digest('hex').slice(0, 32);
 }
 const OpenAI = require('openai');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
 const authRoutes = require('./routes/auth');
 const jwt = require('jsonwebtoken');
 const User = require('./models/User');
@@ -64,13 +66,10 @@ const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY || "dummy-key",
 });
 
-// Initialize Gemini
-// Note: This requires GEMINI_API_KEY environment variable to be set
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "dummy-key");
-
 // Middleware
 app.use(cors());
-app.use(bodyParser.json({ limit: '50mb' }));
+// verify keeps the raw bytes: the Stripe webhook checks its signature against them.
+app.use(bodyParser.json({ limit: '50mb', verify: (req, _res, buf) => { req.rawBody = buf; } }));
 app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
 // Middleware to optionally attach user to request if token is present
@@ -98,8 +97,10 @@ app.use('/uploads', express.static(process.env.UPLOAD_DIR ? path.resolve(process
 app.use('/api/auth', authRoutes);
 const commentRoutes = require('./routes/comments');
 const soundRoutes = require('./routes/sounds');
+const creditRoutes = require('./routes/credits');
 app.use('/api', commentRoutes);
 app.use('/api/sounds', soundRoutes);
+app.use('/api/credits', creditRoutes);
 
 // Ensure uploads directory exists
 const uploadsDir = process.env.UPLOAD_DIR
@@ -168,6 +169,9 @@ app.get('/api/wraps', async (req, res) => {
         } else {
             pipeline.unshift({ $match: { type: type } });
         }
+
+        // Private generations never reach a public listing.
+        pipeline.unshift({ $match: publicMatch() });
 
         // 2. Determine sort object
         let sortStage = {};
@@ -249,7 +253,7 @@ app.post('/api/wraps', upload.single('image'), async (req, res) => {
             return res.status(400).json({ error: 'No image file uploaded' });
         }
 
-        const { name, author, models, type } = req.body;
+        const { name, author, models, type, source, prompt, isPublic } = req.body;
 
         // Upload to Cloudflare R2
         const sanitizedName = req.file.originalname.replace(/\s+/g, '-');
@@ -267,6 +271,14 @@ app.post('/api/wraps', upload.single('image'), async (req, res) => {
         if (req.user) {
             wrapData.user = req.user.id;
             wrapData.author = req.user.username;
+            if (source === 'ai') {
+                wrapData.source = 'ai';
+                wrapData.prompt = prompt;
+            }
+            // FormData carries booleans as strings.
+            if ((isPublic === 'false' || isPublic === false) && await mayGoPrivate(req.user.id)) {
+                wrapData.isPublic = false;
+            }
         }
 
         // Parse models JSON string if sent as string from FormData
@@ -447,8 +459,10 @@ app.get('/api/user/garage', async (req, res) => {
             // User.likedWraps will be an array of Wrap documents now
             return res.json(user.likedWraps.reverse()); // Show newest first
         } else {
-            // Default: My Uploads
-            const wraps = await Wrap.find({ user: req.user.id }).sort({ createdAt: -1 });
+            // Default: My Uploads, optionally narrowed to one source (e.g. the AI panel).
+            const filter = { user: req.user.id };
+            if (req.query.source) filter.source = req.query.source;
+            const wraps = await Wrap.find(filter).sort({ createdAt: -1 });
             res.json(wraps);
         }
     } catch (err) {
@@ -576,109 +590,80 @@ app.delete('/api/wraps/:id', async (req, res) => {
     }
 });
 
-// POST /api/generate-image - Generate image via OpenAI
+// POST /api/generate-image - Pro tier: GPT Image 2 laying the brief onto the car's template.
+// Signed-in only; the result is kept as one of the designer's wraps.
 app.post('/api/generate-image', async (req, res) => {
-    try {
-        const { prompt, model, size, quality, n } = req.body;
-
-        if (!process.env.OPENAI_API_KEY) {
-            return res.status(500).json({ error: 'OpenAI API key not configured on server' });
-        }
-
-        const response = await openai.images.generate({
-            model: model || "dall-e-3", // Default to dall-e-3 if not specified, but user provided model will override
-            prompt: prompt,
-            n: n || 1,
-            size: size || "1024x1024",
-            quality: quality || "high",
-        });
-
-        // Return the first image
-        const image = response.data[0];
-
-        // Handle URL response (default behavior)
-        if (image.url) {
-            res.json({ url: image.url });
-        } else if (image.b64_json) {
-            res.json({ url: `data:image/png;base64,${image.b64_json}` });
-        } else {
-            res.status(500).json({ error: "No image data received from OpenAI" });
-        }
-
-    } catch (err) {
-        console.error("OpenAI Generation Error:", err);
-        // Handle OpenAI specific errors gracefully
-        if (err.response) {
-            res.status(err.response.status).json({ error: err.response.data });
-        } else {
-            res.status(500).json({ error: err.message });
-        }
+    if (!req.user) {
+        return res.status(401).json({ error: 'Sign in to use the Pro generator' });
     }
-});
+    if (!process.env.OPENAI_API_KEY) {
+        return res.status(500).json({ error: 'OpenAI API key not configured on server' });
+    }
 
-// POST /api/generate-image-gemini - Generate image via Gemini
-app.post('/api/generate-image-gemini', async (req, res) => {
+    const { prompt, image, carModel, userPrompt, isPublic } = req.body;
+    if (!prompt || typeof prompt !== 'string' || prompt.length > 4000) {
+        return res.status(400).json({ error: 'prompt is required (max 4000 characters)' });
+    }
+    if ((carModel !== undefined && typeof carModel !== 'string') || (userPrompt !== undefined && typeof userPrompt !== 'string')) {
+        return res.status(400).json({ error: 'carModel and userPrompt must be strings' });
+    }
+    const template = (typeof image === 'string' ? image : '').match(/^data:(image\/\w+);base64,(.+)$/);
+    if (!template) {
+        return res.status(400).json({ error: 'image must be a data URL of the wrap template' });
+    }
+
+    const balanceAfterReserve = await reserve(req.user.id, GENERATION_COST, `Pro generation: ${(userPrompt || '').slice(0, 60)}`);
+    if (balanceAfterReserve === null) {
+        const { credits } = await User.findById(req.user.id).select('credits') || { credits: 0 };
+        return res.status(402).json({ error: `Not enough credits: a Pro generation costs ${GENERATION_COST}`, balance: credits });
+    }
+
+    let b64;
     try {
-        const { prompt, model, image } = req.body;
-
-        if (!process.env.GEMINI_API_KEY) {
-            return res.status(500).json({ error: 'Gemini API key not configured on server' });
-        }
-
-        // Use the gemini-3-pro-image-preview model for image generation
-        const imagenModel = genAI.getGenerativeModel({ model: model || "gemini-3-pro-image-preview" });
-
-        let contentParts = [{ text: prompt }];
-
-        if (image) {
-            // Check if it's a data URL and strip prefix
-            const matches = image.match(/^data:(.+);base64,(.+)$/);
-            if (matches) {
-                contentParts.push({
-                    inlineData: {
-                        mimeType: matches[1],
-                        data: matches[2]
-                    }
-                });
-            } else {
-                // Assume raw base64, default to png if not provided (risky but common)
-                contentParts.push({
-                    inlineData: {
-                        mimeType: "image/png",
-                        data: image
-                    }
-                });
-            }
-        }
-
-        const result = await imagenModel.generateContent({
-            contents: [{ role: 'user', parts: contentParts }]
+        const response = await openai.images.edit({
+            model: 'gpt-image-2',
+            image: await OpenAI.toFile(Buffer.from(template[2], 'base64'), 'template.png', { type: template[1] }),
+            prompt,
+            quality: 'high',
+            n: 1,
         });
-        const response = await result.response;
-
-        let base64Image = null;
-        let mimeType = "image/png";
-
-        if (response.candidates && response.candidates[0] && response.candidates[0].content && response.candidates[0].content.parts) {
-            for (const part of response.candidates[0].content.parts) {
-                if (part.inlineData) {
-                    base64Image = part.inlineData.data;
-                    mimeType = part.inlineData.mimeType || "image/png";
-                    break;
-                }
-            }
-        }
-
-        if (base64Image) {
-            res.json({ url: `data:${mimeType};base64,${base64Image}` });
-        } else {
-            console.error("Gemini response did not contain inlineData. Full response:", JSON.stringify(response, null, 2));
-            res.status(500).json({ error: "No image data found in Gemini response" });
-        }
-
+        b64 = response.data?.[0]?.b64_json;
+        if (!b64) throw new Error('No image data received from OpenAI');
     } catch (err) {
-        console.error("Gemini Generation Error:", err);
-        res.status(500).json({ error: err.message });
+        // Nothing was produced, so nothing is owed: give the credits back.
+        console.error('OpenAI Generation Error:', err);
+        let balance = null;
+        try {
+            balance = await refund(req.user.id, GENERATION_COST, 'Pro generation failed');
+        } catch (refundErr) {
+            console.error(`Refund failed — reconcile manually: user ${req.user.id} amount ${GENERATION_COST}`, refundErr);
+        }
+        return res.status(502).json({ error: err.message, balance });
+    }
+
+    // The image exists and was paid for; a persistence failure must not throw it away.
+    let imageUrl;
+    try {
+        imageUrl = await uploadToR2(Buffer.from(b64, 'base64'), `wraps/ai-${Date.now()}.png`, 'image/png');
+    } catch (err) {
+        console.error('Generated image upload failed; returning it inline:', err);
+        return res.json({ url: `data:image/png;base64,${b64}`, saved: false, balance: balanceAfterReserve });
+    }
+    try {
+        const wrap = await new Wrap({
+            name: (userPrompt || prompt).slice(0, 100),
+            author: req.user.username,
+            user: req.user.id,
+            imageUrl,
+            models: carModel ? [carModel] : [],
+            source: 'ai',
+            prompt: (userPrompt || '').slice(0, 500),
+            isPublic: isPublic === false ? !(await mayGoPrivate(req.user.id)) : true,
+        }).save();
+        res.json({ url: imageUrl, wrapId: wrap._id, saved: true, balance: balanceAfterReserve });
+    } catch (err) {
+        console.error('Generated wrap save failed; image kept at', imageUrl, err);
+        res.json({ url: imageUrl, saved: false, balance: balanceAfterReserve });
     }
 });
 

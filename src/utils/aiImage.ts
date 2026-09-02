@@ -1,3 +1,11 @@
+import { authHeaders } from './wrapApi';
+
+export interface GeneratedImage {
+    url: string;
+    /** Pro only. False means the image was produced and billed but could not be stored as a wrap. */
+    saved?: boolean;
+}
+
 
 /**
  * Generates an image using the selected AI provider.
@@ -5,17 +13,18 @@
  * @param prompt The user's text prompt for the image.
  * @param inputImageBase64 Optional base64 string of the input image for img2img.
  * @param modelName The car model name.
- * @param provider The AI provider to use ('puter' or 'openai').
- * @param openAIModel The specific model string for OpenAI (e.g., 'gpt-image-1.5').
- * @returns A promise that resolves to the generated image as a data URL (base64).
+ * @param provider The AI provider to use ('puter' for the free tier, 'openai' for Pro).
+ * @param isPublic Pro only: whether the server should list the saved wrap publicly.
+ * @returns The generated image URL (data URL for Puter, R2 URL for Pro) and, for Pro,
+ *          whether the server managed to keep it as a wrap.
  */
 export async function generateImage(
     prompt: string,
     inputImageBase64?: string,
     modelName: string = "Car",
-    provider: 'puter' | 'openai' | 'gemini' = 'puter',
-    openAIModel: string = "gpt-image-1.5"
-): Promise<string> {
+    provider: 'puter' | 'openai' = 'puter',
+    isPublic: boolean = true
+): Promise<GeneratedImage> {
 
     // Enhance prompt for car wrap context
     const enhancedPrompt = `You are a professional automotive graphic designer specializing in vehicle wraps.
@@ -44,17 +53,17 @@ A complete wrap design that fully adheres to the template format and accurately 
 
     if (provider === 'openai') {
         try {
+            // The server picks the model, spends the credits, and keeps the result as a
+            // wrap. The template rides along so the design lands on the real panels.
             const response = await fetch('/api/generate-image', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json', ...authHeaders() },
                 body: JSON.stringify({
                     prompt: enhancedPrompt,
-                    model: openAIModel,
-                    size: "1024x1024",
-                    quality: "high",
-                    n: 1
+                    image: inputImageBase64,
+                    carModel: modelName,
+                    userPrompt: prompt,
+                    isPublic,
                 }),
             });
 
@@ -64,34 +73,9 @@ A complete wrap design that fully adheres to the template format and accurately 
             }
 
             const data = await response.json();
-            return data.url;
+            return { url: data.url, saved: data.saved !== false };
         } catch (error) {
             console.error("OpenAI Image Generation Error:", error);
-            throw error;
-        }
-    } else if (provider === 'gemini') {
-        try {
-            const response = await fetch('/api/generate-image-gemini', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    prompt: enhancedPrompt,
-                    model: "gemini-3-pro-image-preview",
-                    image: inputImageBase64
-                }),
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error?.message || errorData.error || "Failed to generate image with Gemini");
-            }
-
-            const data = await response.json();
-            return data.url;
-        } catch (error) {
-            console.error("Gemini Image Generation Error:", error);
             throw error;
         }
     } else {
@@ -116,7 +100,7 @@ A complete wrap design that fully adheres to the template format and accurately 
             }
 
             const imageElement = await window.puter.ai.txt2img(enhancedPrompt, options);
-            return imageElement.src;
+            return { url: imageElement.src };
         } catch (error) {
             console.error("Puter.js Image Generation Error:", error);
             throw error;

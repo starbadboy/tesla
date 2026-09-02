@@ -13,10 +13,19 @@ import { OptionMenu } from '../ui/OptionMenu';
 import { WRAP_PRESETS, gradientCss, gradientToDataUrl } from '../TeslaStudio/wraps';
 import { CAR_3D_MODELS, CAR_MODELS } from '../../constants';
 import { TRANSLATIONS } from '../../translations';
-import { generateImage } from '../../utils/gemini';
+import { generateImage } from '../../utils/aiImage';
+import { fetchMyGenerations, fetchOrder, saveGeneration } from '../../utils/wrapApi';
+import { BuyCreditsModal } from './BuyCreditsModal';
+import type { Wrap } from '../Gallery';
+import { useAuth } from '../../contexts/AuthContext';
+import { AuthModal } from '../Auth/AuthModal';
 import '../../styles/wrap-editor.css';
 
 const LAYER_ID = 'Full Wrap';
+
+/** Credits one Pro generation costs; the server enforces the same number. */
+// ponytail: copied from server/utils/packs.js for the button label; serve it from /api/credits/packs if the price ever moves.
+const GENERATION_COST = 10;
 
 const FLAT_LAYER: LayerTransform = { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1 };
 
@@ -57,6 +66,18 @@ export interface WrapEditorProps {
 
 type Panel = 'library' | 'ai' | 'generations' | 'layers';
 
+type Generation = { url: string; prompt: string };
+
+const toGenerations = (wraps: Wrap[]): Generation[] =>
+    wraps.map(w => ({ url: w.imageUrl ?? '', prompt: w.prompt ?? w.name }));
+
+/** Stripe sends the designer back with ?checkout=success|cancel&orderId=…; consumed by the first editor mount. */
+let checkoutReturn: { outcome: string; orderId: string | null } | null = (() => {
+    const params = new URLSearchParams(window.location.search);
+    const outcome = params.get('checkout');
+    return outcome ? { outcome, orderId: params.get('orderId') } : null;
+})();
+
 type Tool = 'select' | 'draw' | 'fill' | 'text' | 'rect' | 'ellipse';
 
 /** Everything an edit can change, and therefore everything undo restores. */
@@ -93,7 +114,7 @@ export function WrapEditor({
     const t = TRANSLATIONS[language];
     const model3dPath = CAR_3D_MODELS[currentModelName] ?? null;
 
-    const [panel, setPanel] = useState<Panel | null>('library');
+    const [panel, setPanel] = useState<Panel | null>(checkoutReturn ? 'ai' : 'library');
     const [tool, setTool] = useState<Tool>('select');
     const [brushColor, setBrushColor] = useState('#ff3b30');
     const [brushSize, setBrushSize] = useState(8);
@@ -166,13 +187,71 @@ export function WrapEditor({
         commit({ ...doc, objects: [...rest.slice(0, to), selectedObject, ...rest.slice(to)] });
     };
 
+    const { user, isAuthenticated, refreshUser } = useAuth();
     const [prompt, setPrompt] = useState('');
-    const [provider, setProvider] = useState<'puter' | 'openai' | 'gemini'>('puter');
+    const [provider, setProvider] = useState<'puter' | 'openai'>(checkoutReturn ? 'openai' : 'puter');
     const [generating, setGenerating] = useState(false);
     const [aiError, setAiError] = useState<string | null>(null);
-    // Session-only: a generation is a data URL of a megabyte or more, far past what
-    // localStorage holds. Persisting them needs the server, not this component.
-    const [generations, setGenerations] = useState<{ url: string; prompt: string }[]>([]);
+    // Only designers who have bought credits may keep a generation out of the gallery.
+    const canGoPrivate = Boolean(user?.hasPurchased);
+    const [shareToGallery, setShareToGallery] = useState(true);
+    const [authOpen, setAuthOpen] = useState(false);
+    const [buyOpen, setBuyOpen] = useState(false);
+    const [purchaseNotice, setPurchaseNotice] = useState<string | null>(() => {
+        if (!checkoutReturn) return null;
+        return checkoutReturn.outcome === 'success' && checkoutReturn.orderId ? t.purchasePending : t.purchaseCancelled;
+    });
+    const credits = user?.credits ?? 0;
+    const isPro = provider === 'openai';
+    const shortOnCredits = isPro && credits < GENERATION_COST;
+
+    // Back from Stripe with a paid checkout: poll the order until the webhook lands, then
+    // refresh the balance. The address bar is cleaned so a reload does not replay this.
+    useEffect(() => {
+        if (!checkoutReturn) return;
+        const { outcome, orderId } = checkoutReturn;
+        // Consumed: reopening the editor later must not replay the notice or the poll.
+        checkoutReturn = null;
+        window.history.replaceState({}, '', window.location.pathname);
+        if (outcome !== 'success' || !orderId) return;
+        const confirm = async () => {
+            for (let attempt = 0; attempt < 5; attempt += 1) {
+                try {
+                    const order = await fetchOrder(orderId);
+                    if (order.status === 'paid') { await refreshUser(); setPurchaseNotice(t.purchaseSuccess); return; }
+                    if (order.status === 'failed' || order.status === 'expired') { setPurchaseNotice(t.purchaseFailed); return; }
+                } catch (error) {
+                    console.warn('Could not read order:', error);
+                }
+                await new Promise(resolve => setTimeout(resolve, 1500));
+            }
+            await refreshUser();
+        };
+        confirm();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Pro spends credits, so it needs an account; ask for one and stay on Free meanwhile.
+    const chooseProvider = (next: 'puter' | 'openai') => {
+        if (next === 'openai' && !isAuthenticated) { setAuthOpen(true); return; }
+        setProvider(next);
+    };
+    // Signed in: the server's copy of their generations. Anonymous: this session only —
+    // a generation is a data URL of a megabyte or more, far past what localStorage holds.
+    const [generations, setGenerations] = useState<Generation[]>([]);
+
+    // Re-read when the panel opens so a wrap saved elsewhere (or a second tab) shows up.
+    useEffect(() => {
+        if (!isAuthenticated || panel !== 'generations') return;
+        const load = async () => {
+            try {
+                setGenerations(toGenerations(await fetchMyGenerations()));
+            } catch (error) {
+                console.warn('Could not load generations:', error);
+            }
+        };
+        load();
+    }, [isAuthenticated, panel]);
 
     const fileRef = useRef<HTMLInputElement>(null);
 
@@ -209,13 +288,29 @@ export function WrapEditor({
                 reader.readAsDataURL(blob);
             });
 
-            const url = await generateImage(prompt, templateBase64, currentModelName, provider, 'gpt-image-1.5');
+            const isPublic = canGoPrivate ? shareToGallery : true;
+            const { url, saved } = await generateImage(prompt, templateBase64, currentModelName, provider, isPublic);
             setGenerations(current => [{ url, prompt }, ...current]);
             await onLoadWrap(url, { name: prompt.slice(0, 40) });
+            // Pro is saved by the server; Free is saved from here. Best effort: a save that
+            // fails leaves the generation in this session's list, which is what an anonymous
+            // designer gets anyway — so the server list only replaces it once it holds it.
+            if (isAuthenticated && saved !== false) {
+                try {
+                    if (provider === 'puter') {
+                        await saveGeneration({ url, prompt, model: currentModelName, isPublic });
+                    }
+                    setGenerations(toGenerations(await fetchMyGenerations()));
+                } catch (error) {
+                    console.warn('Could not save generation:', error);
+                }
+            }
         } catch (error) {
             setAiError(error instanceof Error ? error.message : t.error);
         } finally {
             setGenerating(false);
+            // Pro spent (or refunded) credits; the balance line reads from the user.
+            if (provider === 'openai') refreshUser();
         }
     };
 
@@ -332,26 +427,69 @@ export function WrapEditor({
                         </div>
 
                         <h3>{t.modelProvider}</h3>
-                        <OptionMenu
-                            className="we-model"
-                            ariaLabel={t.modelProvider}
-                            value={provider}
-                            onChange={next => setProvider(next as typeof provider)}
-                            options={[
-                                { value: 'puter', label: t.computerAI },
-                                { value: 'openai', label: t.openai },
-                                { value: 'gemini', label: 'Gemini 3 Pro Image' },
-                            ]}
-                        />
+                        <div className="we-tier" role="group" aria-label={t.modelProvider}>
+                            <button
+                                type="button"
+                                className={provider === 'puter' ? 'is-on' : ''}
+                                aria-pressed={provider === 'puter'}
+                                onClick={() => chooseProvider('puter')}
+                            >
+                                {t.freeTier}<small>{t.freeTierHint}</small>
+                            </button>
+                            <button
+                                type="button"
+                                className={provider === 'openai' ? 'is-on' : ''}
+                                aria-pressed={provider === 'openai'}
+                                onClick={() => chooseProvider('openai')}
+                            >
+                                {t.proTier}<small>{t.proTierHint}</small>
+                            </button>
+                        </div>
+
+                        {isAuthenticated && (
+                            <>
+                                <label className={`we-check ${canGoPrivate ? '' : 'is-locked'}`}>
+                                    <input
+                                        type="checkbox"
+                                        checked={canGoPrivate ? shareToGallery : true}
+                                        disabled={!canGoPrivate}
+                                        onChange={e => setShareToGallery(e.target.checked)}
+                                    />
+                                    {t.shareToGallery}
+                                </label>
+                                {!canGoPrivate && <p className="we-hint">{t.unlockPrivate}</p>}
+                            </>
+                        )}
+
+                        {purchaseNotice && <p className="we-notice">{purchaseNotice}</p>}
 
                         <button
                             type="button"
                             className="we-primary"
-                            disabled={!prompt.trim() || generating}
+                            disabled={!prompt.trim() || generating || shortOnCredits}
                             onClick={handleGenerate}
                         >
-                            <Sparkles size={15} /> {generating ? t.generating : t.generate}
+                            <Sparkles size={15} />
+                            {generating ? t.generating : isPro ? `${t.generate} — ${GENERATION_COST} ${t.credits}` : t.generate}
                         </button>
+                        {isAuthenticated && (
+                            <p className={`we-balance ${shortOnCredits ? 'is-short' : ''}`}>
+                                <span>{t.balance}</span>
+                                <b>{credits} {t.credits}</b>
+                            </p>
+                        )}
+                        {isPro && isAuthenticated && (
+                            <>
+                                {shortOnCredits && <p className="we-error">{t.notEnoughCredits}</p>}
+                                <button
+                                    type="button"
+                                    className={`we-secondary ${shortOnCredits ? 'is-urgent' : ''}`}
+                                    onClick={() => setBuyOpen(true)}
+                                >
+                                    {t.buyCredits}
+                                </button>
+                            </>
+                        )}
                         {aiError && <p className="we-error">{aiError}</p>}
                     </>
                 )}
@@ -612,6 +750,8 @@ export function WrapEditor({
                     </button>
                 </div>
             </main>
+            <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} />
+            <BuyCreditsModal isOpen={buyOpen} onClose={() => setBuyOpen(false)} language={language} />
         </div>
     );
 }

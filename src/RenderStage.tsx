@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { DesignCanvas, type DesignCanvasHandle, type LayerTransform } from './components/DesignCanvas';
 import { ThreeDView } from './components/ThreeDView';
 import { CAR_3D_MODELS, CAR_MODELS } from './constants';
+import { proxiedMediaUrl } from './utils/wrapApi';
 
 const FRESH_LAYER: Record<string, LayerTransform> = {
     'Full Wrap': { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1 },
@@ -64,10 +65,7 @@ export function RenderStage() {
     // A fresh sheet needs the wrap toggled off and on for ThreeDView to rebind it, the
     // same cycle the studio drives; the settle delay covers the texture upload.
     const loadWrap = useCallback(async (imageUrl: string) => {
-        const proxied = imageUrl.includes('.r2.dev/')
-            ? `/api/proxy-image?url=${encodeURIComponent(imageUrl)}`
-            : imageUrl;
-        const response = await fetch(proxied);
+        const response = await fetch(proxiedMediaUrl(imageUrl));
         const blob = await response.blob();
         const objectUrl = URL.createObjectURL(blob);
 

@@ -249,6 +249,79 @@
   color: var(--we-ink-4);
 }
 
+/* ---- ai: tier toggle ---- */
+.we-tier {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--we-line);
+  border-radius: 10px;
+  background: var(--we-surface-2);
+}
+.we-tier button {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 7px;
+  background: none;
+  color: var(--we-ink-3);
+  font: 600 12.5px 'Archivo', sans-serif;
+  text-align: left;
+  cursor: pointer;
+}
+.we-tier button small { font: 400 10.5px 'Archivo', sans-serif; color: var(--we-ink-4); }
+.we-tier button.is-on { background: #e6e6e8; color: #0c0c0e; }
+.we-tier button.is-on small { color: #4a4a52; }
+
+/* ---- ai: credits ---- */
+.we-balance {
+  display: flex;
+  justify-content: space-between;
+  font: 500 12px 'Archivo', sans-serif;
+  color: var(--we-ink-3);
+}
+.we-balance b { color: var(--we-ink-1); font-weight: 600; }
+.we-balance.is-short b { color: #ff8080; }
+.we-app .we-secondary {
+  padding: 11px 16px;
+  border: 1px solid var(--we-line-strong);
+  border-radius: 10px;
+  background: none;
+  color: var(--we-ink-1);
+  font: 600 13px 'Archivo', sans-serif;
+  cursor: pointer;
+}
+.we-app .we-secondary:hover { border-color: var(--we-accent); }
+.we-app .we-secondary.is-urgent { border-color: var(--we-accent); color: var(--we-accent); }
+
+.we-notice {
+  padding: 10px 12px;
+  border: 1px solid var(--we-accent);
+  border-radius: 10px;
+  font: 500 12.5px 'Archivo', sans-serif;
+  color: var(--we-ink-1);
+  background: rgba(110, 168, 254, .08);
+}
+
+/* ---- ai: share toggle ---- */
+.we-check {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font: 500 12.5px 'Archivo', sans-serif;
+  color: var(--we-ink-2);
+  cursor: pointer;
+}
+.we-check input { accent-color: var(--we-accent); }
+.we-check.is-locked { color: var(--we-ink-4); cursor: not-allowed; }
+.we-hint {
+  margin-top: -6px;
+  font: 400 11.5px 'Archivo', sans-serif;
+  color: var(--we-accent);
+}
+
 /* ---- generations ---- */
 .we-gens { display: grid; gap: 10px; }
 .we-gen {

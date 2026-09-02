@@ -25,12 +25,16 @@ Server settings live in `.env` at the repo root (see `server/index.js`):
 | Variable | Purpose |
 |---|---|
 | `MONGO_URL` | MongoDB connection string |
-| `OPENAI_API_KEY` | AI image generation |
+| `OPENAI_API_KEY` | Pro tier image generation (`gpt-image-2`) |
 | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `R2_PUBLIC_URL` | Cloudflare R2 media storage |
 | `RESEND_API_KEY` | Password-reset email through Resend. Without it nothing is sent; the link is logged only when `NODE_ENV=development` |
 | `MAIL_FROM` | Sender for reset email, e.g. `Tesla Studio <noreply@your-verified-domain>`; defaults to Resend's onboarding sender, which reaches only the account owner |
-| `APP_PUBLIC_URL` | Public site URL used in emailed links, e.g. `https://teslastudio.online`. Required for reset emails; never taken from the request |
+| `STRIPE_SECRET_KEY` | Stripe Checkout for credit packs; without it purchases answer 503 |
+| `STRIPE_WEBHOOK_SECRET` | Signing secret of the webhook endpoint below |
+| `APP_PUBLIC_URL` | Public site URL used in emailed links and Stripe return URLs, e.g. `https://teslastudio.online`. Required for reset emails; never taken from the request |
 | `JWT_SECRET` | Signs login tokens |
+
+**Stripe setup.** In the Stripe dashboard add a webhook endpoint at `https://<your-domain>/api/credits/webhook` for the events `checkout.session.completed` and `checkout.session.expired`, then paste its signing secret into `STRIPE_WEBHOOK_SECRET`. Locally, `stripe listen --forward-to localhost:5001/api/credits/webhook` prints a temporary secret. Packs and the per-generation cost are defined in `server/utils/packs.js`; nothing needs creating in the dashboard.
 
 ## Tech Stack
 

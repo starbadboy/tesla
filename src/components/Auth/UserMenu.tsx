@@ -43,6 +43,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onOpenGarage, language = 'en
                                 <div className="px-3 py-2 border-b border-gray-100 mb-1">
                                     <p className="font-bold text-xs truncate">{user.username}</p>
                                     <p className="text-[10px] text-gray-400 truncate">{user.email}</p>
+                                    <p className="text-[10px] text-gray-500 mt-1">{user.credits ?? 0} {t.credits}</p>
                                 </div>
                                 <button
                                     onClick={() => { onOpenGarage(); setIsOpen(false); }}

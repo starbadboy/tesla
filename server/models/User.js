@@ -29,6 +29,10 @@ const UserSchema = new mongoose.Schema({
         ref: 'Wrap'
     }],
     isAdmin: { type: Boolean, default: false },
+    // Pro generation credits. Never negative: the reserve is a conditional update.
+    credits: { type: Number, default: 0, min: 0 },
+    // Set by the first paid order; unlocks private generations.
+    hasPurchased: { type: Boolean, default: false },
     // Password reset: only the token's hash is kept; a new request overwrites both fields.
     resetTokenHash: { type: String, select: false, index: true, sparse: true },
     resetTokenExpires: { type: Date, select: false }

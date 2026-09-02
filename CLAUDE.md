@@ -6,7 +6,7 @@ React + Vite client in `src/`, Express + Mongoose API in `server/` (one process 
 
 - `npm run build` — type-check and bundle the client (`tsc -b && vite build`). The syntax gate for any client change.
 - `npm run lint` — ESLint over `src/`. Baseline on main: 27 pre-existing problems; a change must not add to it.
-- `npm test` — Vitest over `server/**/*.test.js` (pure server logic only).
+- `npm test` — Vitest over `server/**/*.test.js` (pure server logic: packs, settlement, visibility).
 - `node --check server/index.js` — syntax gate for server changes; the server has no bundler.
 - `npm run dev` + `node server/index.js` — Vite on 5173 proxying `/api` to the API on 5001.
 
@@ -16,3 +16,5 @@ React + Vite client in `src/`, Express + Mongoose API in `server/` (one process 
 - Build every URL that leaves the server (emailed links, payment return URLs) from `APP_PUBLIC_URL`; never from the request's `Origin` or `Host` header.
 - Mint login tokens only through `generateToken` in `server/routes/auth.js`, so every token carries the same claims (`id`, `username`, `isAdmin`).
 - Server files are CommonJS; client files are TypeScript modules. Server tests import CommonJS modules from ESM test files, which Vitest handles.
+- Money and credit movements go through `server/utils/credits.js` and leave a row in `CreditTransaction`.
+- Public wrap listings spread `publicMatch()` from `server/utils/visibility.js` so private generations never leak.
