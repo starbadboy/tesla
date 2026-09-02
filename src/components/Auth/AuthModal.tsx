@@ -5,6 +5,7 @@ import axios from 'axios';
 import { X, Mail, Lock, User as UserIcon, Loader } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { RESET_TOKEN } from '../../utils/resetLink';
+import { GoogleSignIn } from './GoogleSignIn';
 
 const INPUT = 'w-full pl-9 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-black focus:border-black outline-none transition-all dark:bg-zinc-950 dark:border-zinc-800 dark:text-white dark:focus:ring-white dark:focus:border-white';
 const LABEL = 'text-xs font-bold uppercase text-gray-500 dark:text-zinc-400';
@@ -50,6 +51,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTa
     const [error, setError] = useState('');
     const [notice, setNotice] = useState('');
     const [loading, setLoading] = useState(false);
+    const [googleLoading, setGoogleLoading] = useState(false);
+    const busy = loading || googleLoading;
     const { login } = useAuth();
 
     // The token stays valid for an hour, but it does not belong in the address bar.
@@ -77,6 +80,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTa
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (busy) return;
         setError('');
         setLoading(true);
 
@@ -120,6 +124,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTa
         }
     };
 
+    const handleGoogleLogin = async (credential: string) => {
+        if (busy) return;
+        setError('');
+        setNotice('');
+        setGoogleLoading(true);
+        try {
+            const { data } = await axios.post('/api/auth/google', { credential }, { timeout: 20000 });
+            login(data.token, data.user);
+            onClose();
+        } catch (err: unknown) {
+            setError(axios.isAxiosError(err) && err.response?.data?.error
+                ? err.response.data.error
+                : 'Unable to sign in with Google. Please try again.');
+        } finally {
+            setGoogleLoading(false);
+        }
+    };
+
     const hasTabs = activeTab === 'login' || activeTab === 'register';
     const next = NAVIGATE[activeTab];
 
@@ -127,13 +149,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTa
     // and margin on every descendant, which would flatten this Tailwind layout.
     return createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-white dark:bg-zinc-900 w-full max-w-md rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 border border-transparent dark:border-zinc-800">
+            <div className="bg-white dark:bg-zinc-900 w-full max-w-md max-h-[calc(100dvh-2rem)] rounded-xl shadow-2xl overflow-y-auto animate-in fade-in zoom-in duration-200 border border-transparent dark:border-zinc-800">
                 {/* Header */}
                 <div className="flex justify-between items-center p-4 border-b dark:border-zinc-800">
                     <h2 className="font-serif text-xl font-bold dark:text-white">
                         {TITLES[activeTab]}
                     </h2>
-                    <button onClick={onClose} className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-full transition-colors text-black dark:text-white">
+                    <button onClick={onClose} disabled={busy} aria-label="Close sign-in" className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-full transition-colors text-black dark:text-white">
                         <X size={20} />
                     </button>
                 </div>
@@ -143,12 +165,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTa
                     <button
                         className={`flex-1 py-3 text-sm font-bold uppercase tracking-wider transition-colors ${activeTab === 'login' ? 'bg-black text-white dark:bg-white dark:text-black' : 'hover:bg-gray-50 dark:hover:bg-zinc-800 text-gray-500 dark:text-zinc-400'}`}
                         onClick={() => switchTo('login')}
+                        disabled={busy}
                     >
                         Login
                     </button>
                     <button
                         className={`flex-1 py-3 text-sm font-bold uppercase tracking-wider transition-colors ${activeTab === 'register' ? 'bg-black text-white dark:bg-white dark:text-black' : 'hover:bg-gray-50 dark:hover:bg-zinc-800 text-gray-500 dark:text-zinc-400'}`}
                         onClick={() => switchTo('register')}
+                        disabled={busy}
                     >
                         Register
                     </button>
@@ -157,7 +181,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTa
                 {/* Form */}
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
                     {error && (
-                        <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm rounded border border-red-100 dark:border-red-900/30">
+                        <div role="alert" className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm rounded border border-red-100 dark:border-red-900/30">
                             {error}
                         </div>
                     )}
@@ -223,7 +247,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTa
                             </div>
                             {activeTab === 'login' && (
                                 <div className="text-right">
-                                    <button type="button" className={LINK} onClick={() => switchTo('forgot')}>Forgot password?</button>
+                                    <button type="button" disabled={busy} className={LINK} onClick={() => switchTo('forgot')}>Forgot password?</button>
                                 </div>
                             )}
                         </div>
@@ -257,7 +281,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTa
                             {SUBMIT[activeTab]}
                         </Button>
                     ) : (
-                        <Button fullWidth disabled={loading} size="lg" className={BUTTON}>
+                        <Button fullWidth disabled={busy} size="lg" className={BUTTON}>
                             {loading ? <Loader className="animate-spin" /> : SUBMIT[activeTab]}
                         </Button>
                     )}
@@ -267,6 +291,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTa
                             <button type="button" className={LINK} onClick={() => switchTo('login')}>Back to login</button>
                         </div>
                     )}
+
+                    {hasTabs && <GoogleSignIn disabled={busy} loading={googleLoading} onCredential={handleGoogleLogin} />}
                 </form>
             </div>
         </div>,

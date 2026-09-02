@@ -31,6 +31,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onOpenGarage, language = 'en
                 <>
                     <button
                         onClick={() => setIsOpen(!isOpen)}
+                        aria-label="Account menu"
                         className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-bold text-xs hover:scale-105 transition-transform"
                     >
                         {user.username?.charAt(0).toUpperCase() || '?'}
@@ -64,6 +65,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onOpenGarage, language = 'en
             ) : (
                 <>
                     <Button
+                        aria-label="Sign in"
                         variant="ghost"
                         size="sm"
                         onClick={() => handleOpenAuth('login')}

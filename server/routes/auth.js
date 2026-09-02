@@ -6,6 +6,7 @@ const User = require('../models/User');
 const { issue, hashToken } = require('../utils/resetToken');
 const { createThrottle } = require('../utils/throttle');
 const { resetEmail, sendMail } = require('../utils/mail');
+const { getGoogleClientId, verifyGoogleCredential, findOrCreateGoogleUser, GoogleAuthError } = require('../utils/googleAuth');
 
 const SECRET_KEY = process.env.JWT_SECRET || 'your-secret-key-123';
 
@@ -16,6 +17,7 @@ const SECRET_KEY = process.env.JWT_SECRET || 'your-secret-key-123';
 const allowForgotIp = createThrottle({ limit: 3, windowMs: 15 * 60 * 1000 });
 const allowForgotEmail = createThrottle({ limit: 3, windowMs: 15 * 60 * 1000 });
 const allowReset = createThrottle({ limit: 10, windowMs: 15 * 60 * 1000 });
+const allowGoogle = createThrottle({ limit: 30, windowMs: 15 * 60 * 1000 });
 const RESET_SENT = 'If an account exists for that address, a reset link is on its way.';
 const TOO_MANY = 'Too many reset requests. Please try again later.';
 
@@ -27,6 +29,42 @@ const generateToken = (user) => {
         { expiresIn: '7d' }
     );
 };
+
+// Runtime configuration keeps the browser and token verifier on the same OAuth client.
+router.get('/google/config', (_req, res) => {
+    res.set('Cache-Control', 'no-store');
+    res.json({ clientId: getGoogleClientId() || null });
+});
+
+router.post('/google', async (req, res) => {
+    if (!allowGoogle(req.ip)) {
+        return res.status(429).json({ error: 'Too many sign-in attempts. Please try again later.' });
+    }
+    // This endpoint accepts the popup's JavaScript callback, not Google's form-post
+    // redirect flow. It returns a token; it never sets an authentication cookie.
+    if (!req.is('application/json')) return res.status(415).json({ error: 'Expected a JSON request' });
+    try {
+        const profile = await verifyGoogleCredential(req.body?.credential);
+        const user = await findOrCreateGoogleUser(profile);
+        res.set('Cache-Control', 'no-store');
+        res.json({
+            token: generateToken(user),
+            user: {
+                id: user._id,
+                username: user.username,
+                email: user.email,
+                likedWraps: user.likedWraps,
+                isAdmin: user.isAdmin,
+                credits: user.credits,
+                hasPurchased: user.hasPurchased,
+            },
+        });
+    } catch (err) {
+        if (err instanceof GoogleAuthError) return res.status(err.status).json({ error: err.message });
+        console.error('Google sign-in failed:', err.name);
+        res.status(500).json({ error: 'Unable to sign in with Google. Please try again.' });
+    }
+});
 
 // POST /register
 router.post('/register', async (req, res) => {
@@ -102,7 +140,7 @@ router.post('/login', async (req, res) => {
             $or: [{ email: emailOrUsername }, { username: emailOrUsername }]
         });
 
-        if (!user) {
+        if (!user || !user.passwordHash) {
             return res.status(400).json({ error: 'Invalid credentials' });
         }
 
