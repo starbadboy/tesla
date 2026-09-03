@@ -25,7 +25,7 @@
   --ws-ink-7: #5a5a62;
 
   position: fixed;
-  inset: 0;
+  inset: var(--site-header-height) 0 0;
   overflow: hidden;
   background: var(--ws-bg);
   color: var(--ws-ink-2);
@@ -77,49 +77,10 @@
 /* Konva canvas stays mounted — ThreeDView reads the wrap texture off it. */
 .ws-texture-src { position: absolute; inset: 0; opacity: 0; pointer-events: none; }
 
-/* ============ HEADER ============ */
-.ws-head {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 64px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0 40px;
-  z-index: 10;
-}
-.ws-wm { font: 700 15px 'Archivo', sans-serif; letter-spacing: .3em; color: var(--ws-ink-1); }
-.ws-wm span { color: var(--ws-ink-5); font-weight: 400; }
-.ws-nav {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 28px;
-  font: 500 12.5px 'Archivo', sans-serif;
-  color: var(--ws-ink-4);
-}
-.ws-nav button { background: none; border: none; color: inherit; font: inherit; cursor: pointer; }
-.ws-nav button:hover { color: #fff; }
-.ws-nav .ws-on { color: #fff; }
-.ws-avatar {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: #2a2a2f;
-  color: var(--ws-ink-3);
-  font: 600 11px 'Archivo', sans-serif;
-  display: grid;
-  place-items: center;
-  border: none;
-  cursor: pointer;
-}
-
 /* ============ TITLE / HINT ============ */
 .ws-title {
   position: absolute;
-  top: 62px;
+  top: 24px;
   left: 0;
   right: 0;
   text-align: center;
@@ -152,7 +113,7 @@
 .ws-title .ws-sub { display: block; }
 .ws-hint {
   position: absolute;
-  top: 114px;
+  top: 76px;
   left: 0;
   right: 0;
   text-align: center;
@@ -353,7 +314,7 @@
   background: var(--ws-bg);
   z-index: 10;
 }
-/* Laid out as a row: as inline boxes the three actions aligned on their text baselines,
+/* Laid out as a row: as inline boxes the actions aligned on their text baselines,
    which staggered them once one carried an icon. */
 .ws-foot > div {
   display: flex;
@@ -376,6 +337,7 @@
   cursor: pointer;
 }
 .ws-btn:hover { background: #fff; }
+.ws-btn:disabled { opacity: .4; cursor: not-allowed; }
 .ws-btn.ws-ghost { background: transparent; color: var(--ws-ink-3); border-color: var(--ws-line-2); }
 .ws-btn.ws-ghost:hover { background: transparent; border-color: #55555c; color: #fff; }
 .ws-rotate {
@@ -410,9 +372,6 @@
 @media (max-width: 720px) {
   .ws-app { display: flex; flex-direction: column; }
 
-  .ws-head { position: static; order: 1; height: 54px; padding: 0 16px; gap: 12px; }
-  .ws-wm { font-size: 13px; letter-spacing: .22em; }
-  .ws-nav { gap: 14px; font-size: 12px; }
 
   .ws-title { position: static; order: 2; padding: 10px 16px 0; }
   .ws-title select { font-size: 19px; }
@@ -434,20 +393,9 @@
   .ws-thumb { height: 84px; }
 
   .ws-foot { position: static; order: 8; height: 64px; padding: 0 12px; gap: 8px; }
-  /* Three actions plus the toggle do not fit a phone row: keep the dot, drop its label. */
+  /* Keep the controls compact on phones. */
   .ws-rotate-label { display: none; }
   .ws-btn { height: 38px; padding: 0 12px; font-size: 12px; gap: 6px; }
   .ws-foot > div { gap: 6px; }
   .ws-rotate { font-size: 10.5px; letter-spacing: .06em; }
-}
-
-@media (max-width: 600px) {
-  .ws-head { flex: none; flex-wrap: wrap; height: auto; padding: 10px 16px 6px; gap: 2px; }
-  .ws-wm { font-size: 11px; white-space: nowrap; }
-  .ws-nav { width: 100%; margin-left: 0; justify-content: space-between; gap: 8px; }
-  .ws-nav > button { white-space: nowrap; }
-}
-
-@media (max-width: 380px) {
-  .ws-nav { font-size: 11px; gap: 6px; }
 }

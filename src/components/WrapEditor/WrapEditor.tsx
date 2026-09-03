@@ -47,6 +47,7 @@ const COLORS = [
 
 export interface WrapEditorProps {
     language: 'en' | 'zh';
+    initialPanel?: 'library' | 'ai';
     currentModelName: string;
     onModelChange: (name: string) => void;
     singleLayer: string | null;
@@ -107,7 +108,7 @@ const PREVIEW_MAX = { width: 720, height: 560 };
  * so what is edited here is what the car shows.
  */
 export function WrapEditor({
-    language, currentModelName, onModelChange,
+    language, initialPanel = 'library', currentModelName, onModelChange,
     singleLayer, loadedWrapName,
     layerTransforms, onLayerTransformsChange,
     selectedLayerId, onSelectedLayerIdChange,
@@ -117,7 +118,7 @@ export function WrapEditor({
     const t = TRANSLATIONS[language];
     const model3dPath = CAR_3D_MODELS[currentModelName] ?? null;
 
-    const [panel, setPanel] = useState<Panel | null>(checkoutReturn ? 'ai' : 'library');
+    const [panel, setPanel] = useState<Panel | null>(checkoutReturn ? 'ai' : initialPanel);
     const [tool, setTool] = useState<Tool>('select');
     const [brushColor, setBrushColor] = useState('#ff3b30');
     const [brushSize, setBrushSize] = useState(8);
@@ -219,7 +220,10 @@ export function WrapEditor({
         const { outcome, orderId } = checkoutReturn;
         // Consumed: reopening the editor later must not replay the notice or the poll.
         checkoutReturn = null;
-        window.history.replaceState({}, '', window.location.pathname);
+        const returnUrl = new URL(window.location.href);
+        returnUrl.searchParams.delete('checkout');
+        returnUrl.searchParams.delete('orderId');
+        window.history.replaceState(window.history.state, '', returnUrl.pathname + returnUrl.search + returnUrl.hash);
         if (outcome !== 'success' || !orderId) return;
         const confirm = async () => {
             for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -333,7 +337,7 @@ export function WrapEditor({
                 <button type="button" className="we-back" onClick={onClose} aria-label={t.preview3d}>
                     <ArrowLeft size={17} />
                 </button>
-                <span className="we-brand">TESLA<b> STUDIO</b></span>
+                <span className="we-brand">{t.createWorkspace}</span>
                 <OptionMenu
                     className="we-model"
                     ariaLabel={t.modelSelection}

@@ -27,7 +27,7 @@
   --wg-btn-ink: #0c0c0e;
 
   position: fixed;
-  inset: 0;
+  inset: var(--site-header-height) 0 0;
   z-index: 60;
   overflow-y: auto;
   background: var(--wg-bg);
@@ -40,36 +40,10 @@
 .wg-app a:hover { color: var(--wg-ink-1); }
 .wg-app button { font-family: inherit; }
 
-/* ============ HEADER ============ */
-.wg-head {
-  position: sticky;
-  top: 0;
-  height: 64px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0 40px;
-  background: var(--wg-bg-head);
-  backdrop-filter: blur(10px);
-  z-index: 10;
-}
-.wg-head .wg-wm { font: 700 15px 'Archivo', sans-serif; letter-spacing: .3em; color: var(--wg-ink-1); }
-.wg-head .wg-wm span { color: var(--wg-ink-4); font-weight: 400; }
-.wg-nav {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 28px;
-  font: 500 12.5px 'Archivo', sans-serif;
-  color: var(--wg-ink-3);
-}
-.wg-nav button { background: none; border: none; color: inherit; cursor: pointer; font: inherit; }
-.wg-nav button:hover { color: var(--wg-ink-1); }
-.wg-nav .wg-on { color: var(--wg-ink-1); }
-
 /* ============ LAYOUT ============ */
 .wg-wrap { max-width: 1440px; margin: 0 auto; padding: 36px 40px 80px; }
-.wg-wrap h1 { font: 700 34px 'Archivo', sans-serif; letter-spacing: -.01em; margin-bottom: 26px; color: var(--wg-ink-1); }
+.wg-titlebar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 26px; }
+.wg-wrap h1 { font: 700 28px 'Archivo', sans-serif; letter-spacing: -.01em; margin-bottom: 0; color: var(--wg-ink-1); }
 
 .wg-tabs {
   display: flex;
@@ -353,8 +327,6 @@
 .wg-dcard .wg-date { display: flex; align-items: center; gap: 9px; font: 400 13px 'Archivo', sans-serif; color: var(--wg-ink-3); }
 
 @media (max-width: 640px) {
-  .wg-head { padding: 0 20px; gap: 14px; }
-  .wg-nav { gap: 18px; }
   .wg-wrap { padding: 24px 20px 60px; }
   .wg-wrap h1 { font-size: 26px; }
   .wg-dinfo h2 { font-size: 30px; }

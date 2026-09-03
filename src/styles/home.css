@@ -21,7 +21,7 @@
   --hm-ink-5: #55555d;
 
   position: fixed;
-  inset: 0;
+  inset: var(--site-header-height) 0 0;
   z-index: 60;
   overflow-y: auto;
   overflow-x: hidden;
@@ -32,40 +32,6 @@
 }
 
 .hm-app button { font-family: inherit; color: inherit; }
-
-/* ============ HEAD ============ */
-.hm-head {
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  display: flex;
-  align-items: center;
-  gap: 26px;
-  height: 62px;
-  padding: 0 32px;
-  background: rgba(12, 12, 14, .88);
-  border-bottom: 1px solid var(--hm-line);
-  backdrop-filter: blur(10px);
-}
-.hm-wm {
-  border: none;
-  background: none;
-  font: 700 15px 'Archivo', sans-serif;
-  letter-spacing: .2em;
-  color: var(--hm-ink-1);
-  cursor: pointer;
-}
-.hm-wm span { font-weight: 300; color: var(--hm-ink-4); }
-
-.hm-nav { display: flex; align-items: center; gap: 22px; margin-left: auto; }
-.hm-nav button {
-  border: none;
-  background: none;
-  font: 500 13.5px 'Archivo', sans-serif;
-  color: var(--hm-ink-3);
-  cursor: pointer;
-}
-.hm-nav button:hover { color: #fff; }
 
 /* ============ HERO ============ */
 .hm-hero {
@@ -127,6 +93,10 @@
   cursor: pointer;
 }
 .hm-ghost:hover { border-color: #55555c; color: #fff; }
+
+.hm-hero-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
+.hm-hero-actions .hm-ghost { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 13px 16px; font-size: 13px; }
+.hm-hero-copy .hm-ai-note { margin-top: 14px; max-width: 420px; font-size: 13px; line-height: 1.6; color: var(--hm-ink-3); }
 
 .hm-fine {
   display: block;
@@ -365,27 +335,13 @@
 .hm-end .hm-cta { margin-top: 0; }
 
 @media (max-width: 900px) {
-  .hm-head { padding: 0 16px; gap: 14px; }
-  .hm-nav { gap: 14px; font-size: 12px; }
   .hm-hero { grid-template-columns: minmax(0, 1fr); padding: 44px 20px 40px; gap: 24px; }
   .hm-hero h1 { font-size: 36px; }
-  .hm-hero-car { height: 260px; order: -1; }
+  .hm-hero-car { height: 260px; }
   .hm-wall { padding: 44px 0 56px; }
   .hm-wall h2 { font-size: 22px; }
   .hm-tile { width: 220px; }
   .hm-tile img { height: 124px; }
   .hm-section { padding: 48px 20px; }
   .hm-section h2 { font-size: 22px; }
-}
-
-@media (max-width: 600px) {
-  .hm-head { flex-wrap: wrap; height: auto; padding: 10px 16px 6px; gap: 2px; }
-  .hm-wm { font-size: 11px; white-space: nowrap; }
-  .hm-nav { width: 100%; margin-left: 0; justify-content: space-between; gap: 8px; }
-  .hm-nav > button { font-size: 12px; white-space: nowrap; }
-}
-
-@media (max-width: 380px) {
-  .hm-nav { gap: 6px; }
-  .hm-nav > button { font-size: 11px; }
 }

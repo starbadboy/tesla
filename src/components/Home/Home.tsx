@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowRight, Download, Layers, Palette, Sparkles, Wand2 } from 'lucide-react';
+import { ArrowRight, Download, Layers, Palette, Wand2 } from 'lucide-react';
 import { ThreeDView } from '../ThreeDView';
 import { DesignCanvas, type DesignCanvasHandle, type LayerTransform } from '../DesignCanvas';
-import { UserMenu } from '../Auth/UserMenu';
+import { AiCreateButton } from '../ui/AiCreateButton';
 import { WrapWall } from './WrapWall';
 import { CAR_3D_MODELS, CAR_MODELS } from '../../constants';
 import { TRANSLATIONS } from '../../translations';
@@ -18,13 +18,11 @@ const HERO_LAYER: Record<string, LayerTransform> = {
 
 export interface HomeProps {
     language: 'en' | 'zh';
-    onToggleLanguage: () => void;
     currentModelName: string;
     /** Opens the studio, on the given car when one is named. */
     onStart: (model?: string) => void;
     onOpenGallery: () => void;
-    onOpenGarage: () => void;
-    onOpen3DGallery: () => void;
+    onOpenAICreate: () => void;
     onLoadWrap: (url: string, wrap?: { model?: string; name?: string }) => void | Promise<void>;
     refreshTrigger?: number;
 }
@@ -34,11 +32,11 @@ export interface HomeProps {
  *
  * The car in the hero is the real 3D view rather than a picture — it is the thing being
  * sold, and it is already built. The studio stays the default surface; this is reached
- * from the nav.
+ * from the logo.
  */
 export function Home({
-    language, onToggleLanguage, currentModelName,
-    onStart, onOpenGallery, onOpenGarage, onOpen3DGallery,
+    language, currentModelName,
+    onStart, onOpenGallery, onOpenAICreate,
     onLoadWrap, refreshTrigger = 0,
 }: HomeProps) {
     const t = TRANSLATIONS[language];
@@ -48,7 +46,7 @@ export function Home({
     const [heroVisible, setHeroVisible] = useState(false);
 
     /**
-     * The hero drives its own canvas rather than the app's: the studio is suspended while
+     * The hero drives its own canvas rather than the app's: the preview is unmounted while
      * this page is up, so its canvas — the usual texture source — is not mounted.
      */
     const heroCanvasRef = useRef<DesignCanvasHandle>(null);
@@ -100,27 +98,18 @@ export function Home({
 
     return (
         <div className="hm-app">
-            <header className="hm-head">
-                <button type="button" className="hm-wm" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-                    TESLA<span> STUDIO</span>
-                </button>
-                <nav className="hm-nav">
-                    <button type="button" onClick={() => onStart()}>{t.preview3d}</button>
-                    <button type="button" onClick={onOpen3DGallery}>{t.gallery3d}</button>
-                    <button type="button" onClick={onOpenGallery}>{t.community}</button>
-                    <button type="button" onClick={onToggleLanguage}>{language === 'en' ? '中文' : 'EN'}</button>
-                    <UserMenu onOpenGarage={onOpenGarage} language={language} />
-                </nav>
-            </header>
-
             <section className="hm-hero">
                 <div className="hm-hero-copy">
                     <span className="hm-pill"><i /> {t.heroBadge}</span>
                     <h1>{seo.heading}</h1>
                     <p>{total > 0 ? t.heroLead.replace('{count}', total.toLocaleString()) : seo.intro}</p>
-                    <button type="button" className="hm-cta" onClick={() => onStart()}>
-                        {t.heroCta} <ArrowRight size={16} />
-                    </button>
+                    <div className="hm-hero-actions">
+                        <AiCreateButton language={language} onClick={onOpenAICreate} variant="hero" />
+                        <button type="button" className="hm-ghost" onClick={onOpenGallery}>
+                            {t.browseWraps} <ArrowRight size={16} aria-hidden="true" />
+                        </button>
+                    </div>
+                    <p className="hm-ai-note">{t.aiCreateHint}</p>
                     <span className="hm-fine">{t.heroFine}</span>
                 </div>
                 <div className="hm-hero-car">
@@ -213,9 +202,7 @@ export function Home({
             <section className="hm-end">
                 <h2>{t.endTitle}</h2>
                 <div className="hm-end-actions">
-                    <button type="button" className="hm-cta" onClick={() => onStart()}>
-                        <Sparkles size={16} /> {t.heroCta}
-                    </button>
+                    <AiCreateButton language={language} onClick={onOpenAICreate} variant="hero" />
                     <button type="button" className="hm-ghost" onClick={onOpenGallery}>{t.community}</button>
                 </div>
                 <p className="hm-fine">© {new Date().getFullYear()} Tesla Studio · {t.heroFine}</p>

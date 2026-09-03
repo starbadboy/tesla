@@ -1,0 +1,56 @@
+/* Specificity keeps the page shells' button and spacing resets out of this CTA. */
+.ai-create-button.ai-create-button {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 7px 12px;
+  border: 1px solid #695034;
+  border-radius: 9px;
+  background: #281f17;
+  color: #f6d9af;
+  font: 600 12px/20px 'Archivo', 'Inter', sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.ai-create-button .ai-create-button__badge {
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: #ffb36b;
+  color: #402008;
+  font: 800 8px/12px 'Archivo', 'Inter', sans-serif;
+  letter-spacing: .05em;
+}
+
+.ai-create-button.ai-create-button:hover {
+  border-color: #c99759;
+  background: #39291a;
+  color: #ffe8c9;
+}
+
+.ai-create-button.ai-create-button:focus-visible {
+  outline: 2px solid #ffd3a2;
+  outline-offset: 4px;
+}
+
+.ai-create-button.ai-create-button--hero {
+  min-height: 48px;
+  padding: 13px 18px;
+  border-color: #f4c98e;
+  border-radius: 10px;
+  background: #f4c98e;
+  color: #24180a;
+  font-size: 15px;
+  box-shadow: 0 4px 24px #e3a35114;
+}
+
+.ai-create-button--hero .ai-create-button__badge { background: #332313; color: #ffe0b4; }
+.ai-create-button.ai-create-button--hero:hover { background: #ffdaa8; border-color: #ffdaa8; color: #24180a; box-shadow: 0 4px 28px #e3a35129; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-create-button.ai-create-button { transition: none; }
+}

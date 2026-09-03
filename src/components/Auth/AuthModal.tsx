@@ -62,7 +62,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTa
         if (!params.has('reset')) return;
         params.delete('reset');
         const rest = params.toString();
-        window.history.replaceState({}, '', window.location.pathname + (rest ? `?${rest}` : ''));
+        window.history.replaceState({}, '', window.location.pathname + (rest ? `?${rest}` : '') + window.location.hash);
     }, []);
 
     if (!isOpen) return null;
