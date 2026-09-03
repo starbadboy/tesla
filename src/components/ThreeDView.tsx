@@ -181,6 +181,11 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true,
             try {
                 const newCanvas = stageRef.current.getTextureCanvas();
                 if (newCanvas && newCanvas.width > 0 && newCanvas.height > 0) {
+                    // three allocates immutable GPU storage on the first upload, so a canvas of
+                    // another size would land in a corner of the old allocation and stay there.
+                    // Dropping the GPU copy makes the next upload allocate at the new size.
+                    const current = texture.image as HTMLCanvasElement;
+                    if (current.width !== newCanvas.width || current.height !== newCanvas.height) texture.dispose();
                     // eslint-disable-next-line react-hooks/immutability
                     texture.image = newCanvas;
                     texture.needsUpdate = true;
