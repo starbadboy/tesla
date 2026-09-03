@@ -9,7 +9,7 @@ const multer = require('multer');
 
 const fs = require('fs');
 const { uploadToR2, deleteFromR2, getR2KeyFromUrl, getMimeType } = require('./utils/r2');
-const { publicMatch, mayGoPrivate } = require('./utils/visibility');
+const { publicMatch } = require('./utils/visibility');
 const { GENERATION_COST } = require('./utils/packs');
 const { reserve, refund } = require('./utils/credits');
 const { buildWrapEditRequest, validateWrapEditResult } = require('./utils/wrapGeneration');
@@ -282,7 +282,7 @@ app.post('/api/wraps', upload.single('image'), async (req, res) => {
                 wrapData.prompt = prompt;
             }
             // FormData carries booleans as strings.
-            if ((isPublic === 'false' || isPublic === false) && await mayGoPrivate(req.user.id)) {
+            if (isPublic === 'false' || isPublic === false) {
                 wrapData.isPublic = false;
             }
         }
@@ -670,7 +670,7 @@ app.post('/api/generate-image', async (req, res) => {
             models: carModel ? [carModel] : [],
             source: 'ai',
             prompt: (userPrompt || '').slice(0, 500),
-            isPublic: isPublic === false ? !(await mayGoPrivate(req.user.id)) : true,
+            isPublic: isPublic !== false,
         }).save();
         res.json({ url: imageUrl, wrapId: wrap._id, saved: true, balance: balanceAfterReserve });
     } catch (err) {
