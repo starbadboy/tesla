@@ -57,10 +57,12 @@ const RENDERABLE = [
 
 const DEFAULT_MODEL = 'Model 3 (2024 Base)';
 
-/** The car this wrap should be rendered on: its own tag when we can show it. */
+/** The car this wrap should be rendered on: its own tag when we can show it, the default
+ *  for untagged wraps, and null when it is tagged only with cars we have no 3D asset for. */
 function modelFor(wrap) {
-    const tagged = (wrap.models ?? []).find(name => RENDERABLE.includes(name));
-    return tagged ?? DEFAULT_MODEL;
+    const tags = wrap.models ?? [];
+    if (tags.length === 0) return DEFAULT_MODEL;
+    return tags.find(name => RENDERABLE.includes(name)) ?? null;
 }
 
 async function main() {
@@ -84,6 +86,7 @@ async function main() {
     const query = { ...publicMatch(), type: { $in: ['car', null] }, imageUrl: { $exists: true, $ne: null } };
     if (!args.force) query.renderUrl = { $in: [null, ''] };
     let wraps = await Wrap.find(query).sort({ likes: -1, downloads: -1 }).lean();
+    wraps = wraps.filter(wrap => modelFor(wrap) !== null);
     if (args.model) wraps = wraps.filter(wrap => modelFor(wrap) === args.model);
     if (args.limit) wraps = wraps.slice(0, args.limit);
 
