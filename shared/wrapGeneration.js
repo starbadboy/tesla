@@ -7,9 +7,61 @@ export const MODEL3_REFERENCE = Object.freeze({
     downloads: 8669,
     selectedAt: '2026-09-02',
     imagePath: '/ai-references/model3-2024-base-police.png',
+    templatePath: '/assets/model3-2024-base.png',
     sourceUrl: 'https://pub-1b6bcb54b4164c7a8f42cf1ab65c9a83.r2.dev/wraps/scraped-1776258485016-_____.png',
     size: 1024,
 });
+
+// Pinned per UV layout. Never borrow an example from a different vehicle variant.
+export const MODEL_LAYOUT_REFERENCES = Object.freeze(Object.fromEntries([
+    MODEL3_REFERENCE,
+    {
+        carModel: 'Cybertruck', templatePath: '/assets/cybertruck.png', templateHeight: 768,
+        wrapId: '69df91cbef1406b21629561e', name: 'LOVE', author: 'zz', downloads: 30,
+        imagePath: '/ai-references/cybertruck-layout.png',
+        sourceUrl: 'https://pub-1b6bcb54b4164c7a8f42cf1ab65c9a83.r2.dev/wraps/scraped-1776259529869-love.png',
+    },
+    {
+        carModel: 'Model S (2021+)', templatePath: '/assets/models-2021.png',
+        wrapId: '6a0a5694405c634c7f4f015d', name: 'Vintage Stripes', author: 'Tesla Wrap Gallery', downloads: 0,
+        imagePath: '/ai-references/models-2021-layout.png',
+        sourceUrl: 'https://pub-1b6bcb54b4164c7a8f42cf1ab65c9a83.r2.dev/wraps/teslawrapgallery-models-2021-1779062420281-vintage_stripes.png',
+    },
+    {
+        carModel: 'Model S Plaid (2025+)', templatePath: '/assets/models-2025-plaid.png',
+        wrapId: '6a0a56a2405c634c7f4f0265', name: 'Vintage Stripes', author: 'Tesla Wrap Gallery', downloads: 0,
+        imagePath: '/ai-references/models-2025-plaid-layout.png',
+        sourceUrl: 'https://pub-1b6bcb54b4164c7a8f42cf1ab65c9a83.r2.dev/wraps/teslawrapgallery-models-2025-plaid-1779062433622-vintage_stripes.png',
+    },
+    {
+        carModel: 'Model X (2021+)', templatePath: '/assets/modelx-2021.png', templateKind: 'outline',
+        wrapId: '6a0a56ae405c634c7f4f02ad', name: 'Vintage Stripes', author: 'Tesla Wrap Gallery', downloads: 0,
+        imagePath: '/ai-references/modelx-2021-layout.png',
+        sourceUrl: 'https://pub-1b6bcb54b4164c7a8f42cf1ab65c9a83.r2.dev/wraps/teslawrapgallery-modelx-2021-1779062446498-vintage_stripes.png',
+    },
+    {
+        carModel: 'Model 3 (Classic)', templatePath: '/assets/model3.png',
+        wrapId: '69df8d9eef1406b216295458', name: '警察 公安', author: 'cellular', downloads: 7189,
+        imagePath: '/ai-references/model3-layout.png',
+        sourceUrl: 'https://pub-1b6bcb54b4164c7a8f42cf1ab65c9a83.r2.dev/wraps/scraped-1776258461219-_____.png',
+    },
+    {
+        carModel: 'Model Y (2025 Long Range)', templatePath: '/assets/modely-2025-premium.png',
+        wrapId: '69df8d9fef1406b21629545b', name: '警察3', author: 'cellular', downloads: 5781,
+        imagePath: '/ai-references/modely-2025-premium-layout.png',
+        sourceUrl: 'https://pub-1b6bcb54b4164c7a8f42cf1ab65c9a83.r2.dev/wraps/scraped-1776258462897-__3.png',
+    },
+    {
+        carModel: 'Model Y', templatePath: '/assets/modely.png',
+        wrapId: '69df7111ef1406b216295337', name: '警车', author: 'leslie_', downloads: 10460,
+        imagePath: '/ai-references/modely-layout.png',
+        sourceUrl: 'https://pub-1b6bcb54b4164c7a8f42cf1ab65c9a83.r2.dev/wraps/scraped-1776251151654-__.png',
+    },
+].map(reference => [reference.carModel, Object.freeze({ size: 1024, selectedAt: '2026-09-03', ...reference })])));
+
+export function getLayoutReference(carModel) {
+    return Object.hasOwn(MODEL_LAYOUT_REFERENCES, carModel) ? MODEL_LAYOUT_REFERENCES[carModel] : undefined;
+}
 
 export const REFERENCE_IMAGE_LIMITS = Object.freeze({
     count: 3,
@@ -29,30 +81,26 @@ Borrow colors, patterns, illustration style, and decorative motifs from these im
 
 /** Keep the layout instructions identical in Free, Pro, and the reference comparison. */
 export function model3TexturePrompt(theme, useReference = true, styleReferenceCount = 0) {
-    return `Create a flat 2D UV color texture for ${MODEL3_REFERENCE.carModel} by repainting image 1.
-
-IMAGE 1 — AUTHORITATIVE LAYOUT:
-This is a fixed 1024 x 1024 UV atlas. Its opaque white shapes are paintable islands; transparent gaps are reserved space. Preserve every island's exact position, outline, size, rotation, and spacing. Cover every island, including the narrow strips. Never rearrange, merge, duplicate, crop, or replace the islands. Artwork must follow each island's existing orientation, even when it appears sideways or upside down on the sheet.
-${useReference ? `
-IMAGE 2 — COMPLETED LAYOUT EXAMPLE:
-This is a completed texture for the SAME atlas. Use it only to understand the output format, artwork placement, and orientation. Image 1 always determines the geometry. Create a NEW design from the theme below. Do not copy the example's police lettering, badges, symbols, navy/white colors, or other artwork unless the theme explicitly requests them.
-` : ''}${styleReferencePrompt(styleReferenceCount, useReference ? 3 : 2)}
-OUTPUT RULES:
-Return one 1024 x 1024 square texture image, aligned pixel-for-pixel with image 1. Paint surface colors, patterns, illustrations, and explicitly requested lettering only. Keep reserved gaps plain. Do not draw a complete car, car side views, wheels, windows, headlights, perspective, studio lighting, reflections, or cast shadows. Do not add a presentation board, border, title, footer, color legend, or explanatory labels. Vehicle and racing references in the theme describe decoration, never a request to render a vehicle.
-
-DESIGN THEME (changes artwork only, never the layout):
-${JSON.stringify(theme)}`;
+    return wrapTexturePrompt(theme, MODEL3_REFERENCE.carModel, useReference, styleReferenceCount);
 }
 
 export function wrapTexturePrompt(theme, carModel, useReference = true, styleReferenceCount = 0) {
-    if (carModel === MODEL3_REFERENCE.carModel) return model3TexturePrompt(theme, useReference, styleReferenceCount);
-    return `Create a flat 2D wrap texture for ${carModel} by repainting image 1.
+    const reference = getLayoutReference(carModel);
+    const includeExample = Boolean(reference && useReference);
+    const dimensions = reference ? `a fixed ${reference.size} x ${reference.size} UV atlas` : 'a fixed UV atlas';
+    const paintable = reference?.templateKind === 'outline'
+        ? 'Thin dark lines mark the paintable body panel boundaries. The large central roof/window opening, gaps between panels, and exterior background are reserved, even where shown white. Do not reproduce template guide lines in the artwork.'
+        : 'Its white panel shapes are paintable islands; gaps are reserved space. Do not reproduce template guide lines in the artwork.';
+    return `Create a flat 2D UV color texture for ${carModel} by repainting image 1.
 
 IMAGE 1 — AUTHORITATIVE LAYOUT:
-Preserve the template's canvas proportions and every paintable panel's exact outline, position, scale, spacing, and orientation. Cover all paintable panels, including narrow strips. Keep gaps plain. Never rearrange panels or invent a new layout. Adapt artwork to each panel's orientation and keep designs consistent across adjacent panels.
-${styleReferencePrompt(styleReferenceCount, 2)}
+This is ${dimensions}. ${paintable} Preserve every island's exact position, outline, size, rotation, and spacing. Cover every island, including the narrow strips. Never rearrange, merge, duplicate, crop, or replace the islands. Artwork must follow each island's existing orientation, even when it appears sideways or upside down on the sheet.
+${includeExample ? `
+IMAGE 2 — COMPLETED LAYOUT EXAMPLE:
+This is a completed texture for the SAME ${carModel} atlas. Use it only to understand the output format, artwork placement, and orientation. Image 1 always determines the geometry. Create a NEW design from the theme below and any user style references. Do not copy this layout example's colors, lettering, badges, symbols, or other artwork unless the theme explicitly requests them. Background paint beyond the panel outlines is not a new panel.
+` : ''}${styleReferencePrompt(styleReferenceCount, includeExample ? 3 : 2)}
 OUTPUT RULES:
-Return one flat texture aligned with image 1. Paint surface colors, patterns, illustrations, and explicitly requested lettering only. Do not render a complete car, wheels, windows, headlights, perspective, reflections, or cast shadows. Do not add a presentation board, border, title, footer, color legend, or labels. Vehicle references describe decoration, not a request to render a vehicle.
+Return one ${reference ? `${reference.size} x ${reference.size} square` : 'flat'} texture image, aligned pixel-for-pixel with image 1. Paint surface colors, patterns, illustrations, and explicitly requested lettering only. Keep reserved gaps plain. Do not draw a complete car, car side views, wheels, windows, headlights, perspective, studio lighting, reflections, or cast shadows. Do not add a presentation board, border, title, footer, color legend, or explanatory labels. Vehicle and racing references in the theme describe decoration, never a request to render a vehicle.
 
 DESIGN THEME (changes artwork only, never the layout):
 ${JSON.stringify(theme)}`;

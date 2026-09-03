@@ -13,8 +13,8 @@ import { OptionMenu } from '../ui/OptionMenu';
 import { WRAP_PRESETS, gradientCss, gradientToDataUrl } from '../TeslaStudio/wraps';
 import { CAR_3D_MODELS, CAR_MODELS } from '../../constants';
 import { TRANSLATIONS } from '../../translations';
-import { generateImage } from '../../utils/aiImage';
-import { MODEL3_REFERENCE } from '../../../shared/wrapGeneration';
+import { generateImage, loadGenerationTemplate } from '../../utils/aiImage';
+import { getLayoutReference } from '../../../shared/wrapGeneration';
 import { fetchMyGenerations, fetchOrder, saveGeneration } from '../../utils/wrapApi';
 import { BuyCreditsModal } from './BuyCreditsModal';
 import { ReferenceImagesInput } from './ReferenceImagesInput';
@@ -197,7 +197,7 @@ export function WrapEditor({
     const [referenceImages, setReferenceImages] = useState<ReferenceImage[]>([]);
     const [preparingReferences, setPreparingReferences] = useState(false);
     const [useReference, setUseReference] = useState(true);
-    const hasLayoutReference = currentModelName === MODEL3_REFERENCE.carModel;
+    const layoutReference = getLayoutReference(currentModelName);
     const [aiError, setAiError] = useState<string | null>(null);
     // Only designers who have bought credits may keep a generation out of the gallery.
     const canGoPrivate = Boolean(user?.hasPurchased);
@@ -287,18 +287,10 @@ export function WrapEditor({
         try {
             // The template goes along as the input image so the generator lays the design
             // out on the real panels instead of inventing its own sheet.
-            const response = await fetch(CAR_MODELS[currentModelName]);
-            if (!response.ok) throw new Error('Could not load the wrap template. Please try again.');
-            const blob = await response.blob();
-            const templateBase64 = await new Promise<string>((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result as string);
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-            });
+            const templateBase64 = await loadGenerationTemplate(currentModelName);
 
             const isPublic = canGoPrivate ? shareToGallery : true;
-            const { url, saved } = await generateImage(designPrompt, templateBase64, currentModelName, provider, isPublic, hasLayoutReference && useReference, referenceImages.map(image => image.dataUrl));
+            const { url, saved } = await generateImage(designPrompt, templateBase64, currentModelName, provider, isPublic, Boolean(layoutReference) && useReference, referenceImages.map(image => image.dataUrl));
             setGenerations(current => [{ url, prompt: designPrompt }, ...current]);
             await onLoadWrap(url, { model: currentModelName, name: designPrompt.slice(0, 40) });
             // Pro is saved by the server; Free is saved from here. Best effort: a save that
@@ -468,17 +460,18 @@ export function WrapEditor({
                             </button>
                         </div>
 
-                        {hasLayoutReference && (
+                        {layoutReference && (
                             <div className="we-reference">
                                 <label className="we-check">
                                     <input type="checkbox" checked={useReference} disabled={generating} onChange={e => setUseReference(e.target.checked)} />
                                     {t.useLayoutReference}
                                 </label>
                                 <div className="we-reference-preview">
-                                    <img src={MODEL3_REFERENCE.imagePath} alt={MODEL3_REFERENCE.name} />
+                                    <img src={layoutReference.imagePath} alt={`${currentModelName} · ${layoutReference.name}`} />
                                     <div>
-                                        <strong>{MODEL3_REFERENCE.name}</strong>
-                                        <span>{MODEL3_REFERENCE.author} · {MODEL3_REFERENCE.downloads.toLocaleString()} {t.referenceDownloads}</span>
+                                        <strong>{layoutReference.name}</strong>
+                                        <span>{currentModelName}</span>
+                                        <span>{layoutReference.author}{layoutReference.downloads > 0 && ` · ${layoutReference.downloads.toLocaleString()} ${t.referenceDownloads}`}</span>
                                     </div>
                                 </div>
                                 <p>{t.layoutReferenceHint}</p>
