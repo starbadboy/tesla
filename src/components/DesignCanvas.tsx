@@ -297,9 +297,16 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
     // Internal ref to the Stage
     const stageRef = useRef<Konva.Stage>(null);
 
-    // Scale state
-    const [scale, setScale] = useState(1);
     const [dimensions, setDimensions] = useState({ width: 2048, height: 2048 }); // Default high-res
+    const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
+    // Derived, not stored: a stored scale lagged a render behind a dimensions change, and
+    // the 3D view sampled that frame as a crop of the wrong size.
+    const scale = stageSize.width && stageSize.height
+        ? Math.min(stageSize.width / dimensions.width, stageSize.height / dimensions.height) * 0.9 * zoom
+        : 1;
+    // True once dimensions reflect the loaded template rather than the placeholder.
+    const templateReady = canvasType === 'plate'
+        || Boolean(maskImage && dimensions.width === maskImage.width && dimensions.height === maskImage.height);
 
     useImperativeHandle(ref, () => ({
         clearLines: () => {
@@ -312,7 +319,7 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
         getStage: () => stageRef.current,
         getTextureCanvas: () => {
             const stage = stageRef.current;
-            if (!stage) return null;
+            if (!stage || !templateReady) return null;
 
             // 1. Hide Overlays and UI. The white backdrop goes too: for the 3D
             // texture, anything the wrap art doesn't cover must stay transparent so
@@ -636,13 +643,8 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
      * until the mask exists: dimensions starts at a placeholder and is set an effect later,
      * so a sheet present at mount used to be fitted to 2048 and ended up twice the canvas.
      */
-    const fitTarget = canvasType === 'plate'
-        || (maskImage && dimensions.width === maskImage.width && dimensions.height === maskImage.height)
-        ? dimensions
-        : undefined;
+    const fitTarget = templateReady ? dimensions : undefined;
 
-    // Layout state
-    const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
     const containerRef = useRef<HTMLDivElement>(null);
 
     // Handle responsive scaling and sizing using ResizeObserver
@@ -653,18 +655,12 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
             for (const entry of entries) {
                 const { width, height } = entry.contentRect;
                 setStageSize({ width, height });
-
-                const scaleX = width / dimensions.width;
-                const scaleY = height / dimensions.height;
-                const fitScale = Math.min(scaleX, scaleY) * 0.9 * zoom;
-
-                setScale(fitScale);
             }
         });
 
         resizeObserver.observe(containerRef.current);
         return () => resizeObserver.disconnect();
-    }, [dimensions, zoom]);
+    }, []);
 
     useEffect(() => { onScaleChange?.(scale); }, [scale, onScaleChange]);
 
