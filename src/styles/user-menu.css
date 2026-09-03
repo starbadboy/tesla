@@ -1,0 +1,151 @@
+/* Explicitly scoped styles keep the navigation resets and Tailwind theme from
+   flattening the account menu on either the home page or the preview page. */
+.account-menu {
+  position: relative;
+  flex: none;
+  font-family: 'Archivo', 'Inter', -apple-system, system-ui, sans-serif;
+  color: #f2f2f4;
+}
+
+.account-menu .account-menu__trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 44px;
+  height: 44px;
+  padding: 4px;
+  border: 0;
+  border-radius: 24px;
+  background: transparent;
+  color: #a1a1aa;
+  cursor: pointer;
+}
+
+.account-menu .account-menu__avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid #45454d;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #36363e, #25252b);
+  color: #f4f4f5;
+  font: 600 13px/1 'Archivo', 'Inter', sans-serif;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+.account-menu .account-menu__trigger:hover .account-menu__avatar,
+.account-menu .account-menu__trigger[aria-expanded="true"] .account-menu__avatar {
+  border-color: #777782;
+  background: #3c3c44;
+}
+
+.account-menu .account-menu__caret { transition: transform 160ms ease; }
+.account-menu .account-menu__trigger[aria-expanded="true"] .account-menu__caret { transform: rotate(180deg); }
+
+.account-menu .account-menu__trigger:focus-visible {
+  outline: 2px solid #d4d4d8;
+  outline-offset: 3px;
+}
+
+.account-menu .account-menu__panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 30;
+  box-sizing: border-box;
+  width: min(296px, calc(100vw - 24px));
+  max-height: calc(100dvh - 84px);
+  overflow-y: auto;
+  padding: 10px;
+  border: 1px solid #34343b;
+  border-radius: 18px;
+  background: #19191d;
+  color: #f2f2f4;
+  box-shadow: 0 20px 60px #0008, 0 4px 16px #0004;
+  text-align: left;
+  animation: account-menu-enter 140ms ease-out;
+  transform-origin: top right;
+  scrollbar-width: thin;
+  scrollbar-color: #45454d #19191d;
+}
+
+.account-menu .account-menu__identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 8px 18px;
+}
+
+.account-menu .account-menu__avatar--large { width: 42px; height: 42px; font-size: 16px; }
+.account-menu .account-menu__details { min-width: 0; }
+
+.account-menu .account-menu__name,
+.account-menu .account-menu__email {
+  overflow: hidden;
+  margin: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-menu .account-menu__name { color: #f4f4f5; font-size: 14px; font-weight: 600; line-height: 22px; }
+.account-menu .account-menu__email { margin-top: 2px; color: #9c9ca6; font-size: 12px; line-height: 18px; }
+
+.account-menu .account-menu__balance {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #34343b;
+  border-radius: 11px;
+  background: #242429;
+}
+
+.account-menu .account-menu__balance-label { display: flex; align-items: center; gap: 8px; color: #b6b6bf; font-size: 12px; line-height: 20px; }
+.account-menu .account-menu__balance-label svg { color: #d4d4dc; }
+.account-menu .account-menu__balance-value { display: flex; align-items: baseline; gap: 6px; font-size: 11px; color: #a1a1ac; }
+.account-menu .account-menu__balance-value strong { color: #f4f4f5; font-size: 20px; font-weight: 600; line-height: 24px; font-variant-numeric: tabular-nums; }
+
+.account-menu .account-menu__actions { padding-top: 8px; }
+
+.account-menu .account-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #dcdce2;
+  font: 500 13px/20px 'Archivo', 'Inter', sans-serif;
+  text-align: left;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
+}
+
+.account-menu .account-menu__item svg { flex: none; color: #94949f; }
+.account-menu .account-menu__item .account-menu__arrow { margin-left: auto; color: #71717e; }
+.account-menu .account-menu__item:hover { background: #2b2b32; color: #fff; }
+.account-menu .account-menu__item:focus-visible { background: #2b2b32; outline: 1px solid #858591; outline-offset: -1px; color: #fff; }
+.account-menu .account-menu__item--logout { margin-top: 5px; border-top: 1px solid #303037; border-radius: 0 0 9px 9px; color: #b3a3a6; }
+.account-menu .account-menu__item--logout svg { color: #a39196; }
+.account-menu .account-menu__item--logout:hover,
+.account-menu .account-menu__item--logout:focus-visible { background: #38282e; color: #f2b0bb; }
+
+@keyframes account-menu-enter {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .account-menu .account-menu__panel { animation: none; }
+  .account-menu .account-menu__avatar,
+  .account-menu .account-menu__caret,
+  .account-menu .account-menu__item { transition: none; }
+}
