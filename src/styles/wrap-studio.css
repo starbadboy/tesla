@@ -440,3 +440,14 @@
   .ws-foot > div { gap: 6px; }
   .ws-rotate { font-size: 10.5px; letter-spacing: .06em; }
 }
+
+@media (max-width: 600px) {
+  .ws-head { flex: none; flex-wrap: wrap; height: auto; padding: 10px 16px 6px; gap: 2px; }
+  .ws-wm { font-size: 11px; white-space: nowrap; }
+  .ws-nav { width: 100%; margin-left: 0; justify-content: space-between; gap: 8px; }
+  .ws-nav > button { white-space: nowrap; }
+}
+
+@media (max-width: 380px) {
+  .ws-nav { font-size: 11px; gap: 6px; }
+}
