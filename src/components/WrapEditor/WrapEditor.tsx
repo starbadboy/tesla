@@ -200,9 +200,8 @@ export function WrapEditor({
     const [useReference, setUseReference] = useState(true);
     const layoutReference = getLayoutReference(currentModelName);
     const [aiError, setAiError] = useState<string | null>(null);
-    // Only designers who have bought credits may keep a generation out of the gallery.
-    const canGoPrivate = Boolean(user?.hasPurchased);
-    const [shareToGallery, setShareToGallery] = useState(true);
+    // Generations stay private unless the designer opts into the gallery.
+    const [shareToGallery, setShareToGallery] = useState(false);
     const [authOpen, setAuthOpen] = useState(false);
     const [buyOpen, setBuyOpen] = useState(false);
     const [purchaseNotice, setPurchaseNotice] = useState<string | null>(() => {
@@ -293,8 +292,7 @@ export function WrapEditor({
             // out on the real panels instead of inventing its own sheet.
             const templateBase64 = await loadGenerationTemplate(currentModelName);
 
-            const isPublic = canGoPrivate ? shareToGallery : true;
-            const { url, saved } = await generateImage(designPrompt, templateBase64, currentModelName, provider, isPublic, Boolean(layoutReference) && useReference, referenceImages.map(image => image.dataUrl));
+            const { url, saved } = await generateImage(designPrompt, templateBase64, currentModelName, provider, shareToGallery, Boolean(layoutReference) && useReference, referenceImages.map(image => image.dataUrl));
             setGenerations(current => [{ url, prompt: designPrompt }, ...current]);
             await onLoadWrap(url, { model: currentModelName, name: designPrompt.slice(0, 40) });
             // Pro is saved by the server; Free is saved from here. Best effort: a save that
@@ -303,7 +301,7 @@ export function WrapEditor({
             if (isAuthenticated && saved !== false) {
                 try {
                     if (provider === 'puter') {
-                        await saveGeneration({ url, prompt: designPrompt, model: currentModelName, isPublic });
+                        await saveGeneration({ url, prompt: designPrompt, model: currentModelName, isPublic: shareToGallery });
                     }
                     setGenerations(toGenerations(await fetchMyGenerations()));
                 } catch (error) {
@@ -483,18 +481,14 @@ export function WrapEditor({
                         )}
 
                         {isAuthenticated && (
-                            <>
-                                <label className={`we-check ${canGoPrivate ? '' : 'is-locked'}`}>
-                                    <input
-                                        type="checkbox"
-                                        checked={canGoPrivate ? shareToGallery : true}
-                                        disabled={!canGoPrivate}
-                                        onChange={e => setShareToGallery(e.target.checked)}
-                                    />
-                                    {t.shareToGallery}
-                                </label>
-                                {!canGoPrivate && <p className="we-hint">{t.unlockPrivate}</p>}
-                            </>
+                            <label className="we-check">
+                                <input
+                                    type="checkbox"
+                                    checked={shareToGallery}
+                                    onChange={e => setShareToGallery(e.target.checked)}
+                                />
+                                {t.shareToGallery}
+                            </label>
                         )}
 
                         {purchaseNotice && <p className="we-notice">{purchaseNotice}</p>}

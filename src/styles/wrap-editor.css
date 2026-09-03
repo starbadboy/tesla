@@ -350,7 +350,6 @@
   cursor: pointer;
 }
 .we-check input { accent-color: var(--we-accent); }
-.we-check.is-locked { color: var(--we-ink-4); cursor: not-allowed; }
 .we-hint {
   margin-top: -6px;
   font: 400 11.5px 'Archivo', sans-serif;
