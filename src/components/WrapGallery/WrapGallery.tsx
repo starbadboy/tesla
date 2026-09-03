@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { CAR_MODELS } from '../../constants';
 import { OptionMenu } from '../ui/OptionMenu';
+import { GalleryViewSwitch } from '../ui/GalleryViewSwitch';
 import { TRANSLATIONS } from '../../translations';
 import { useAuth } from '../../contexts/AuthContext';
 import {
@@ -30,7 +31,6 @@ export interface WrapGalleryProps {
     selectedModel?: string;
     refreshTrigger?: number;
     language?: 'en' | 'zh';
-    onToggleLanguage?: () => void;
     /** 'garage' lists the signed-in user's own uploads and liked wraps. */
     view?: 'community' | 'garage';
     /** Load the wrap into the studio (and close this page), switching car if given. */
@@ -71,7 +71,7 @@ function WrapThumb({ wrap, alt }: { wrap: Wrap; alt: string }) {
 }
 
 export function WrapGallery({
-    type, selectedModel, refreshTrigger = 0, language = 'en', onToggleLanguage,
+    type, selectedModel, refreshTrigger = 0, language = 'en',
     view = 'community', onLoadWrap, onClose,
 }: WrapGalleryProps) {
     const t = TRANSLATIONS[language];
@@ -141,16 +141,15 @@ export function WrapGallery({
         return () => { cancelled = true; };
     }, [type, sortBy, query, serverModel, refreshTrigger, isGarage, garageTab]);
 
-    // Escape closes the detail view first, then the page.
+    // Escape dismisses details; the gallery itself is a regular page.
     useEffect(() => {
         const onKey = (e: KeyboardEvent) => {
             if (e.key !== 'Escape' || commentsFor) return;
             if (openId) setOpenId(null);
-            else onClose();
         };
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
-    }, [openId, commentsFor, onClose]);
+    }, [openId, commentsFor]);
 
     // Next pages, pulled in as the end of the grid approaches.
     useEffect(() => {
@@ -274,20 +273,7 @@ export function WrapGallery({
     const canManage = (wrap: Wrap) => Boolean(user?.isAdmin || (user?.id && user.id === ownerId(wrap)));
 
     return (
-        <div className="wg-app" role="dialog" aria-modal="true" aria-label={t.community}>
-            <div className="wg-head">
-                <div className="wg-wm">TESLA<span> STUDIO</span></div>
-                <nav className="wg-nav">
-                    <button type="button" onClick={onClose}>{t.preview3d}</button>
-                    <span className="wg-on">{t.community}</span>
-                    {onToggleLanguage && (
-                        <button type="button" onClick={onToggleLanguage}>
-                            {language === 'en' ? '中文' : 'EN'}
-                        </button>
-                    )}
-                </nav>
-            </div>
-
+        <div className="wg-app" aria-label={isGarage ? t.myGarage : t.exploreWraps}>
             <div className="wg-wrap">
                 {open ? (
                     <>
@@ -345,12 +331,11 @@ export function WrapGallery({
                     </>
                 ) : (
                     <>
-                        <h1>
-                            {isGarage
-                                ? t.myGarage
-                                : type === 'sound' ? t.galleryTitleSound
-                                    : type === 'plate' ? t.galleryTitlePlate : t.galleryTitle}
-                        </h1>
+                        <div className="wg-titlebar">
+                            <h1>{isGarage ? t.myGarage : type === 'sound' ? t.galleryTitleSound
+                                : type === 'plate' ? t.galleryTitlePlate : t.exploreWraps}</h1>
+                            {!isGarage && type === 'car' && <GalleryViewSwitch view="grid" language={language} />}
+                        </div>
                         {isGarage ? (
                             <div className="wg-tabs" role="tablist">
                                 <button
@@ -504,8 +489,8 @@ export function WrapGallery({
                 isOpen={Boolean(commentsFor)}
                 onClose={() => setCommentsFor(null)}
                 wrap={commentsFor}
-                onLoadWrap={url => {
-                    if (commentsFor) void onLoadWrap(url, { model: targetModel(commentsFor), name: commentsFor.name });
+                onLoadWrap={async url => {
+                    if (commentsFor) await onLoadWrap(url, { model: targetModel(commentsFor), name: commentsFor.name });
                     onClose();
                 }}
                 onUpdate={updated => setWraps(prev => prev.map(w => (w._id === updated._id ? { ...w, ...updated } : w)))}

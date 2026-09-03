@@ -350,25 +350,11 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
                 if (bgNode) bgNode.show();
                 transformers.forEach(t => t.show());
 
-                // 2. Cut the space outside the template panels, so the car keeps its
-                // factory finish there. The thin strips the template lays out separately
-                // (A-pillars, roof rails, B-pillar covers) stay in: Tesla maps real body
-                // geometry onto them, and cutting them left the pillars in factory paint.
-                if (!maskImage) return baseCanvas;
-                const cuts = [maskImage];
-
-                const resultCanvas = document.createElement('canvas');
-                resultCanvas.width = baseCanvas.width;
-                resultCanvas.height = baseCanvas.height;
-                const ctx = resultCanvas.getContext('2d');
-                if (!ctx) return baseCanvas;
-
-                ctx.drawImage(baseCanvas, 0, 0);
-                ctx.globalCompositeOperation = 'destination-out';
-                for (const cut of cuts) {
-                    ctx.drawImage(cut, 0, 0, resultCanvas.width, resultCanvas.height);
-                }
-                return resultCanvas;
+                // Nothing is cut from the sheet, as on teslawrapgallery.com. No body
+                // geometry maps outside the panels, and Tesla's tint markers (belt strips,
+                // handles, mirror caps) sit on the panel outlines, where a mask cut
+                // bled transparency into the texel and left them in factory paint.
+                return baseCanvas;
             } catch (e) {
                 console.error("Error generating texture canvas:", e);
                 // Restore visibility in case of error

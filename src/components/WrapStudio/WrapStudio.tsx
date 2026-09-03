@@ -5,14 +5,12 @@ import { DesignCanvas, type DesignCanvasHandle, type LayerTransform } from '../D
 import { ThreeDView } from '../ThreeDView';
 import { CAR_3D_MODELS, CAR_MODELS, FACTORY_PAINT } from '../../constants';
 import { TRANSLATIONS } from '../../translations';
-import { UserMenu } from '../Auth/UserMenu';
 import { fetchWraps, hasThreeD, wrapFlags, type SortOption } from '../../utils/wrapApi';
 import type { Wrap } from '../Gallery';
 import '../../styles/wrap-studio.css';
 
 export interface WrapStudioProps {
     language: 'en' | 'zh';
-    onToggleLanguage: () => void;
     currentModelName: string;
     onModelChange: (name: string) => void;
     /** Wrap texture currently loaded into the canvas, if any. */
@@ -26,19 +24,9 @@ export interface WrapStudioProps {
     onLayerTransformsChange: (t: Record<string, LayerTransform>) => void;
     selectedLayerId: string | null;
     onSelectedLayerIdChange: (id: string | null) => void;
-    onShare: () => void;
     onExport: () => void;
     onOpenGallery: () => void;
-    onOpenGarage: () => void;
-    onOpen3DGallery: () => void;
     onOpenEditor: () => void;
-    onOpenHome: () => void;
-    /**
-     * Set while a full-screen surface (editor, gallery) is open. Two ThreeDViews share one
-     * cached GLTF scene, so both rewrite the same meshes' materials and the visible car
-     * ends up half painted by the hidden one. Only one 3D stage may live at a time.
-     */
-    suspended?: boolean;
     onLoadCommunityWrap: (url: string, wrap?: { model?: string; name?: string }) => void | Promise<void>;
     communityRefreshTrigger?: number;
     children?: ReactNode;
@@ -64,13 +52,12 @@ function ShelfThumb({ wrap }: { wrap: Wrap }) {
 }
 
 export function WrapStudio({
-    language, onToggleLanguage,
+    language,
     currentModelName, onModelChange,
     singleLayer, loadedWrapName, isWrapVisible, onIsWrapVisibleChange,
     canvasRef, layerTransforms, onLayerTransformsChange,
     selectedLayerId, onSelectedLayerIdChange,
-    onShare, onExport, onOpenGallery, onOpenGarage, onOpen3DGallery, onOpenEditor, onOpenHome, onLoadCommunityWrap,
-    suspended = false,
+    onExport, onOpenGallery, onOpenEditor, onLoadCommunityWrap,
     communityRefreshTrigger = 0,
     children,
 }: WrapStudioProps) {
@@ -130,7 +117,7 @@ export function WrapStudio({
                         {!singleLayer && <div className="ws-flat-sub">{t.pick2dPreview}</div>}
                     </div>
                 )}
-                {model3dPath && !suspended && (
+                {model3dPath && (
                     <ThreeDView
                         stageRef={canvasRef}
                         modelPath={model3dPath}
@@ -148,7 +135,7 @@ export function WrapStudio({
 
             {/* Hidden 2D canvas — ThreeDView samples the wrap texture off it. Unmounted
                 along with the stage so the open surface owns the shared canvas ref. */}
-            {!suspended && <div className="ws-texture-src" aria-hidden="true">
+            <div className="ws-texture-src" aria-hidden="true">
                 <DesignCanvas
                     ref={canvasRef}
                     modelPath={CAR_MODELS[currentModelName]}
@@ -164,19 +151,6 @@ export function WrapStudio({
                     canvasType="car"
                     plateSize="420x200"
                 />
-            </div>}
-
-            <div className="ws-head">
-                <div className="ws-wm">TESLA<span> STUDIO</span></div>
-                <nav className="ws-nav">
-                    <button type="button" onClick={onOpenHome}>{t.home}</button>
-                    <span className="ws-on">{t.preview3d}</span>
-                    <button type="button" onClick={onOpen3DGallery}>{t.gallery3d}</button>
-                    <button type="button" onClick={onOpenGallery}>{t.community}</button>
-                    <button type="button" onClick={onToggleLanguage}>{language === 'en' ? '中文' : 'EN'}</button>
-                    {/* Sign in / account. UserMenu carries its own AuthModal. */}
-                    <UserMenu onOpenGarage={onOpenGarage} language={language} />
-                </nav>
             </div>
 
             <div className="ws-title">
@@ -287,10 +261,9 @@ export function WrapStudio({
                         onClick={onOpenEditor}
                         title={t.uploadHint}
                     >
-                        <Pencil size={14} /> {t.designStudio}
+                        <Pencil size={14} /> {singleLayer ? t.editWrap : t.importWrap}
                     </button>
-                    <button type="button" className="ws-btn ws-ghost" onClick={onShare}>{t.share}</button>
-                    <button type="button" className="ws-btn" onClick={onExport}>{t.export} ↓</button>
+                    <button type="button" className="ws-btn" onClick={onExport} disabled={!singleLayer}>{t.exportWrap} ↓</button>
                 </div>
             </div>
 

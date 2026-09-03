@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
-import { ArrowLeft, Download } from 'lucide-react';
+import { Download } from 'lucide-react';
 import { DesignCanvas, type DesignCanvasHandle, type LayerTransform } from '../DesignCanvas';
 import { ThreeDView } from '../ThreeDView';
 import { OptionMenu } from '../ui/OptionMenu';
+import { GalleryViewSwitch } from '../ui/GalleryViewSwitch';
 import { CAR_3D_MODELS, CAR_MODELS } from '../../constants';
 import { TRANSLATIONS } from '../../translations';
 import { downloadWrap, fetchWraps } from '../../utils/wrapApi';
@@ -25,7 +26,6 @@ export interface Gallery3DProps {
     selectedLayerId: string | null;
     onSelectedLayerIdChange: (id: string | null) => void;
     onLoadCommunityWrap: (url: string, wrap?: { model?: string; name?: string }) => void | Promise<void>;
-    onClose: () => void;
     refreshTrigger?: number;
 }
 
@@ -42,7 +42,7 @@ export function Gallery3D({
     singleLayer, loadedWrapName, isWrapVisible, onIsWrapVisibleChange,
     canvasRef, layerTransforms, onLayerTransformsChange,
     selectedLayerId, onSelectedLayerIdChange,
-    onLoadCommunityWrap, onClose, refreshTrigger = 0,
+    onLoadCommunityWrap, refreshTrigger = 0,
 }: Gallery3DProps) {
     const t = TRANSLATIONS[language];
     const model3dPath = CAR_3D_MODELS[currentModelName] ?? null;
@@ -105,12 +105,6 @@ export function Gallery3D({
         return () => { done = true; observer.disconnect(); };
     }, [wraps, total, loading, currentModelName]);
 
-    useEffect(() => {
-        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-        window.addEventListener('keydown', onKey);
-        return () => window.removeEventListener('keydown', onKey);
-    }, [onClose]);
-
     const active = wraps.find(w => w._id === activeId) ?? null;
 
     const handlePick = async (wrap: Wrap) => {
@@ -122,11 +116,11 @@ export function Gallery3D({
 
     return (
         <div className="g3-app">
+            <header className="g3-heading">
+                <h1>{t.exploreWraps}</h1>
+                <GalleryViewSwitch view="3d" language={language} />
+            </header>
             <aside className="g3-rail">
-                <button type="button" className="g3-back" onClick={onClose}>
-                    <ArrowLeft size={16} /> {t.preview3d}
-                </button>
-
                 <div className="g3-vehicle">
                     <span className="g3-label">{t.modelSelection}</span>
                     <OptionMenu

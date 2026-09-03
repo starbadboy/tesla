@@ -20,10 +20,11 @@
   --g3-ink-4: #6a6a72;
 
   position: fixed;
-  inset: 0;
+  inset: var(--site-header-height) 0 0;
   z-index: 70;
   display: grid;
   grid-template-columns: 300px minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   background: var(--g3-bg);
   color: var(--g3-ink-2);
   font-family: 'Archivo', 'Inter', -apple-system, system-ui, sans-serif;
@@ -31,6 +32,9 @@
 }
 
 .g3-app button { font-family: inherit; }
+
+.g3-heading { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; padding: 24px 32px; border-bottom: 1px solid var(--g3-line); }
+.g3-heading h1 { font: 700 28px 'Archivo', sans-serif; color: var(--g3-ink-1); }
 
 /* ============ RAIL ============ */
 .g3-rail {
@@ -41,20 +45,7 @@
   border-right: 1px solid var(--g3-line);
 }
 
-.g3-back {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 20px 22px;
-  border: none;
-  background: none;
-  color: var(--g3-ink-2);
-  font: 500 14px 'Archivo', sans-serif;
-  cursor: pointer;
-}
-.g3-back:hover { color: #fff; }
-
-.g3-vehicle { padding: 4px 22px 18px; border-bottom: 1px solid var(--g3-line); }
+.g3-vehicle { padding: 18px 22px; border-bottom: 1px solid var(--g3-line); }
 .g3-label {
   display: block;
   margin-bottom: 10px;
@@ -197,15 +188,17 @@
 .g3-download:hover { background: #fff; }
 
 @media (max-width: 860px) {
-  .g3-app { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
+  .g3-app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; }
   .g3-rail {
-    grid-row: 2;
+    grid-row: 3;
     border-right: none;
     border-top: 1px solid var(--g3-line);
     max-height: 46vh;
   }
-  .g3-back { padding: 12px 16px; }
-  .g3-vehicle { padding: 0 16px 12px; }
+  .g3-heading { padding: 18px 20px; gap: 12px; }
+  .g3-heading h1 { font-size: 26px; }
+  .g3-stage { grid-row: 2; }
+  .g3-vehicle { padding: 12px 16px; }
   .g3-list { flex-direction: row; overflow-x: auto; overflow-y: hidden; }
   .g3-card { flex: 0 0 168px; }
   .g3-thumb { height: 104px; }

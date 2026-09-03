@@ -1,0 +1,5 @@
+.gallery-views.gallery-views { display: inline-flex; flex: none; align-items: center; gap: 4px; padding: 4px; border: 1px solid #303036; border-radius: 10px; background: #141417; }
+.gallery-views a { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 36px; padding: 7px 12px; border-radius: 7px; color: #94949e; text-decoration: none; font: 500 12px/20px 'Archivo', 'Inter', sans-serif; white-space: nowrap; }
+.gallery-views a:hover { color: #f4f4f6; background: #242429; }
+.gallery-views a[aria-current="page"] { color: #f4f4f6; background: #303036; }
+.gallery-views a:focus-visible { outline: 2px solid #d4d4dc; outline-offset: 1px; }

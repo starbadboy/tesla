@@ -13,6 +13,8 @@ import { SEO_COPY, SITE_IMAGE, SITE_URL } from './seo';
 import { WrapStudio } from './components/WrapStudio/WrapStudio';
 import { FACTORY_PAINT } from './constants';
 import { proxiedMediaUrl } from './utils/wrapApi';
+import { SiteHeader } from './components/ui/SiteHeader';
+import { navigate, useAppPage } from './utils/navigation';
 
 /**
  * A newly loaded sheet starts from a clean transform. DesignCanvas fits each image to
@@ -22,6 +24,8 @@ import { proxiedMediaUrl } from './utils/wrapApi';
 const FRESH_LAYER = { 'Full Wrap': { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1 } };
 
 function App() {
+  const page = useAppPage();
+  const isEditing = page === 'create' || page === 'edit';
   const [currentModelName, setCurrentModelName] = useState('Model 3 (2024 Base)');
 
   const [singleLayer, setSingleLayer] = useState<string | null>(null);
@@ -43,12 +47,6 @@ function App() {
   const [shareImageBlob, setShareImageBlob] = useState<string | null>(null);
   const [isWrapVisible, setIsWrapVisible] = useState(true);
   const [galleryRefreshTrigger, setGalleryRefreshTrigger] = useState(0);
-  const [isGalleryOpen, setIsGalleryOpen] = useState(false);
-  const [is3DGalleryOpen, setIs3DGalleryOpen] = useState(false);
-  // Stripe sends the designer back to the root with ?checkout=…; the editor owns that flow.
-  const [isEditorOpen, setIsEditorOpen] = useState(() => new URLSearchParams(window.location.search).has('checkout'));
-  const [isHomeOpen, setIsHomeOpen] = useState(false);
-  const [galleryView, setGalleryView] = useState<'community' | 'garage'>('community');
 
   const canvasRef = useRef<DesignCanvasHandle>(null);
 
@@ -210,138 +208,132 @@ function App() {
   return (
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
       <AuthProvider>
-        {/* SEO-only content; hidden from sighted users */}
-        <section className="sr-only" aria-labelledby="seo-heading">
-          <h1 id="seo-heading">{seo.heading}</h1>
-          <p>{seo.intro}</p>
-          <h2>Features</h2>
-          <ul>
-            {seo.features.map(feature => (
-              <li key={feature}>{feature}</li>
+        <div className={`site-shell${isEditing ? ' is-editing' : ''}`}>
+          {!isEditing && <SiteHeader page={page} language={language} onToggleLanguage={toggleLanguage} />}
+          {/* SEO-only content; hidden from sighted users */}
+          <section className="sr-only" aria-labelledby="seo-heading">
+            <h1 id="seo-heading">{seo.heading}</h1>
+            <p>{seo.intro}</p>
+            <h2>Features</h2>
+            <ul>
+              {seo.features.map(feature => (
+                <li key={feature}>{feature}</li>
+              ))}
+            </ul>
+            <h2>What Tesla Studio does</h2>
+            <p>
+              Tesla Studio supports 3D wrap preview on Model 3, Model S, Model X, Model Y and Cybertruck,
+              uploading your own full-wrap sheet, browsing and downloading community wraps, and sharing your
+              own designs.
+            </p>
+            <img src={SITE_IMAGE} alt="Tesla Studio 3D wrap preview" />
+            <h2>Frequently asked questions</h2>
+            {seo.faq.map(item => (
+              <article key={item.question}>
+                <h3>{item.question}</h3>
+                <p>{item.answer}</p>
+              </article>
             ))}
-          </ul>
-          <h2>What Tesla Studio does</h2>
-          <p>
-            Tesla Studio supports 3D wrap preview on Model 3, Model S, Model X, Model Y and Cybertruck,
-            uploading your own full-wrap sheet, browsing and downloading community wraps, and sharing your
-            own designs.
-          </p>
-          <img src={SITE_IMAGE} alt="Tesla Studio 3D wrap preview" />
-          <h2>Frequently asked questions</h2>
-          {seo.faq.map(item => (
-            <article key={item.question}>
-              <h3>{item.question}</h3>
-              <p>{item.answer}</p>
-            </article>
-          ))}
-        </section>
+          </section>
 
-        <WrapStudio
-          language={language}
-          onToggleLanguage={toggleLanguage}
-          currentModelName={currentModelName}
-          onModelChange={handleModelChange}
-          singleLayer={singleLayer}
-          loadedWrapName={loadedWrapName}
-          selectedLayerId={selectedLayerId}
-          onSelectedLayerIdChange={setSelectedLayerId}
-          layerTransforms={layerTransforms}
-          onLayerTransformsChange={setLayerTransforms}
-          isWrapVisible={isWrapVisible}
-          onIsWrapVisibleChange={setIsWrapVisible}
-          canvasRef={canvasRef}
-          onShare={handleOpenShareModal}
-          onExport={handleExport}
-          onOpenGallery={() => { setGalleryView('community'); setIsGalleryOpen(true); }}
-          onOpenGarage={() => { setGalleryView('garage'); setIsGalleryOpen(true); }}
-          onOpen3DGallery={() => setIs3DGalleryOpen(true)}
-          onOpenEditor={() => setIsEditorOpen(true)}
-          onOpenHome={() => setIsHomeOpen(true)}
-          // One 3D stage at a time: two views share the cached GLTF scene and would
-          // rewrite the same meshes' materials.
-          suspended={isEditorOpen || is3DGalleryOpen || isHomeOpen}
-          onLoadCommunityWrap={handleLoadCommunityWrap}
-          communityRefreshTrigger={galleryRefreshTrigger}
-        />
-
-        {isHomeOpen && (
-          <Home
-            language={language}
-            onToggleLanguage={toggleLanguage}
-            currentModelName={currentModelName}
-            onStart={model => { if (model) handleModelChange(model); setIsHomeOpen(false); }}
-            onOpenGallery={() => { setGalleryView('community'); setIsGalleryOpen(true); }}
-            onOpenGarage={() => { setGalleryView('garage'); setIsGalleryOpen(true); }}
-            onOpen3DGallery={() => setIs3DGalleryOpen(true)}
-            onLoadWrap={handleLoadCommunityWrap}
-            refreshTrigger={galleryRefreshTrigger}
-          />
-        )}
-
-        {isEditorOpen && (
-          <WrapEditor
+          {page === 'preview' && <WrapStudio
             language={language}
             currentModelName={currentModelName}
             onModelChange={handleModelChange}
             singleLayer={singleLayer}
             loadedWrapName={loadedWrapName}
-            layerTransforms={layerTransforms}
-            onLayerTransformsChange={setLayerTransforms}
             selectedLayerId={selectedLayerId}
             onSelectedLayerIdChange={setSelectedLayerId}
+            layerTransforms={layerTransforms}
+            onLayerTransformsChange={setLayerTransforms}
             isWrapVisible={isWrapVisible}
             onIsWrapVisibleChange={setIsWrapVisible}
-            paintColor={FACTORY_PAINT.hex}
             canvasRef={canvasRef}
-            onLoadWrap={handleLoadCommunityWrap}
-            onRemoveWrap={handleRemoveWrap}
             onExport={handleExport}
-            onShare={handleOpenShareModal}
-            onClose={() => setIsEditorOpen(false)}
-          />
-        )}
-
-        {is3DGalleryOpen && (
-          <Gallery3D
-            language={language}
-            currentModelName={currentModelName}
-            onModelChange={handleModelChange}
-            singleLayer={singleLayer}
-            loadedWrapName={loadedWrapName}
-            isWrapVisible={isWrapVisible}
-            onIsWrapVisibleChange={setIsWrapVisible}
-            canvasRef={canvasRef}
-            layerTransforms={layerTransforms}
-            onLayerTransformsChange={setLayerTransforms}
-            selectedLayerId={selectedLayerId}
-            onSelectedLayerIdChange={setSelectedLayerId}
+            onOpenGallery={() => navigate('explore')}
+            onOpenEditor={() => navigate('edit')}
             onLoadCommunityWrap={handleLoadCommunityWrap}
-            onClose={() => setIs3DGalleryOpen(false)}
-            refreshTrigger={galleryRefreshTrigger}
-          />
-        )}
+            communityRefreshTrigger={galleryRefreshTrigger}
+          />}
 
-        {isGalleryOpen && (
-          <WrapGallery
-            type="car"
-            selectedModel={currentModelName}
-            refreshTrigger={galleryRefreshTrigger}
+          {page === 'home' && (
+            <Home
+              language={language}
+              currentModelName={currentModelName}
+              onStart={model => { if (model) handleModelChange(model); navigate('preview'); }}
+              onOpenGallery={() => navigate('explore')}
+              onOpenAICreate={() => navigate('create')}
+              onLoadWrap={handleLoadCommunityWrap}
+              refreshTrigger={galleryRefreshTrigger}
+            />
+          )}
+
+          {isEditing && (
+            <WrapEditor
+              key={page}
+              language={language}
+              initialPanel={page === 'create' ? 'ai' : 'library'}
+              currentModelName={currentModelName}
+              onModelChange={handleModelChange}
+              singleLayer={singleLayer}
+              loadedWrapName={loadedWrapName}
+              layerTransforms={layerTransforms}
+              onLayerTransformsChange={setLayerTransforms}
+              selectedLayerId={selectedLayerId}
+              onSelectedLayerIdChange={setSelectedLayerId}
+              isWrapVisible={isWrapVisible}
+              onIsWrapVisibleChange={setIsWrapVisible}
+              paintColor={FACTORY_PAINT.hex}
+              canvasRef={canvasRef}
+              onLoadWrap={handleLoadCommunityWrap}
+              onRemoveWrap={handleRemoveWrap}
+              onExport={handleExport}
+              onShare={handleOpenShareModal}
+              onClose={() => navigate('preview')}
+            />
+          )}
+
+          {page === 'explore3d' && (
+            <Gallery3D
+              language={language}
+              currentModelName={currentModelName}
+              onModelChange={handleModelChange}
+              singleLayer={singleLayer}
+              loadedWrapName={loadedWrapName}
+              isWrapVisible={isWrapVisible}
+              onIsWrapVisibleChange={setIsWrapVisible}
+              canvasRef={canvasRef}
+              layerTransforms={layerTransforms}
+              onLayerTransformsChange={setLayerTransforms}
+              selectedLayerId={selectedLayerId}
+              onSelectedLayerIdChange={setSelectedLayerId}
+              onLoadCommunityWrap={handleLoadCommunityWrap}
+              refreshTrigger={galleryRefreshTrigger}
+            />
+          )}
+
+          {(page === 'explore' || page === 'garage') && (
+            <WrapGallery
+              key={page}
+              type="car"
+              selectedModel={currentModelName}
+              refreshTrigger={galleryRefreshTrigger}
+              language={language}
+              view={page === 'garage' ? 'garage' : 'community'}
+              onLoadWrap={handleLoadCommunityWrap}
+              onClose={() => navigate('preview')}
+            />
+          )}
+
+          <ShareModal
+            isOpen={isShareModalOpen}
+            onClose={() => setIsShareModalOpen(false)}
+            onShareSuccess={() => setGalleryRefreshTrigger(prev => prev + 1)}
+            imageUrl={shareImageBlob}
             language={language}
-            onToggleLanguage={toggleLanguage}
-            view={galleryView}
-            onLoadWrap={handleLoadCommunityWrap}
-            onClose={() => setIsGalleryOpen(false)}
+            type="car"
           />
-        )}
-
-        <ShareModal
-          isOpen={isShareModalOpen}
-          onClose={() => setIsShareModalOpen(false)}
-          onShareSuccess={() => setGalleryRefreshTrigger(prev => prev + 1)}
-          imageUrl={shareImageBlob}
-          language={language}
-          type="car"
-        />
+        </div>
       </AuthProvider>
     </ThemeProvider>
   );
