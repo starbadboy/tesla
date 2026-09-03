@@ -34,6 +34,7 @@ const User = require('./models/User');
 const cron = require('node-cron');
 const { scrapeAndSave } = require('./scripts/daily_scraper');
 const { scrapeTeslaWrapGallery } = require('./scripts/teslawrapgallery_scraper');
+const { scrapeTeslaWrapDesign } = require('./scripts/tesla_wrap_design_scraper');
 
 const app = express();
 // Railway terminates TLS one hop in front of us; req.ip is then the real client.
@@ -50,6 +51,10 @@ cron.schedule('0 0 * * *', () => {
 
     scrapeTeslaWrapGallery().catch(err => {
         console.error('TeslaWrapGallery daily scrape failed:', err);
+    });
+
+    scrapeTeslaWrapDesign().catch(err => {
+        console.error('TeslaWrapDesign daily scrape failed:', err);
     });
 });
 
