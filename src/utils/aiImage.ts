@@ -1,5 +1,5 @@
 import { authHeaders } from './wrapApi';
-import { MODEL3_REFERENCE, model3TexturePrompt } from '../../shared/wrapGeneration';
+import { MODEL3_REFERENCE, REFERENCE_IMAGE_LIMITS, wrapTexturePrompt } from '../../shared/wrapGeneration';
 
 async function loadReferenceImage(): Promise<string> {
     const response = await fetch(MODEL3_REFERENCE.imagePath);
@@ -30,6 +30,7 @@ export interface GeneratedImage {
  * @param provider The AI provider to use ('puter' for the free tier, 'openai' for Pro).
  * @param isPublic Pro only: whether the server should list the saved wrap publicly.
  * @param useReference Whether the Model 3 experiment includes its pinned layout example.
+ * @param referenceImages User style references, as locally prepared image data URLs.
  * @returns The generated image URL (data URL for Puter, R2 URL for Pro) and, for Pro,
  *          whether the server managed to keep it as a wrap.
  */
@@ -39,34 +40,15 @@ export async function generateImage(
     modelName: string = "Car",
     provider: 'puter' | 'openai' = 'puter',
     isPublic: boolean = true,
-    useReference: boolean = true
+    useReference: boolean = true,
+    referenceImages: string[] = []
 ): Promise<GeneratedImage> {
 
     // Enhance prompt for car wrap context
     const isModel3Experiment = modelName === MODEL3_REFERENCE.carModel;
-    const enhancedPrompt = isModel3Experiment ? model3TexturePrompt(prompt, useReference) : `You are a professional automotive graphic designer specializing in vehicle wraps.
-
-Design a high-resolution car wrap for a Tesla ${modelName} using the provided official wrap template.
-
-Concept & Requirements:
-
-Core concept/theme: [${prompt}]
-
-Technical Requirements:
-
-
-Strictly follow the exact dimensions, guides, bleed areas, and panel separations of the provided Tesla ${modelName} wrap template.
-Maintain panel alignment continuity across doors, bumpers, hood, trunk, mirrors, and side skirts.
-Output design must be print-ready, high resolution (minimum 300 DPI), and suitable for large-format wrap printing.
-Avoid distortion, stretching, or misalignment outside designated design zones.
-
-Detail Level:
-Include fine details that enhance realism and visual impact when viewed both up close and from a distance.
-Ensure the concept is clearly expressed and consistently applied across all vehicle panels.
-
-Deliverable:
-
-A complete wrap design that fully adheres to the template format and accurately reflects the specified concept and requirements.`;
+    if (referenceImages.length > REFERENCE_IMAGE_LIMITS.count) throw new Error('You can add up to 3 reference images.');
+    if (referenceImages.length && !inputImageBase64) throw new Error('A wrap template is required when using reference images.');
+    const enhancedPrompt = wrapTexturePrompt(prompt, modelName, useReference, referenceImages.length);
 
     if (provider === 'openai') {
         try {
@@ -82,6 +64,7 @@ A complete wrap design that fully adheres to the template format and accurately 
                     userPrompt: prompt,
                     isPublic,
                     useReference: isModel3Experiment && useReference,
+                    referenceImages,
                 }),
             });
 
@@ -107,12 +90,12 @@ A complete wrap design that fully adheres to the template format and accurately 
                 model: 'gemini-2.5-flash-image-preview'
             };
 
-            if (isModel3Experiment) {
-                if (!inputImageBase64) throw new Error('The Model 3 template is required.');
-                options.ratio = { w: 1, h: 1 };
-                options.input_images = useReference
-                    ? [inputImageBase64, await loadReferenceImage()]
-                    : [inputImageBase64];
+            if (isModel3Experiment || referenceImages.length) {
+                if (!inputImageBase64) throw new Error('The wrap template is required.');
+                if (isModel3Experiment) options.ratio = { w: 1, h: 1 };
+                const images = [inputImageBase64];
+                if (isModel3Experiment && useReference) images.push(await loadReferenceImage());
+                options.input_images = [...images, ...referenceImages];
             } else if (inputImageBase64) {
                 // Remove data URI prefix if present, as some APIs might just want the base64 data
                 // But usually for passing to a JS library, the full string or just the data part depends on the lib.

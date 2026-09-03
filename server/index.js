@@ -601,7 +601,7 @@ app.post('/api/generate-image', async (req, res) => {
         return res.status(500).json({ error: 'OpenAI API key not configured on server' });
     }
 
-    const { prompt, image, carModel, userPrompt, isPublic, useReference } = req.body;
+    const { prompt, image, carModel, userPrompt, isPublic, useReference, referenceImages } = req.body;
     if (!prompt || typeof prompt !== 'string' || prompt.length > 4000) {
         return res.status(400).json({ error: 'prompt is required (max 4000 characters)' });
     }
@@ -616,10 +616,10 @@ app.post('/api/generate-image', async (req, res) => {
         return res.status(400).json({ error: 'Design theme is too long (max 4000 characters)' });
     }
 
-    // Validate the experiment's template and load its reference before spending credits.
+    // Validate the template and all references before spending credits.
     let editRequest;
     try {
-        editRequest = await buildWrapEditRequest({ prompt, template, carModel, userPrompt, useReference });
+        editRequest = await buildWrapEditRequest({ prompt, template, carModel, userPrompt, useReference, referenceImages });
     } catch (err) {
         return res.status(400).json({ error: err.message });
     }

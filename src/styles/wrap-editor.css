@@ -249,6 +249,28 @@
   color: var(--we-ink-4);
 }
 
+.we-prompt-card { border: 1px solid var(--we-line); border-radius: 12px; background: var(--we-surface-2); }
+.we-prompt-card:focus-within { border-color: var(--we-line-strong); }
+.we-prompt-card textarea { border: 0; background: transparent; }
+.we-prompt-card textarea:focus-visible { outline: 1px solid var(--we-accent); outline-offset: -2px; }
+.we-style-references { margin: 0 12px; padding: 12px 0; border-top: 1px solid var(--we-line); }
+.we-style-references-heading { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; color: var(--we-ink-3); font-size: 11px; font-weight: 600; }
+.we-style-references-heading [role="status"] { display: inline-flex; align-items: center; gap: 4px; font-weight: 400; }
+.we-style-references-list { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0; }
+.we-style-reference, .we-add-reference { width: 62px; height: 62px; border-radius: 9px; }
+.we-style-reference { position: relative; background: var(--we-surface); border: 1px solid var(--we-line); }
+.we-style-reference img { width: 100%; height: 100%; border-radius: inherit; object-fit: contain; }
+.we-style-reference button { position: absolute; top: -7px; right: -7px; display: grid; place-items: center; width: 24px; height: 24px; border: 1px solid var(--we-line-strong); border-radius: 50%; background: var(--we-surface-2); color: var(--we-ink-1); cursor: pointer; }
+.we-add-reference { display: grid; place-items: center; border: 1px dashed var(--we-line-strong); background: transparent; color: var(--we-ink-3); cursor: pointer; }
+.we-add-reference:hover { border-color: var(--we-ink-2); color: var(--we-ink-1); background: var(--we-surface); }
+.we-style-references button:focus-visible { outline: 2px solid var(--we-accent); outline-offset: 3px; }
+.we-style-references button:disabled { opacity: .45; cursor: wait; }
+.we-style-references .we-hint { margin: 0; line-height: 1.5; }
+.we-style-references .we-error { white-space: pre-line; overflow-wrap: anywhere; }
+.we-spin { animation: we-spin 1s linear infinite; }
+@keyframes we-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .we-spin { animation: none; } }
+
 /* ---- ai: tier toggle ---- */
 .we-tier {
   display: grid;

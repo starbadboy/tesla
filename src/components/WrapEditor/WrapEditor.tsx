@@ -17,6 +17,8 @@ import { generateImage } from '../../utils/aiImage';
 import { MODEL3_REFERENCE } from '../../../shared/wrapGeneration';
 import { fetchMyGenerations, fetchOrder, saveGeneration } from '../../utils/wrapApi';
 import { BuyCreditsModal } from './BuyCreditsModal';
+import { ReferenceImagesInput } from './ReferenceImagesInput';
+import type { ReferenceImage } from '../../utils/referenceImages';
 import type { Wrap } from '../Gallery';
 import { useAuth } from '../../contexts/AuthContext';
 import { AuthModal } from '../Auth/AuthModal';
@@ -192,6 +194,8 @@ export function WrapEditor({
     const [prompt, setPrompt] = useState('');
     const [provider, setProvider] = useState<'puter' | 'openai'>(checkoutReturn ? 'openai' : 'puter');
     const [generating, setGenerating] = useState(false);
+    const [referenceImages, setReferenceImages] = useState<ReferenceImage[]>([]);
+    const [preparingReferences, setPreparingReferences] = useState(false);
     const [useReference, setUseReference] = useState(true);
     const hasLayoutReference = currentModelName === MODEL3_REFERENCE.carModel;
     const [aiError, setAiError] = useState<string | null>(null);
@@ -276,7 +280,8 @@ export function WrapEditor({
     };
 
     const handleGenerate = async () => {
-        if (!prompt.trim() || generating) return;
+        if ((!prompt.trim() && !referenceImages.length) || generating || preparingReferences) return;
+        const designPrompt = prompt.trim() || t.referenceDefaultPrompt;
         setGenerating(true);
         setAiError(null);
         try {
@@ -293,16 +298,16 @@ export function WrapEditor({
             });
 
             const isPublic = canGoPrivate ? shareToGallery : true;
-            const { url, saved } = await generateImage(prompt, templateBase64, currentModelName, provider, isPublic, hasLayoutReference && useReference);
-            setGenerations(current => [{ url, prompt }, ...current]);
-            await onLoadWrap(url, { model: currentModelName, name: prompt.slice(0, 40) });
+            const { url, saved } = await generateImage(designPrompt, templateBase64, currentModelName, provider, isPublic, hasLayoutReference && useReference, referenceImages.map(image => image.dataUrl));
+            setGenerations(current => [{ url, prompt: designPrompt }, ...current]);
+            await onLoadWrap(url, { model: currentModelName, name: designPrompt.slice(0, 40) });
             // Pro is saved by the server; Free is saved from here. Best effort: a save that
             // fails leaves the generation in this session's list, which is what an anonymous
             // designer gets anyway — so the server list only replaces it once it holds it.
             if (isAuthenticated && saved !== false) {
                 try {
                     if (provider === 'puter') {
-                        await saveGeneration({ url, prompt, model: currentModelName, isPublic });
+                        await saveGeneration({ url, prompt: designPrompt, model: currentModelName, isPublic });
                     }
                     setGenerations(toGenerations(await fetchMyGenerations()));
                 } catch (error) {
@@ -359,6 +364,8 @@ export function WrapEditor({
                         key={id}
                         type="button"
                         className={`we-rail-btn ${panel === id ? 'is-on' : ''}`}
+                        aria-label={label}
+                        title={label}
                         onClick={() => setPanel(current => (current === id ? null : id))}
                     >
                         <Icon size={19} />
@@ -407,15 +414,26 @@ export function WrapEditor({
                                 <button key={theme} type="button" onClick={() => setPrompt(theme)}>{theme}</button>
                             ))}
                         </div>
-                        <label className="we-field">
-                            <textarea
-                                value={prompt}
-                                maxLength={500}
-                                placeholder={t.describeStyle}
-                                onChange={e => setPrompt(e.target.value)}
+                        <div className="we-prompt-card">
+                            <label className="we-field">
+                                <textarea
+                                    value={prompt}
+                                    maxLength={500}
+                                    aria-label={t.describeStyle}
+                                    placeholder={t.describeStyle}
+                                    onChange={e => setPrompt(e.target.value)}
+                                />
+                                <span className="we-count">{prompt.length}/500</span>
+                            </label>
+                            <ReferenceImagesInput
+                                language={language}
+                                images={referenceImages}
+                                onChange={setReferenceImages}
+                                processing={preparingReferences}
+                                onProcessingChange={setPreparingReferences}
+                                disabled={generating}
                             />
-                            <span className="we-count">{prompt.length}/500</span>
-                        </label>
+                        </div>
 
                         <h3>{t.colorPreference}</h3>
                         <div className="we-chips">
@@ -487,7 +505,7 @@ export function WrapEditor({
                         <button
                             type="button"
                             className="we-primary"
-                            disabled={!prompt.trim() || generating || shortOnCredits}
+                            disabled={(!prompt.trim() && !referenceImages.length) || generating || preparingReferences || shortOnCredits}
                             onClick={handleGenerate}
                         >
                             <Sparkles size={15} />
