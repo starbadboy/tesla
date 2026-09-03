@@ -2,17 +2,17 @@
 export const CDN_BASE = "https://raw.githubusercontent.com/starbadboy/tesla/main/public";
 
 export const CAR_MODELS: Record<string, string> = {
-    "Cybertruck": `${CDN_BASE}/assets/cybertruck.png`,
-    "Model S (2021+)": `/assets/full-wrap-template.svg`,
-    "Model S Plaid (2025+)": `/assets/full-wrap-template.svg`,
-    "Model X (2021+)": `/assets/full-wrap-template.svg`,
-    "Model 3 (2024 Base)": `${CDN_BASE}/assets/model3-2024-base.png`,
+    "Cybertruck": `/assets/cybertruck.png`,
+    "Model S (2021+)": `/assets/models-2021.png`,
+    "Model S Plaid (2025+)": `/assets/models-2025-plaid.png`,
+    "Model X (2021+)": `/assets/modelx-2021.png`,
+    "Model 3 (2024 Base)": `/assets/model3-2024-base.png`,
     "Model 3 (2024 Performance)": `${CDN_BASE}/assets/model3-2024-performance.png`,
-    "Model 3 (Classic)": `${CDN_BASE}/assets/model3.png`,
+    "Model 3 (Classic)": `/assets/model3.png`,
     "Model Y (2025 Performance)": `${CDN_BASE}/assets/modely-2025-performance.png`,
-    "Model Y (2025 Long Range)": `${CDN_BASE}/assets/modely-2025-premium.png`,
+    "Model Y (2025 Long Range)": `/assets/modely-2025-premium.png`,
     "Model Y L": `${CDN_BASE}/assets/modely-l.png`,
-    "Model Y": `${CDN_BASE}/assets/modely.png`,
+    "Model Y": `/assets/modely.png`,
 };
 
 export const CAR_3D_MODELS: Record<string, string> = {

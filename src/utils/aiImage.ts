@@ -1,17 +1,46 @@
 import { authHeaders } from './wrapApi';
-import { MODEL3_REFERENCE, REFERENCE_IMAGE_LIMITS, wrapTexturePrompt } from '../../shared/wrapGeneration';
+import { getLayoutReference, REFERENCE_IMAGE_LIMITS, wrapTexturePrompt } from '../../shared/wrapGeneration';
+import { CAR_MODELS } from '../constants';
 
-async function loadReferenceImage(): Promise<string> {
-    const response = await fetch(MODEL3_REFERENCE.imagePath);
-    if (!response.ok) throw new Error('Could not load the reference wrap. Please try again.');
-    const blob = await response.blob();
-    if (blob.type !== 'image/png') throw new Error('The reference wrap must be a PNG image.');
+function readDataUrl(blob: Blob): Promise<string> {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(new Error('Could not read the reference wrap.'));
+        reader.onerror = () => reject(new Error('Could not read the wrap image.'));
         reader.readAsDataURL(blob);
     });
+}
+
+async function loadReferenceImage(imagePath: string): Promise<string> {
+    const response = await fetch(imagePath);
+    if (!response.ok) throw new Error('Could not load the reference wrap. Please try again.');
+    const blob = await response.blob();
+    if (blob.type !== 'image/png') throw new Error('The reference wrap must be a PNG image.');
+    return readDataUrl(blob);
+}
+
+/** Match DesignCanvas's full-sheet square UV mapping; never crop or add letterboxing. */
+export async function loadGenerationTemplate(modelName: string): Promise<string> {
+    const reference = getLayoutReference(modelName);
+    const path = reference?.templatePath ?? CAR_MODELS[modelName];
+    if (!path) throw new Error('No wrap template is available for this model.');
+    const response = await fetch(path);
+    if (!response.ok) throw new Error('Could not load the wrap template. Please try again.');
+    const blob = await response.blob();
+    if (!reference) return readDataUrl(blob);
+    if (blob.type !== 'image/png') throw new Error('The wrap template must be a PNG image.');
+    const bitmap = await createImageBitmap(blob);
+    try {
+        if (bitmap.width === reference.size && bitmap.height === reference.size) return await readDataUrl(blob);
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = reference.size;
+        const context = canvas.getContext('2d');
+        if (!context || !bitmap.width || !bitmap.height) throw new Error('Could not prepare the wrap template.');
+        context.drawImage(bitmap, 0, 0, reference.size, reference.size);
+        return canvas.toDataURL('image/png');
+    } finally {
+        bitmap.close();
+    }
 }
 
 export interface GeneratedImage {
@@ -29,7 +58,7 @@ export interface GeneratedImage {
  * @param modelName The car model name.
  * @param provider The AI provider to use ('puter' for the free tier, 'openai' for Pro).
  * @param isPublic Pro only: whether the server should list the saved wrap publicly.
- * @param useReference Whether the Model 3 experiment includes its pinned layout example.
+ * @param useReference Whether to include this vehicle's pinned layout example.
  * @param referenceImages User style references, as locally prepared image data URLs.
  * @returns The generated image URL (data URL for Puter, R2 URL for Pro) and, for Pro,
  *          whether the server managed to keep it as a wrap.
@@ -45,7 +74,7 @@ export async function generateImage(
 ): Promise<GeneratedImage> {
 
     // Enhance prompt for car wrap context
-    const isModel3Experiment = modelName === MODEL3_REFERENCE.carModel;
+    const layoutReference = getLayoutReference(modelName);
     if (referenceImages.length > REFERENCE_IMAGE_LIMITS.count) throw new Error('You can add up to 3 reference images.');
     if (referenceImages.length && !inputImageBase64) throw new Error('A wrap template is required when using reference images.');
     const enhancedPrompt = wrapTexturePrompt(prompt, modelName, useReference, referenceImages.length);
@@ -63,7 +92,7 @@ export async function generateImage(
                     carModel: modelName,
                     userPrompt: prompt,
                     isPublic,
-                    useReference: isModel3Experiment && useReference,
+                    useReference: Boolean(layoutReference) && useReference,
                     referenceImages,
                 }),
             });
@@ -90,11 +119,11 @@ export async function generateImage(
                 model: 'gemini-2.5-flash-image-preview'
             };
 
-            if (isModel3Experiment || referenceImages.length) {
+            if (layoutReference || referenceImages.length) {
                 if (!inputImageBase64) throw new Error('The wrap template is required.');
-                if (isModel3Experiment) options.ratio = { w: 1, h: 1 };
+                if (layoutReference) options.ratio = { w: 1, h: 1 };
                 const images = [inputImageBase64];
-                if (isModel3Experiment && useReference) images.push(await loadReferenceImage());
+                if (layoutReference && useReference) images.push(await loadReferenceImage(layoutReference.imagePath));
                 options.input_images = [...images, ...referenceImages];
             } else if (inputImageBase64) {
                 // Remove data URI prefix if present, as some APIs might just want the base64 data
@@ -107,7 +136,7 @@ export async function generateImage(
             }
 
             const imageElement = await window.puter.ai.txt2img(enhancedPrompt, options);
-            if (isModel3Experiment) {
+            if (layoutReference) {
                 await imageElement.decode();
                 if (!imageElement.naturalWidth || imageElement.naturalWidth !== imageElement.naturalHeight) {
                     throw new Error('AI returned a non-square image instead of a wrap texture. Please try again.');
