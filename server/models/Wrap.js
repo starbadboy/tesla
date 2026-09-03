@@ -51,6 +51,10 @@ const WrapSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
+    // Page a scraper imported this from; the scraper dedupes on it.
+    sourceUrl: {
+        type: String
+    },
     // Where the sheet came from: a designer's upload, or the AI panel.
     source: {
         type: String,
