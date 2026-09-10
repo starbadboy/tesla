@@ -8,13 +8,14 @@ import { WrapEditor } from './components/WrapEditor/WrapEditor';
 import { Home } from './components/Home/Home';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
-import { SEO_COPY, SITE_IMAGE, SITE_URL } from './seo';
+import { SEO_COPY, SITE_IMAGE } from './seo';
 
 import { WrapStudio } from './components/WrapStudio/WrapStudio';
 import { FACTORY_PAINT } from './constants';
 import { proxiedMediaUrl } from './utils/wrapApi';
 import { SiteHeader } from './components/ui/SiteHeader';
-import { navigate, useAppPage } from './utils/navigation';
+import { navigate, PAGE_PATHS, useRoute } from './utils/navigation';
+import { PAGE_META, SITE_URL as SITE_ORIGIN } from '../shared/seo';
 
 /**
  * A newly loaded sheet starts from a clean transform. DesignCanvas fits each image to
@@ -24,7 +25,7 @@ import { navigate, useAppPage } from './utils/navigation';
 const FRESH_LAYER = { 'Full Wrap': { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1 } };
 
 function App() {
-  const page = useAppPage();
+  const { page, wrapId } = useRoute();
   const isEditing = page === 'create' || page === 'edit';
   const [currentModelName, setCurrentModelName] = useState('Model 3 (2024 Base)');
 
@@ -68,7 +69,10 @@ function App() {
   // SEO metadata
   useEffect(() => {
     document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
-    document.title = seo.title;
+    // A wrap page arrives with its own tags from the server, and the gallery keeps its title current.
+    if (wrapId) return;
+    const meta = PAGE_META[language][page];
+    document.title = meta.title;
 
     const upsertMeta = (
       selector: string,
@@ -84,32 +88,32 @@ function App() {
       element.setAttribute(attribute, value);
     };
 
-    upsertMeta('meta[name="description"]', 'content', seo.description, () => {
+    upsertMeta('meta[name="description"]', 'content', meta.description, () => {
       const meta = document.createElement('meta');
       meta.setAttribute('name', 'description');
       return meta;
     });
-    upsertMeta('meta[property="og:title"]', 'content', seo.title, () => {
+    upsertMeta('meta[property="og:title"]', 'content', meta.title, () => {
       const meta = document.createElement('meta');
       meta.setAttribute('property', 'og:title');
       return meta;
     });
-    upsertMeta('meta[property="og:description"]', 'content', seo.description, () => {
+    upsertMeta('meta[property="og:description"]', 'content', meta.description, () => {
       const meta = document.createElement('meta');
       meta.setAttribute('property', 'og:description');
       return meta;
     });
-    upsertMeta('meta[name="twitter:title"]', 'content', seo.title, () => {
+    upsertMeta('meta[name="twitter:title"]', 'content', meta.title, () => {
       const meta = document.createElement('meta');
       meta.setAttribute('name', 'twitter:title');
       return meta;
     });
-    upsertMeta('meta[name="twitter:description"]', 'content', seo.description, () => {
+    upsertMeta('meta[name="twitter:description"]', 'content', meta.description, () => {
       const meta = document.createElement('meta');
       meta.setAttribute('name', 'twitter:description');
       return meta;
     });
-    upsertMeta('link[rel="canonical"]', 'href', SITE_URL, () => {
+    upsertMeta('link[rel="canonical"]', 'href', SITE_ORIGIN + PAGE_PATHS[page], () => {
       const link = document.createElement('link');
       link.setAttribute('rel', 'canonical');
       return link;
@@ -133,7 +137,7 @@ function App() {
       document.head.appendChild(faqScript);
     }
     faqScript.textContent = JSON.stringify(faqJsonLd);
-  }, [language, seo]);
+  }, [language, seo, page, wrapId]);
 
   // Switching the car by hand drops the wrap: templates are per-model, so the
   // current texture would land on the wrong panels. Loading a wrap for another
@@ -320,6 +324,7 @@ function App() {
               refreshTrigger={galleryRefreshTrigger}
               language={language}
               view={page === 'garage' ? 'garage' : 'community'}
+              openWrapId={wrapId}
               onLoadWrap={handleLoadCommunityWrap}
               onClose={() => navigate('preview')}
             />

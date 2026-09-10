@@ -9,12 +9,14 @@ import { GalleryViewSwitch } from '../ui/GalleryViewSwitch';
 import { TRANSLATIONS } from '../../translations';
 import { useAuth } from '../../contexts/AuthContext';
 import {
-    deleteWrap, downloadWrap, fetchGarage, fetchWraps, hasThreeD, likeWrap, nextTagValue, updateWrapTags,
+    deleteWrap, downloadWrap, fetchGarage, fetchWrap, fetchWraps, hasThreeD, likeWrap, nextTagValue, updateWrapTags,
     wrapFlags,
     type GarageTab, type SortOption, type WrapType,
 } from '../../utils/wrapApi';
 import type { Wrap } from '../Gallery';
 import { WrapDetailModal } from '../WrapDetailModal';
+import { navigate, navigateTo } from '../../utils/navigation';
+import { wrapMeta, wrapPath } from '../../../shared/seo';
 import '../../styles/wrap-gallery.css';
 
 const ALL_MODELS = '__all__';
@@ -34,6 +36,8 @@ export interface WrapGalleryProps {
     /** 'garage' lists the signed-in user's own uploads and liked wraps. */
     view?: 'community' | 'garage';
     /** Load the wrap into the studio (and close this page), switching car if given. */
+    /** Wrap the URL points at (/wrap/:id); the URL is the only place the open wrap lives. */
+    openWrapId?: string | null;
     onLoadWrap: (url: string, wrap?: { model?: string; name?: string }) => void | Promise<void>;
     onClose: () => void;
 }
@@ -72,7 +76,7 @@ function WrapThumb({ wrap, alt }: { wrap: Wrap; alt: string }) {
 
 export function WrapGallery({
     type, selectedModel, refreshTrigger = 0, language = 'en',
-    view = 'community', onLoadWrap, onClose,
+    view = 'community', openWrapId = null, onLoadWrap, onClose,
 }: WrapGalleryProps) {
     const t = TRANSLATIONS[language];
     const { user } = useAuth();
@@ -81,7 +85,11 @@ export function WrapGallery({
     const [search, setSearch] = useState('');
     const [sortBy, setSortBy] = useState<SortOption>('downloads');
     const [modelFilter, setModelFilter] = useState(selectedModel ?? ALL_MODELS);
-    const [openId, setOpenId] = useState<string | null>(null);
+    const openId = openWrapId;
+    // A wrap URL always renders the community view, so closing it goes back to the gallery.
+    const closeOpen = () => navigate('explore');
+    // A wrap opened by URL may sit past the first page, so it is fetched on its own.
+    const [direct, setDirect] = useState<Wrap | null>(null);
     const [likedIds, setLikedIds] = useState<string[]>([]);
     const [commentsFor, setCommentsFor] = useState<Wrap | null>(null);
 
@@ -145,7 +153,7 @@ export function WrapGallery({
     useEffect(() => {
         const onKey = (e: KeyboardEvent) => {
             if (e.key !== 'Escape' || commentsFor) return;
-            if (openId) setOpenId(null);
+            if (openId) closeOpen();
         };
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
@@ -186,7 +194,25 @@ export function WrapGallery({
 
     const page = wraps;
 
-    const open = openId ? wraps.find(w => w._id === openId) ?? null : null;
+    useEffect(() => {
+        if (!openId || wraps.some(w => w._id === openId)) return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const wrap = await fetchWrap(openId);
+                if (!cancelled) setDirect(wrap);
+            } catch (error) {
+                console.error('Failed to fetch wrap', error);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [openId, wraps]);
+
+    const open = openId ? wraps.find(w => w._id === openId) ?? (direct?._id === openId ? direct : null) : null;
+
+    useEffect(() => {
+        if (open) document.title = wrapMeta(open).title;
+    }, [open]);
 
     const mediaOf = (wrap: Wrap) => (type === 'sound' ? wrap.audioUrl : wrap.imageUrl);
     const modelLabel = (wrap: Wrap) =>
@@ -226,7 +252,7 @@ export function WrapGallery({
         try {
             await deleteWrap(wrap._id, type);
             setWraps(prev => prev.filter(w => w._id !== wrap._id));
-            if (openId === wrap._id) setOpenId(null);
+            if (openId === wrap._id) closeOpen();
         } catch (error) {
             console.error('Failed to delete wrap', error);
             alert(error instanceof Error ? error.message : t.deleteError);
@@ -277,7 +303,7 @@ export function WrapGallery({
             <div className="wg-wrap">
                 {open ? (
                     <>
-                        <button type="button" className="wg-back" onClick={() => setOpenId(null)}>
+                        <button type="button" className="wg-back" onClick={closeOpen}>
                             <ArrowLeft size={16} /> {t.back}
                         </button>
                         <div className="wg-dwrap">
@@ -416,8 +442,8 @@ export function WrapGallery({
                                             className="wg-card"
                                             role="button"
                                             tabIndex={0}
-                                            onClick={() => setOpenId(wrap._id)}
-                                            onKeyDown={e => { if (e.key === 'Enter') setOpenId(wrap._id); }}
+                                            onClick={() => navigateTo(wrapPath(wrap))}
+                                            onKeyDown={e => { if (e.key === 'Enter') navigateTo(wrapPath(wrap)); }}
                                         >
                                             {renderThumb(wrap)}
                                             <div className="wg-badges">
@@ -457,7 +483,7 @@ export function WrapGallery({
                                                 </div>
                                             )}
                                             <div className="wg-meta">
-                                                <div className="wg-nm">{wrap.name}</div>
+                                                <div className="wg-nm"><a href={wrapPath(wrap)}>{wrap.name}</a></div>
                                                 <div className="wg-md">{modelLabel(wrap)}</div>
                                                 <div className="wg-by"><span className="wg-av">{initial(wrap.author)}</span>{wrap.author}</div>
                                                 <div className="wg-stats">

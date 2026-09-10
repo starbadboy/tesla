@@ -252,6 +252,19 @@ app.get('/api/wraps', async (req, res) => {
     }
 });
 
+// GET /api/wraps/:id - One public wrap, for /wrap/:id pages opened straight from a link.
+app.get('/api/wraps/:id', async (req, res) => {
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ error: 'Wrap not found' });
+    try {
+        const wrap = await Wrap.findOne({ _id: req.params.id, ...publicMatch() });
+        if (!wrap) return res.status(404).json({ error: 'Wrap not found' });
+        res.json(wrap);
+    } catch (err) {
+        console.error('Error fetching wrap:', err);
+        res.status(500).json({ error: 'Failed to fetch wrap' });
+    }
+});
+
 // POST /api/wraps - Upload a new wrap
 app.post('/api/wraps', upload.single('image'), async (req, res) => {
     try {
@@ -678,6 +691,9 @@ app.post('/api/generate-image', async (req, res) => {
         res.json({ url: imageUrl, saved: false, balance: balanceAfterReserve });
     }
 });
+
+// Sitemap and per-URL head tags come first so crawlers see them instead of the bare index.html.
+app.use(require('./routes/seo').router);
 
 // Serve static files from the React app
 app.use(express.static(path.join(__dirname, '../dist')));

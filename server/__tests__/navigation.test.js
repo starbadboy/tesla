@@ -1,25 +1,32 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { initialPage, initializeNavigation, navigate, pageFromHash } from '../../src/utils/navigation';
+import { initialPath, initializeNavigation, navigate, navigateTo } from '../../src/utils/navigation';
+import { parseRoute } from '../../shared/seo.js';
 
 afterEach(() => vi.unstubAllGlobals());
 
 describe('page navigation', () => {
     it('keeps direct links to AI creation, manual editing and gallery views distinct', () => {
-        expect(pageFromHash('#/create')).toBe('create');
-        expect(pageFromHash('#/create/manual')).toBe('edit');
-        expect(pageFromHash('#/explore/3d/')).toBe('explore3d');
-        expect(pageFromHash('#/explore')).toBe('explore');
+        expect(parseRoute('/create').page).toBe('create');
+        expect(parseRoute('/create/manual').page).toBe('edit');
+        expect(parseRoute('/explore/3d/').page).toBe('explore3d');
+        expect(parseRoute('/explore').page).toBe('explore');
     });
 
-    it('opens preview for old root links and unknown destinations', () => {
-        expect(initialPage('', '')).toBe('preview');
-        expect(initialPage('#/missing', '?campaign=launch')).toBe('preview');
+    it('opens preview for the root and unknown destinations', () => {
+        expect(parseRoute('/')).toEqual({ page: 'preview', wrapId: null });
+        expect(parseRoute('/missing')).toEqual({ page: 'preview', wrapId: null });
+        expect(parseRoute('/wrap/not-an-id/slug')).toEqual({ page: 'preview', wrapId: null });
     });
 
-    it('returns checkout customers to AI creation regardless of their previous page', () => {
-        expect(initialPage('#/explore', '?checkout=success&orderId=123')).toBe('create');
-        expect(initialPage('#/home', '?checkout=cancel')).toBe('create');
-        expect(initialPage('#/garage', '?reset=reset-token')).toBe('garage');
+    it('opens a wrap inside the gallery from its own URL, with or without the slug', () => {
+        expect(parseRoute('/wrap/507f1f77bcf86cd799439011/red-bull-livery')).toEqual({ page: 'explore', wrapId: '507f1f77bcf86cd799439011' });
+        expect(parseRoute('/wrap/507f1f77bcf86cd799439011')).toEqual({ page: 'explore', wrapId: '507f1f77bcf86cd799439011' });
+    });
+
+    it('returns checkout customers to AI creation and folds old hash links into paths', () => {
+        expect(initialPath('/explore', '?checkout=success&orderId=123', '')).toBe('/create');
+        expect(initialPath('/', '', '#/explore/3d')).toBe('/explore/3d');
+        expect(initialPath('/garage', '?reset=reset-token', '')).toBe('/garage');
     });
 
     it('canonicalizes the initial route without losing payment or reset parameters or adding history', () => {
@@ -28,20 +35,38 @@ describe('page navigation', () => {
             location: { pathname: '/', search: '?checkout=success&orderId=123&reset=test', hash: '#/home' },
             history: { state: { existing: true }, replaceState },
         });
+        vi.stubGlobal('document', { addEventListener: vi.fn() });
         initializeNavigation();
         expect(replaceState).toHaveBeenCalledWith(
-            { existing: true }, '', '/?checkout=success&orderId=123&reset=test#/create',
+            { existing: true }, '', '/create?checkout=success&orderId=123&reset=test',
         );
     });
 
-    it('uses native hash navigation and does not add duplicate entries for the current page', () => {
-        let hash = '#/preview';
-        const location = { get hash() { return hash; }, set hash(value) { hash = value; } };
-        const setHash = vi.spyOn(location, 'hash', 'set');
-        vi.stubGlobal('window', { location });
+    it('keeps a wrap URL as it is on load', () => {
+        const replaceState = vi.fn();
+        vi.stubGlobal('window', {
+            location: { pathname: '/wrap/507f1f77bcf86cd799439011/red', search: '', hash: '' },
+            history: { state: null, replaceState },
+        });
+        vi.stubGlobal('document', { addEventListener: vi.fn() });
+        initializeNavigation();
+        expect(replaceState).toHaveBeenCalledWith(null, '', '/wrap/507f1f77bcf86cd799439011/red');
+    });
+
+    it('pushes history for a new page and does not add duplicate entries for the current one', () => {
+        const pushState = vi.fn();
+        const dispatchEvent = vi.fn();
+        vi.stubGlobal('window', {
+            location: { pathname: '/', search: '' },
+            history: { pushState },
+            dispatchEvent,
+        });
         navigate('preview');
-        expect(setHash).not.toHaveBeenCalled();
+        expect(pushState).not.toHaveBeenCalled();
         navigate('explore');
-        expect(setHash).toHaveBeenCalledWith('#/explore');
+        expect(pushState).toHaveBeenCalledWith(null, '', '/explore');
+        navigateTo('/wrap/507f1f77bcf86cd799439011/red');
+        expect(pushState).toHaveBeenLastCalledWith(null, '', '/wrap/507f1f77bcf86cd799439011/red');
+        expect(dispatchEvent).toHaveBeenCalledTimes(2);
     });
 });

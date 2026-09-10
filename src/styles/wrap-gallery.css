@@ -184,6 +184,7 @@
 
 .wg-meta { padding: 14px 16px; }
 .wg-meta .wg-nm { font: 600 14.5px 'Archivo', sans-serif; color: var(--wg-ink-1); }
+.wg-meta .wg-nm a { color: inherit; text-decoration: none; }
 .wg-meta .wg-md {
   font: 400 12px 'Archivo', sans-serif;
   color: var(--wg-ink-4);

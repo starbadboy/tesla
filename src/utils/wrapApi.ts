@@ -49,6 +49,13 @@ export async function fetchWraps(
     return { items, total: Number.isFinite(counted) && counted > 0 ? counted : items.length };
 }
 
+/** One public wrap by id, for a wrap page opened straight from its URL. */
+export async function fetchWrap(id: string): Promise<Wrap> {
+    const res = await fetch(`/api/wraps/${id}`, { headers: authHeaders() });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+}
+
 /**
  * Whether this wrap's own car can be shown in 3D.
  *
