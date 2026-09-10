@@ -176,8 +176,12 @@ export async function likeWrap(id: string, type: WrapType): Promise<{ likes: num
  */
 export function proxiedMediaUrl(url: string): string {
     const crossOrigin = /^https?:\/\//.test(url) && !url.startsWith(window.location.origin);
-    const localOrigin = /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname);
-    return crossOrigin && localOrigin ? `/api/proxy-image?url=${encodeURIComponent(url)}` : url;
+    if (!crossOrigin) return url;
+    if (/^(localhost|127\.0\.0\.1)$/.test(window.location.hostname)) return `/api/proxy-image?url=${encodeURIComponent(url)}`;
+    // The same file is also shown in plain <img> tags. Chrome caches that response, which
+    // carries no Access-Control-Allow-Origin header, and would reuse it for a CORS read and
+    // reject it. A distinct URL gives CORS reads their own cache entry.
+    return `${url}${url.includes('?') ? '&' : '?'}cors=1`;
 }
 
 /** Tracks the download server-side, then saves the file locally. */
