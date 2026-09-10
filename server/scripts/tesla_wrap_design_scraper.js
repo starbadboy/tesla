@@ -54,7 +54,7 @@ function parseDesignPage(html) {
     if (!product) throw new Error('No Product JSON-LD on page');
     const crumbs = jsonLd(html, 'BreadcrumbList')?.itemListElement || [];
     const vehicleCrumb = crumbs.find(item => item.position === 3)?.name || '';
-    const png = html.match(/\/api\/images\/generations\/[^"'\\ <]+\.png/);
+    const png = html.match(/\/api\/images\/generations(?:-compressed)?\/[^"'\\ <]+\.png/);
     const prompt = html.match(/italic">“<!-- -->(.*?)<!-- -->”<\/p>/);
 
     return {

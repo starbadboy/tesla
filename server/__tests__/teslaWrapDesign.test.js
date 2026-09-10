@@ -29,6 +29,11 @@ describe('tesla-wrap.design scraper', () => {
         });
     });
 
+    it('accepts the compressed generations path some designs serve instead', () => {
+        const compressed = html.replace(/\/api\/images\/generations\//g, '/api/images/generations-compressed/');
+        expect(parseDesignPage(compressed).pngUrl).toBe('https://tesla-wrap.design/api/images/generations-compressed/red-tesla-model-3-2024-standard-premium-wrap-png-template--e622ad1b-05ef-4c3e-ad5a-4ce0cceaa8e7.png');
+    });
+
     it('returns null for the PNG when the page only carries a cover image', () => {
         const noPng = html.replace(/<img[^>]*generations\/[^>]*>/, '');
         expect(parseDesignPage(noPng).pngUrl).toBeNull();
