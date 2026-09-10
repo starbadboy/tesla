@@ -13,6 +13,12 @@ const s3Client = new S3Client({
 
 const BUCKET_NAME = process.env.R2_BUCKET_NAME || 'teslawrap-media';
 const PUBLIC_URL = process.env.R2_PUBLIC_URL || '';
+// Every host this bucket has been published under; rows in the database carry all of them.
+const MEDIA_HOSTS = [...new Set([
+    PUBLIC_URL,
+    'https://cdn.teslastudio.online',
+    'https://pub-1b6bcb54b4164c7a8f42cf1ab65c9a83.r2.dev',
+].filter(Boolean))];
 
 /**
  * Upload a buffer to R2
@@ -52,10 +58,8 @@ async function deleteFromR2(key) {
  * Returns null if not an R2 URL
  */
 function getR2KeyFromUrl(url) {
-    if (!url || !PUBLIC_URL || !url.startsWith(PUBLIC_URL)) {
-        return null;
-    }
-    return url.replace(PUBLIC_URL + '/', '');
+    const host = url && MEDIA_HOSTS.find(candidate => url.startsWith(candidate + '/'));
+    return host ? url.slice(host.length + 1) : null;
 }
 
 /**
@@ -82,6 +86,7 @@ module.exports = {
     uploadToR2,
     deleteFromR2,
     getR2KeyFromUrl,
+    MEDIA_HOSTS,
     getMimeType,
     s3Client,
     BUCKET_NAME,

@@ -8,7 +8,7 @@ const bodyParser = require('body-parser');
 const multer = require('multer');
 
 const fs = require('fs');
-const { uploadToR2, deleteFromR2, getR2KeyFromUrl, getMimeType } = require('./utils/r2');
+const { uploadToR2, deleteFromR2, getR2KeyFromUrl, getMimeType, MEDIA_HOSTS } = require('./utils/r2');
 const { publicMatch } = require('./utils/visibility');
 const { GENERATION_COST } = require('./utils/packs');
 const { reserve, refund } = require('./utils/credits');
@@ -352,11 +352,7 @@ app.get('/api/proxy-image', async (req, res) => {
         }
 
         // Only allow proxying from our own R2 bucket for security
-        const allowedOrigins = [
-            process.env.R2_PUBLIC_URL || '',
-            'https://pub-1b6bcb54b4164c7a8f42cf1ab65c9a83.r2.dev', // Legacy R2 URLs still in DB
-        ];
-        if (!allowedOrigins.some(origin => origin && url.startsWith(origin))) {
+        if (!MEDIA_HOSTS.some(origin => url.startsWith(origin + '/'))) {
             return res.status(403).json({ error: 'URL not allowed' });
         }
 

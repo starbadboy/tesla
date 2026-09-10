@@ -78,8 +78,7 @@ export function Home({
         return () => window.clearTimeout(settle);
     }, [hero]);
 
-    // The raw R2 domain sends no CORS headers, so a canvas cannot read those sheets; the
-    // server proxies them, exactly as loading a wrap into the studio does.
+    // Same media path as loading a wrap into the studio: direct in production, proxied locally.
     const heroSheet = hero?.imageUrl ? proxiedMediaUrl(hero.imageUrl) : null;
 
     const steps = [

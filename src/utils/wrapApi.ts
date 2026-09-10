@@ -169,10 +169,15 @@ export async function likeWrap(id: string, type: WrapType): Promise<{ likes: num
     return { likes: data.likes as number, liked: Boolean(data.liked) };
 }
 
-/** Images on our storage hosts (r2.dev, the CDN) send no CORS headers, so any cross-origin URL goes through the server proxy. */
+/**
+ * The R2 bucket's CORS policy lists www.teslastudio.online, so production reads media
+ * straight from the CDN. Local origins are not on that list, so they still go through
+ * the server proxy; that also covers the headless render pipeline.
+ */
 export function proxiedMediaUrl(url: string): string {
     const crossOrigin = /^https?:\/\//.test(url) && !url.startsWith(window.location.origin);
-    return crossOrigin ? `/api/proxy-image?url=${encodeURIComponent(url)}` : url;
+    const localOrigin = /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname);
+    return crossOrigin && localOrigin ? `/api/proxy-image?url=${encodeURIComponent(url)}` : url;
 }
 
 /** Tracks the download server-side, then saves the file locally. */
