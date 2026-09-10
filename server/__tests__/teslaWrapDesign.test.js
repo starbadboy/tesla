@@ -47,6 +47,6 @@ describe('tesla-wrap.design scraper', () => {
             downloads: 447,
             prompt: 'F1 Red Bull & raceing',
         });
-        expect(toWrapDoc({ ...parsed, sourceModel: 'Model Y (2025+) Standard' }, 'u', 'i')).toBeNull();
+        expect(toWrapDoc({ ...parsed, sourceModel: 'Roadster' }, 'u', 'i')).toBeNull();
     });
 });

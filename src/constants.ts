@@ -11,6 +11,7 @@ export const CAR_MODELS: Record<string, string> = {
     "Model 3 (Classic)": `/assets/model3.png`,
     "Model Y (2025 Performance)": `${CDN_BASE}/assets/modely-2025-performance.png`,
     "Model Y (2025 Long Range)": `/assets/modely-2025-premium.png`,
+    "Model Y (2025 Standard)": `/assets/modely-2025-base.png`,
     "Model Y L": `${CDN_BASE}/assets/modely-l.png`,
     "Model Y": `/assets/modely.png`,
 };
@@ -25,6 +26,7 @@ export const CAR_3D_MODELS: Record<string, string> = {
     "Model 3 (Classic)": `${CDN_BASE}/models/model3_classic/Model3_High.gltf`,
     "Model Y (2025 Performance)": "", // Not available
     "Model Y (2025 Long Range)": `${CDN_BASE}/models/modely_2025_premium/Bayberry.gltf`,
+    "Model Y (2025 Standard)": "", // Not available
     "Model Y L": "", // Not available
     "Model Y": `${CDN_BASE}/models/modely_classic/ModelY_High.gltf`,
 };
@@ -46,6 +48,7 @@ export const WRAP_FOLDER_MAP: Record<string, string> = {
     "Model 3 (Classic)": "model3",
     "Model Y (2025 Performance)": "modely-2025-performance",
     "Model Y (2025 Long Range)": "modely-2025-premium",
+    "Model Y (2025 Standard)": "modely-2025-base",
     "Model Y L": "modely-l",
     "Model Y": "modely",
 };

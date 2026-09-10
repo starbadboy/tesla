@@ -20,6 +20,7 @@ const MODEL_MAP = {
     'Model 3 (2024+) Performance': 'Model 3 (2024 Performance)',
     'Model Y': 'Model Y',
     'Model Y (2025+) Premium': 'Model Y (2025 Long Range)',
+    'Model Y (2025+) Standard': 'Model Y (2025 Standard)',
     'Model Y (2025+) Performance': 'Model Y (2025 Performance)',
     'Model Y L': 'Model Y L',
     'Cybertruck': 'Cybertruck',

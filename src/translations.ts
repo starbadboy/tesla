@@ -246,6 +246,7 @@ export const TRANSLATIONS = {
         "Model 3 (Classic)": "Model 3 (Classic)",
         "Model Y (2025 Performance)": "Model Y (2025 Performance)",
         "Model Y (2025 Long Range)": "Model Y (2025 Long Range)",
+        "Model Y (2025 Standard)": "Model Y (2025 Standard)",
         "Model Y L": "Model Y L",
         "Model Y": "Model Y"
     },
@@ -496,6 +497,7 @@ export const TRANSLATIONS = {
         "Model 3 (Classic)": "Model 3 (经典版)",
         "Model Y (2025 Performance)": "Model Y (2025 高性能版)",
         "Model Y (2025 Long Range)": "Model Y (2025 长续航版)",
+        "Model Y (2025 Standard)": "Model Y (2025 标准版)",
         "Model Y L": "Model Y (L 加长版)",
         "Model Y": "Model Y"
     }
