@@ -75,15 +75,60 @@ export const PAGE_META = Object.freeze({
     },
 });
 
+/** Every car a wrap can be tagged with; each one gets a crawlable collection page. */
+export const WRAP_MODELS = Object.freeze([
+    'Cybertruck',
+    'Model S (2021+)',
+    'Model S Plaid (2025+)',
+    'Model X (2021+)',
+    'Model 3 (2024 Base)',
+    'Model 3 (2024 Performance)',
+    'Model 3 (Classic)',
+    'Model Y (2025 Performance)',
+    'Model Y (2025 Long Range)',
+    'Model Y (2025 Standard)',
+    'Model Y L',
+    'Model Y',
+]);
+
 const WRAP_ROUTE = /^\/wrap\/([0-9a-f]{24})(?:\/[^/]*)?$/i;
+const COLLECTION_ROUTE = /^\/wraps\/([a-z0-9-]+)$/;
 
 /** Which page a path shows; unknown paths land on the preview like the old hash routes did. */
 export function parseRoute(pathname) {
     const normalized = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
     const wrap = WRAP_ROUTE.exec(normalized);
-    if (wrap) return { page: 'explore', wrapId: wrap[1] };
+    if (wrap) return { page: 'explore', wrapId: wrap[1], model: null };
+    const collection = COLLECTION_ROUTE.exec(normalized);
+    const model = collection ? modelFromSlug(collection[1]) : null;
+    if (model) return { page: 'explore', wrapId: null, model };
     const page = Object.keys(PAGE_PATHS).find(key => PAGE_PATHS[key] === normalized) ?? 'preview';
-    return { page, wrapId: null };
+    return { page, wrapId: null, model: null };
+}
+
+export function modelFromSlug(slug) {
+    return WRAP_MODELS.find(model => slugify(model) === slug) ?? null;
+}
+
+/** The gallery filtered to one car, e.g. /wraps/model-3-2024-base. */
+export function collectionPath(model) {
+    return `/wraps/${slugify(model)}`;
+}
+
+/** Head tags and heading for one car's collection; the count is known only on the server. */
+export function collectionMeta(model, count) {
+    const many = typeof count === 'number' && count > 0 ? `${count} free` : 'Free';
+    return {
+        title: `${model} Wraps | Free Tesla Wrap Designs | Tesla Studio`,
+        heading: `Free ${model} Wrap Designs`,
+        description: `${many} ${model} wrap designs from the Tesla Studio community. Preview any wrap on the 3D ${model}, then download the PNG for the Tesla Toybox Colorizer.`,
+        path: collectionPath(model),
+    };
+}
+
+/** The bare 3D viewer for one wrap, for iframes on other sites. */
+export function embedPath(wrap) {
+    return `/embed/wrap/${wrap._id}`;
 }
 
 /** URL-safe tail for a wrap link; the id before it carries the identity, so non-Latin names just say "wrap". */

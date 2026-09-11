@@ -19,10 +19,11 @@ let sitemapCache = { xml: '', at: 0 };
 router.get('/sitemap.xml', async (req, res) => {
     try {
         if (Date.now() - sitemapCache.at > SITEMAP_TTL_MS) {
-            const { SITE_URL, PAGE_PATHS, wrapPath } = await shared;
+            const { SITE_URL, PAGE_PATHS, WRAP_MODELS, collectionPath, wrapPath } = await shared;
             const wraps = await Wrap.find({ ...publicMatch(), type: { $ne: 'plate' } })
                 .select('name imageUrl renderUrl createdAt updatedAt').sort({ createdAt: -1 }).lean();
-            sitemapCache = { xml: buildSitemap({ siteUrl: SITE_URL, pagePaths: PAGE_PATHS, wraps, wrapPath }), at: Date.now() };
+            const collectionPaths = WRAP_MODELS.map(collectionPath);
+            sitemapCache = { xml: buildSitemap({ siteUrl: SITE_URL, pagePaths: PAGE_PATHS, collectionPaths, wraps, wrapPath }), at: Date.now() };
         }
         res.type('application/xml').send(sitemapCache.xml);
     } catch (err) {
@@ -51,6 +52,23 @@ router.get(['/wrap/:id', '/wrap/:id/:slug'], async (req, res, next) => {
             return;
         }
         const meta = wrapMeta(wrap);
+        if (!sendPage(res, { ...meta, url: SITE_URL + meta.path })) next();
+    } catch (err) {
+        next(err);
+    }
+});
+
+// One car's collection: the gallery filtered to that model, titled with the live count.
+router.get('/wraps/:slug', async (req, res, next) => {
+    try {
+        const { SITE_URL, PAGE_META, PAGE_PATHS, modelFromSlug, collectionMeta } = await shared;
+        const model = modelFromSlug(req.params.slug);
+        if (!model) {
+            if (!sendPage(res, { ...PAGE_META.en.explore, url: SITE_URL + PAGE_PATHS.explore }, 404)) next();
+            return;
+        }
+        const count = await Wrap.countDocuments({ ...publicMatch(), type: { $ne: 'plate' }, models: model });
+        const meta = collectionMeta(model, count);
         if (!sendPage(res, { ...meta, url: SITE_URL + meta.path })) next();
     } catch (err) {
         next(err);

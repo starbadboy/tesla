@@ -14,8 +14,8 @@ import { WrapStudio } from './components/WrapStudio/WrapStudio';
 import { FACTORY_PAINT } from './constants';
 import { proxiedMediaUrl } from './utils/wrapApi';
 import { SiteHeader } from './components/ui/SiteHeader';
-import { navigate, PAGE_PATHS, useRoute } from './utils/navigation';
-import { PAGE_META, SITE_URL as SITE_ORIGIN } from '../shared/seo';
+import { navigate, navigateTo, PAGE_PATHS, useRoute } from './utils/navigation';
+import { PAGE_META, SITE_URL as SITE_ORIGIN, collectionMeta, collectionPath } from '../shared/seo';
 
 /**
  * A newly loaded sheet starts from a clean transform. DesignCanvas fits each image to
@@ -25,7 +25,7 @@ import { PAGE_META, SITE_URL as SITE_ORIGIN } from '../shared/seo';
 const FRESH_LAYER = { 'Full Wrap': { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1 } };
 
 function App() {
-  const { page, wrapId } = useRoute();
+  const { page, wrapId, model: collectionModel } = useRoute();
   const isEditing = page === 'create' || page === 'edit';
   const [currentModelName, setCurrentModelName] = useState('Model 3 (2024 Base)');
 
@@ -71,7 +71,8 @@ function App() {
     document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
     // A wrap page arrives with its own tags from the server, and the gallery keeps its title current.
     if (wrapId) return;
-    const meta = PAGE_META[language][page];
+    const meta = collectionModel ? collectionMeta(collectionModel) : PAGE_META[language][page];
+    const canonicalPath = collectionModel ? collectionPath(collectionModel) : PAGE_PATHS[page];
     document.title = meta.title;
 
     const upsertMeta = (
@@ -113,7 +114,7 @@ function App() {
       meta.setAttribute('name', 'twitter:description');
       return meta;
     });
-    upsertMeta('link[rel="canonical"]', 'href', SITE_ORIGIN + PAGE_PATHS[page], () => {
+    upsertMeta('link[rel="canonical"]', 'href', SITE_ORIGIN + canonicalPath, () => {
       const link = document.createElement('link');
       link.setAttribute('rel', 'canonical');
       return link;
@@ -137,7 +138,7 @@ function App() {
       document.head.appendChild(faqScript);
     }
     faqScript.textContent = JSON.stringify(faqJsonLd);
-  }, [language, seo, page, wrapId]);
+  }, [language, seo, page, wrapId, collectionModel]);
 
   // Switching the car by hand drops the wrap: templates are per-model, so the
   // current texture would land on the wrong panels. Loading a wrap for another
@@ -254,7 +255,7 @@ function App() {
             onIsWrapVisibleChange={setIsWrapVisible}
             canvasRef={canvasRef}
             onExport={handleExport}
-            onOpenGallery={() => navigate('explore')}
+            onOpenGallery={() => navigateTo(collectionPath(currentModelName))}
             onOpenEditor={() => navigate('edit')}
             onLoadCommunityWrap={handleLoadCommunityWrap}
             communityRefreshTrigger={galleryRefreshTrigger}
@@ -265,7 +266,7 @@ function App() {
               language={language}
               currentModelName={currentModelName}
               onStart={model => { if (model) handleModelChange(model); navigate('preview'); }}
-              onOpenGallery={() => navigate('explore')}
+              onOpenGallery={() => navigateTo(collectionPath(currentModelName))}
               onOpenAICreate={() => navigate('create')}
               onLoadWrap={handleLoadCommunityWrap}
               refreshTrigger={galleryRefreshTrigger}
@@ -320,7 +321,7 @@ function App() {
             <WrapGallery
               key={page}
               type="car"
-              selectedModel={currentModelName}
+              collectionModel={collectionModel}
               refreshTrigger={galleryRefreshTrigger}
               language={language}
               view={page === 'garage' ? 'garage' : 'community'}

@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { PAGE_PATHS, SITE_URL, slugify, wrapMeta, wrapPath } from '../../shared/seo.js';
+import {
+    PAGE_PATHS, SITE_URL, WRAP_MODELS, collectionMeta, collectionPath, embedPath, modelFromSlug, slugify, wrapMeta, wrapPath,
+} from '../../shared/seo.js';
+import { embedSnippet, shareLinks } from '../../src/utils/share';
 import { buildSitemap, injectMeta } from '../utils/seo.js';
 
 const TEMPLATE = `<head>
@@ -43,6 +46,33 @@ describe('wrap URLs', () => {
     });
 });
 
+describe('collections', () => {
+    it('gives every car a slug that round-trips, and rejects unknown ones', () => {
+        for (const model of WRAP_MODELS) expect(modelFromSlug(slugify(model))).toBe(model);
+        expect(collectionPath('Model 3 (2024 Base)')).toBe('/wraps/model-3-2024-base');
+        expect(modelFromSlug('model-3')).toBeNull();
+    });
+
+    it('titles the page with the car and the live count when known', () => {
+        expect(collectionMeta('Model Y', 48).description).toMatch(/^48 free Model Y wrap designs/);
+        expect(collectionMeta('Model Y').description).toMatch(/^Free Model Y wrap designs/);
+        expect(collectionMeta('Model Y').heading).toBe('Free Model Y Wrap Designs');
+        expect(collectionMeta('Model Y').path).toBe('/wraps/model-y');
+    });
+});
+
+describe('share targets', () => {
+    it('sends the wrap page to X and Reddit and embeds the bare viewer', () => {
+        const links = shareLinks(wrap);
+        expect(links.x).toContain('https://x.com/intent/post?');
+        expect(new URL(links.x).searchParams.get('url')).toBe(SITE_URL + wrapPath(wrap));
+        expect(new URL(links.reddit).searchParams.get('title')).toBe('Red Bull & "Racing" <F1> — a Model 3 (2024 Base) wrap on Tesla Studio');
+        expect(embedPath(wrap)).toBe('/embed/wrap/507f1f77bcf86cd799439011');
+        expect(embedSnippet(wrap)).toContain(`<iframe src="${SITE_URL}/embed/wrap/507f1f77bcf86cd799439011"`);
+        expect(embedSnippet(wrap)).toContain('title="Red Bull &amp; &quot;Racing&quot; &lt;F1&gt; on Tesla Studio"');
+    });
+});
+
 describe('injectMeta', () => {
     it('rewrites every crawler-facing tag, escaped, and leaves the body alone', () => {
         const meta = wrapMeta(wrap);
@@ -66,8 +96,9 @@ describe('injectMeta', () => {
 
 describe('buildSitemap', () => {
     it('lists public pages except the garage, then each wrap with its date and image', () => {
-        const xml = buildSitemap({ siteUrl: SITE_URL, pagePaths: PAGE_PATHS, wraps: [wrap], wrapPath });
+        const xml = buildSitemap({ siteUrl: SITE_URL, pagePaths: PAGE_PATHS, collectionPaths: ['/wraps/model-y'], wraps: [wrap], wrapPath });
         expect(xml).toContain('<loc>https://www.teslastudio.online/</loc>');
+        expect(xml).toContain('<url><loc>https://www.teslastudio.online/wraps/model-y</loc></url>');
         expect(xml).toContain('<loc>https://www.teslastudio.online/explore/3d</loc>');
         expect(xml).not.toContain('/garage');
         expect(xml).toContain('<url><loc>https://www.teslastudio.online/wrap/507f1f77bcf86cd799439011/red-bull-racing-f1</loc><lastmod>2026-09-01</lastmod>'

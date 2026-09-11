@@ -23,11 +23,12 @@ function injectMeta(html, { title, description, url, image }) {
     return set(out, /(<link\s+rel="canonical"\s+href=")[^"]*(")/, url);
 }
 
-/** Static pages plus every public wrap with its image; the garage is one user's own list. */
-function buildSitemap({ siteUrl, pagePaths, wraps, wrapPath }) {
-    const pages = Object.entries(pagePaths)
-        .filter(([page]) => page !== 'garage')
-        .map(([, pagePath]) => `<url><loc>${escapeXml(siteUrl + pagePath)}</loc></url>`);
+/** Static pages, one collection per car, then every public wrap with its image; the garage is one user's own list. */
+function buildSitemap({ siteUrl, pagePaths, collectionPaths = [], wraps, wrapPath }) {
+    const pages = [
+        ...Object.entries(pagePaths).filter(([page]) => page !== 'garage').map(([, pagePath]) => pagePath),
+        ...collectionPaths,
+    ].map(pagePath => `<url><loc>${escapeXml(siteUrl + pagePath)}</loc></url>`);
     const items = wraps.map(wrap => {
         const lastmod = new Date(wrap.updatedAt || wrap.createdAt || Date.now()).toISOString().slice(0, 10);
         const image = wrap.renderUrl || wrap.imageUrl;

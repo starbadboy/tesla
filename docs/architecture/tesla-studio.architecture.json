@@ -1,0 +1,329 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Tesla Studio Architecture",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "request-path",
+        "label": "Request path",
+        "focus": [
+          "browser",
+          "api",
+          "mongo"
+        ],
+        "note": "One Node process serves the built client and the /api routes; wraps, users and credits live in MongoDB."
+      },
+      {
+        "id": "media-path",
+        "label": "Wrap media",
+        "focus": [
+          "browser",
+          "cdn",
+          "r2",
+          "api"
+        ],
+        "note": "Textures are written to R2 by the API and read by the browser through the Cloudflare CDN, never through the server."
+      },
+      {
+        "id": "money-identity",
+        "label": "Payments, AI, identity",
+        "focus": [
+          "google",
+          "api",
+          "openai",
+          "stripe"
+        ],
+        "note": "Google ID tokens become app JWTs; Stripe checkout and its signed webhook move credits; OpenAI renders paid generations."
+      }
+    ],
+    "repository": {
+      "url": "https://github.com/starbadboy/tesla",
+      "revision": "6f641716e293a5d60f91e06a69525ba7fe55a5fd"
+    }
+  },
+  "components": [
+    {
+      "id": "browser",
+      "type": "frontend",
+      "label": "Tesla Studio Client",
+      "sublabel": "React + Vite · Three.js viewer",
+      "brand": "react",
+      "pos": [
+        40,
+        290
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "src/App.tsx"
+        }
+      ]
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "Express API",
+      "sublabel": "Node :5001 · serves dist/",
+      "pos": [
+        500,
+        290
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "tag": "JWT",
+      "sources": [
+        {
+          "path": "server/index.js"
+        }
+      ]
+    },
+    {
+      "id": "cron",
+      "type": "backend",
+      "label": "Nightly importer",
+      "sublabel": "node-cron 00:00 · wrap sites",
+      "pos": [
+        500,
+        470
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "server/index.js",
+          "line": 47
+        }
+      ]
+    },
+    {
+      "id": "mongo",
+      "type": "database",
+      "label": "MongoDB",
+      "sublabel": "Wrap · User · CreditTransaction",
+      "brand": "mongodb",
+      "pos": [
+        900,
+        290
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "server/models/Wrap.js"
+        }
+      ]
+    },
+    {
+      "id": "google",
+      "type": "security",
+      "label": "Google Identity",
+      "sublabel": "OAuth ID token",
+      "pos": [
+        230,
+        80
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "server/utils/googleAuth.js"
+        }
+      ]
+    },
+    {
+      "id": "openai",
+      "type": "external",
+      "label": "OpenAI Images",
+      "sublabel": "GPT Image wrap generation",
+      "brand": "openai",
+      "pos": [
+        500,
+        80
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "server/utils/wrapGeneration.js"
+        }
+      ]
+    },
+    {
+      "id": "stripe",
+      "type": "external",
+      "label": "Stripe",
+      "sublabel": "Checkout + signed webhook",
+      "brand": "stripe",
+      "pos": [
+        770,
+        80
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "server/routes/credits.js"
+        }
+      ]
+    },
+    {
+      "id": "cdn",
+      "type": "cloud",
+      "label": "Cloudflare CDN",
+      "sublabel": "cdn.teslastudio.online",
+      "brand": "cloudflare",
+      "pos": [
+        40,
+        470
+      ],
+      "size": [
+        170,
+        64
+      ]
+    },
+    {
+      "id": "r2",
+      "type": "cloud",
+      "label": "Cloudflare R2",
+      "sublabel": "textures + renders",
+      "brand": "cloudflare",
+      "pos": [
+        270,
+        470
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "server/utils/r2.js"
+        }
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Single Node.js process",
+      "wraps": [
+        "api",
+        "cron"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "browser-api",
+      "from": "browser",
+      "to": "api",
+      "label": "HTML + /api · Bearer JWT",
+      "variant": "emphasis"
+    },
+    {
+      "id": "api-mongo",
+      "from": "api",
+      "to": "mongo",
+      "label": "Mongoose",
+      "variant": "emphasis"
+    },
+    {
+      "id": "browser-cdn",
+      "from": "browser",
+      "to": "cdn",
+      "label": "media GET",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 60
+    },
+    {
+      "id": "cdn-r2",
+      "from": "cdn",
+      "to": "r2",
+      "label": "origin pull"
+    },
+    {
+      "id": "api-r2",
+      "from": "api",
+      "to": "r2",
+      "label": "PutObject",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "cron-mongo",
+      "from": "cron",
+      "to": "mongo",
+      "label": "nightly upsert",
+      "variant": "dashed"
+    },
+    {
+      "id": "google-api",
+      "from": "google",
+      "to": "api",
+      "label": "verify ID token",
+      "variant": "security"
+    },
+    {
+      "id": "api-openai",
+      "from": "api",
+      "to": "openai",
+      "label": "generate image",
+      "labelDx": -55,
+      "labelDy": -45
+    },
+    {
+      "id": "api-stripe",
+      "from": "api",
+      "to": "stripe",
+      "label": "checkout · webhook",
+      "variant": "dashed",
+      "fromSide": "top",
+      "toSide": "bottom"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "One process",
+      "items": [
+        "Express serves the Vite build and /api",
+        "SSR meta + live sitemap for /wraps/:slug"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Media",
+      "items": [
+        "Uploads and renders write to R2 via S3 SDK",
+        "publicMatch() keeps private wraps unlisted"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Money and identity",
+      "items": [
+        "credits.js logs every move as CreditTransaction",
+        "Stripe webhook verified against raw body",
+        "generateToken mints all JWTs; Resend sends reset mail"
+      ]
+    }
+  ]
+}

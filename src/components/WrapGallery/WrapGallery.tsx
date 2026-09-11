@@ -15,8 +15,9 @@ import {
 } from '../../utils/wrapApi';
 import type { Wrap } from '../Gallery';
 import { WrapDetailModal } from '../WrapDetailModal';
-import { navigate, navigateTo } from '../../utils/navigation';
-import { wrapMeta, wrapPath } from '../../../shared/seo';
+import { ShareRow } from './ShareRow';
+import { navigate, navigateTo, PAGE_PATHS } from '../../utils/navigation';
+import { collectionMeta, collectionPath, wrapMeta, wrapPath } from '../../../shared/seo';
 import '../../styles/wrap-gallery.css';
 
 const ALL_MODELS = '__all__';
@@ -30,7 +31,8 @@ const PAGE_SIZE = 60;
 
 export interface WrapGalleryProps {
     type: WrapType;
-    selectedModel?: string;
+    /** Car the URL filters to (/wraps/:model-slug); null lists every model. */
+    collectionModel?: string | null;
     refreshTrigger?: number;
     language?: 'en' | 'zh';
     /** 'garage' lists the signed-in user's own uploads and liked wraps. */
@@ -75,7 +77,7 @@ function WrapThumb({ wrap, alt }: { wrap: Wrap; alt: string }) {
 }
 
 export function WrapGallery({
-    type, selectedModel, refreshTrigger = 0, language = 'en',
+    type, collectionModel = null, refreshTrigger = 0, language = 'en',
     view = 'community', openWrapId = null, onLoadWrap, onClose,
 }: WrapGalleryProps) {
     const t = TRANSLATIONS[language];
@@ -84,7 +86,9 @@ export function WrapGallery({
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
     const [sortBy, setSortBy] = useState<SortOption>('downloads');
-    const [modelFilter, setModelFilter] = useState(selectedModel ?? ALL_MODELS);
+    // The model filter lives in the URL so every filtered view is a page of its own.
+    const modelFilter = collectionModel ?? ALL_MODELS;
+    const setModelFilter = (model: string) => navigateTo(model === ALL_MODELS ? PAGE_PATHS.explore : collectionPath(model));
     const openId = openWrapId;
     // A wrap URL always renders the community view, so closing it goes back to the gallery.
     const closeOpen = () => navigate('explore');
@@ -316,7 +320,16 @@ export function WrapGallery({
                                 </button>
                             </div>
                             <div className="wg-dinfo">
-                                <div className="wg-tag">{modelLabel(open)}</div>
+                                <div className="wg-tag">
+                                    {open.models && open.models.length > 0
+                                        ? open.models.map((model, index) => (
+                                            <span key={model}>
+                                                {index > 0 && ', '}
+                                                <a href={collectionPath(model)} title={`${t.moreWrapsFor} ${model}`}>{model}</a>
+                                            </span>
+                                        ))
+                                        : t.universal}
+                                </div>
                                 <h2>{open.name}</h2>
                                 <p>
                                     {language === 'zh'
@@ -342,6 +355,7 @@ export function WrapGallery({
                                         </button>
                                     )}
                                 </div>
+                                {type === 'car' && <ShareRow wrap={open} language={language} />}
                                 <div className="wg-dcard">
                                     <div className="wg-crow">
                                         <div className="wg-av2">{initial(open.author)}</div>
@@ -359,7 +373,8 @@ export function WrapGallery({
                     <>
                         <div className="wg-titlebar">
                             <h1>{isGarage ? t.myGarage : type === 'sound' ? t.galleryTitleSound
-                                : type === 'plate' ? t.galleryTitlePlate : t.exploreWraps}</h1>
+                                : type === 'plate' ? t.galleryTitlePlate
+                                : collectionModel ? collectionMeta(collectionModel).heading : t.exploreWraps}</h1>
                             {!isGarage && type === 'car' && <GalleryViewSwitch view="grid" language={language} />}
                         </div>
                         {isGarage ? (

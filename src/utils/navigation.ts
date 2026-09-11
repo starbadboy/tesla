@@ -15,7 +15,7 @@ export function initializeNavigation() {
     const { location, history } = window;
     const path = initialPath(location.pathname, location.search, location.hash);
     const route = parseRoute(path);
-    const canonical = route.wrapId ? path : PAGE_PATHS[route.page];
+    const canonical = route.wrapId || route.model ? path : PAGE_PATHS[route.page];
     history.replaceState(history.state, '', `${canonical}${location.search}`);
     document.addEventListener('click', interceptLinks);
 }
@@ -52,7 +52,7 @@ const getRoute = () => {
     if (!cached || cached.key !== key) cached = { key, route: parseRoute(key) };
     return cached.route;
 };
-const SERVER_ROUTE: Route = { page: 'preview', wrapId: null };
+const SERVER_ROUTE: Route = { page: 'preview', wrapId: null, model: null };
 
 export function useRoute() {
     return useSyncExternalStore(subscribe, getRoute, () => SERVER_ROUTE);
