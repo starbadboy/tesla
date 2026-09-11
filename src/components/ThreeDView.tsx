@@ -70,12 +70,12 @@ const FORCE_TRIM_MESHES: Record<string, Set<string>> = {
 };
 
 /**
- * Whether a mesh's wrap UVs can be sampled, mirroring teslawrapgallery.com. Tesla
- * collapses the UVs of trim-adjacent paint meshes (A-pillars, roof rails, mirror caps,
- * PaintRough and ExteriorFade accents) to one point *inside* the template as a "tint
- * from wrap" marker: the whole piece takes that one texel. Only a point that lies
- * outside the template (wheel wells, undercarriage) is really unmapped. Measured once
- * per geometry and cached.
+ * Whether a mesh's wrap UVs are laid out on the template. Tesla collapses the UVs of
+ * trim-adjacent paint meshes (A-pillars, roof rails, window surrounds, mirror caps,
+ * PaintRough and ExteriorFade accents) to one point as a "tint from wrap" marker, so
+ * the whole piece took whatever single texel the art happened to put there — a flat
+ * green pillar on a green wrap. Those pieces now keep the factory paint instead; only
+ * meshes with real UV area sample the wrap. Measured once per geometry and cached.
  */
 function hasMappedWrapUv(geometry: THREE.BufferGeometry, wrapUv: THREE.BufferAttribute | THREE.InterleavedBufferAttribute): boolean {
     const cache = geometry.userData as { wrapUvMapped?: boolean };
@@ -91,10 +91,7 @@ function hasMappedWrapUv(geometry: THREE.BufferGeometry, wrapUv: THREE.BufferAtt
         if (v > maxV) maxV = v;
     }
     const area = (maxU - minU) * (maxV - minV);
-    const centerU = (minU + maxU) / 2;
-    const centerV = (minV + maxV) / 2;
-    const insideTemplate = centerU >= 0 && centerU <= 1 && centerV >= 0 && centerV <= 1;
-    cache.wrapUvMapped = area > 0.001 || insideTemplate;
+    cache.wrapUvMapped = area > 0.001;
     return cache.wrapUvMapped;
 }
 
