@@ -64,6 +64,10 @@
   #cars .car-photo { aspect-ratio: 400 / 160; object-fit: contain; object-position: center 80%; padding: 14px 10px 8px; }
   #cars b, #cars small { display: block; padding: 0 10px; }
   #cars small { color: var(--dim); font-size: 13px; margin-top: 4px; }
+  .help { margin: 0 auto 16px; max-width: 720px; background: var(--card); border: 1px solid #2a2a30; border-radius: 12px; font-weight: 500; }
+  .help summary { cursor: pointer; padding: 12px 16px; font-weight: 700; color: var(--text); }
+  .help ol { margin: 0; padding: 0 20px 14px 40px; color: #c8c8ce; line-height: 1.5; }
+  .help li { margin: 4px 0; } .help b { color: var(--text); }
   #status { text-align: center; color: var(--dim); font-size: 14px; min-height: 1.4em; }
   @media (max-width: 600px) { .hero { grid-template-columns: 1fr; } .cluster { width: 100%; max-width: 320px; margin: 0 auto; } }
 </style>
@@ -98,6 +102,7 @@
     <button id="reset" data-t="reset">Reset</button>
   </div>
   <div id="status" data-t="hint">Open while parked, press Start engine and allow location.</div>
+  <details class="help"><summary data-t="helpTitle">How to use</summary><ol data-t="help"></ol></details>
 
   <div class="sliders">
     <label class="wide"><span data-t="bar">Speed bar (overrides GPS):</span> <span id="barLabel" data-t="off">off</span> <input type="range" id="speedBar" min="0" max="120" step="1" value="0"></label>
@@ -134,6 +139,15 @@ const STR = {
     blocked: msg => `Location blocked (${msg}). Allow location for this site in the browser settings, or use Test drive.`,
     noGps: 'No location in this browser — use Test drive.', noAudio: msg => `Could not start audio: ${msg}`,
     old: 'This browser is too old for the engine synthesizer (needs AudioWorklet).',
+    helpTitle: 'How to use',
+    help: `<li>Open the page while parked and pick a car below. For the best sound, play it through the car's speakers over Bluetooth.</li>
+      <li>Press <b>Engine Start</b> and allow location. The sound follows your GPS speed: it revs up and shifts as you accelerate, crackles when you lift off, and shifts down as you slow.</li>
+      <li>Hold <b>REV</b> while standing still to blip the throttle.</li>
+      <li><b>Test drive</b> lets you try it without driving: hold <b>Gas</b> and <b>Brake</b>.</li>
+      <li>Drag the <b>Speed bar</b> to set a speed directly and hear how the car sounds there. <b>Reset</b> goes back to 0.</li>
+      <li><b>Intensity</b>: how hard you drive — higher holds each gear to higher revs. <b>Character</b>: muffled to open exhaust. <b>Crackle</b>: pops and bangs. <b>Volume</b>: loudness.</li>
+      <li>Keep the screen on and the page open; the browser may pause the sound when the phone locks or the page goes to the background.</li>
+      <li>Set it up before you drive. Don't use your phone while driving.</li>`,
   },
   zh: {
     title: '引擎声浪', start: '引擎<br>启动<br>熄火', rev: '轰油门', gas: '油门', brake: '刹车', reset: '重置',
@@ -143,6 +157,15 @@ const STR = {
     blocked: msg => `无法获取位置（${msg}）。请在浏览器设置中允许本站获取位置，或使用试驾模式。`,
     noGps: '此浏览器不支持定位，请使用试驾模式。', noAudio: msg => `无法启动音频：${msg}`,
     old: '浏览器版本过旧，无法运行引擎合成器（需要 AudioWorklet）。',
+    helpTitle: '使用说明',
+    help: `<li>停车时打开页面，在下方选择一辆车。用蓝牙连接车机，从车内音响播放效果最好。</li>
+      <li>按下<b>引擎启动</b>并允许获取位置。声浪会跟随 GPS 车速：加速时转速升高并换挡，松油门时有回火爆裂声，减速时降挡。</li>
+      <li>停车时按住<b>轰油门</b>，可以原地轰油门。</li>
+      <li><b>试驾模式</b>：不用开车也能体验，按住<b>油门</b>和<b>刹车</b>按钮。</li>
+      <li>拖动<b>速度条</b>可以直接设定车速，听各个速度下的声音；<b>重置</b>回到 0。</li>
+      <li><b>激烈程度</b>：驾驶风格，越高每个挡位拉到越高转速再换挡。<b>音色</b>：从闷到开阀直通。<b>回火爆裂</b>：放炮声的多少。<b>音量</b>：声音大小。</li>
+      <li>请保持屏幕常亮、页面在前台；手机锁屏或切到后台时，浏览器可能会暂停声音。</li>
+      <li>请在出发前设置好，驾驶时不要操作手机。</li>`,
   },
 }[LANG === 'zh' ? 'zh' : 'en'];
 document.documentElement.lang = LANG === 'zh' ? 'zh-CN' : 'en';
