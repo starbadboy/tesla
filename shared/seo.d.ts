@@ -1,4 +1,4 @@
-export type AppPage = 'preview' | 'home' | 'create' | 'edit' | 'explore' | 'explore3d' | 'garage';
+export type AppPage = 'preview' | 'home' | 'create' | 'edit' | 'explore' | 'explore3d' | 'garage' | 'engineSound';
 export type SeoLanguage = 'en' | 'zh';
 
 export interface PageMeta {

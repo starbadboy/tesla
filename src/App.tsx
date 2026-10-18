@@ -331,6 +331,15 @@ function App() {
             />
           )}
 
+          {page === 'engineSound' && (
+            <iframe
+              className="engine-sound-frame"
+              src="/apps/engine-sound/index.html"
+              title={language === 'zh' ? '引擎声浪' : 'Engine Sound'}
+              allow="geolocation; autoplay; screen-wake-lock"
+            />
+          )}
+
           <ShareModal
             isOpen={isShareModalOpen}
             onClose={() => setIsShareModalOpen(false)}

@@ -26,6 +26,7 @@ export function SiteHeader({ page, language, onToggleLanguage }: SiteHeaderProps
                 </a>
                 <a href={PAGE_PATHS.explore} className="site-nav__link" aria-current={active === 'explore' ? 'page' : undefined}>{t.exploreWraps}</a>
                 <a href={PAGE_PATHS.preview} className="site-nav__link" aria-current={active === 'preview' ? 'page' : undefined}>{t.previewPage}</a>
+                <a href={PAGE_PATHS.engineSound} className="site-nav__link" aria-current={active === 'engineSound' ? 'page' : undefined}>{t.engineSound}</a>
             </nav>
             <div className="site-utilities">
                 <button type="button" className="site-language" onClick={onToggleLanguage}>{language === 'en' ? '中文' : 'EN'}</button>

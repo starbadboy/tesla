@@ -32,12 +32,15 @@
 .site-header a:focus-visible,
 .site-language:focus-visible { outline: 2px solid #efcca1; outline-offset: 3px; }
 
+/* The engine-sound page is its own static app (public/apps/engine-sound), shown under the header. */
+.engine-sound-frame { position: fixed; inset: var(--site-header-height) 0 0; width: 100%; height: calc(100% - var(--site-header-height)); border: 0; background: #0a0a0c; }
+
 @media (max-width: 760px) {
   .site-shell { --site-header-height: 104px; }
   .site-header { grid-template-columns: 1fr auto; grid-template-rows: 44px 40px; gap: 4px 12px; padding: 8px 14px; }
   .site-brand { font-size: 11px; gap: 6px; }
   .site-utilities { grid-column: 2; grid-row: 1; gap: 10px; }
-  .site-nav { grid-column: 1 / -1; grid-row: 2; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+  .site-nav { grid-column: 1 / -1; grid-row: 2; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
   .site-nav__link { min-width: 0; padding: 8px 6px; gap: 5px; font-size: 12px; }
 }
 

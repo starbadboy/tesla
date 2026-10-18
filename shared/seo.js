@@ -10,6 +10,7 @@ export const PAGE_PATHS = Object.freeze({
     explore: '/explore',
     explore3d: '/explore/3d',
     garage: '/garage',
+    engineSound: '/engine-sound',
 });
 
 export const PAGE_META = Object.freeze({
@@ -42,6 +43,10 @@ export const PAGE_META = Object.freeze({
             title: 'My Garage | Tesla Studio',
             description: 'Your uploaded and liked Tesla wraps.',
         },
+        engineSound: {
+            title: 'Engine Sound for Tesla | Petrol Engine Sounds Driven by Your Speed | Tesla Studio',
+            description: 'Make your Tesla sound like a V8, flat-six or V12: an engine sound synthesizer that follows your GPS speed, shifts gears and crackles on the overrun, right in the browser.',
+        },
     },
     zh: {
         preview: {
@@ -71,6 +76,10 @@ export const PAGE_META = Object.freeze({
         garage: {
             title: '我的车库 | Tesla Studio',
             description: '你上传和点赞过的特斯拉车衣。',
+        },
+        engineSound: {
+            title: '特斯拉引擎声浪模拟 | 随车速变化的燃油车声浪 | Tesla Studio',
+            description: '让你的特斯拉发出 V8、水平对置六缸或 V12 的声浪：根据 GPS 车速实时合成引擎声，会换挡、会回火，直接在浏览器中运行。',
         },
     },
 });

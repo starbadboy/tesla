@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Engine Sound</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;800&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root { color-scheme: dark; --bg: #0a0a0c; --card: #16161a; --text: #f2f2f2; --dim: #8a8a92; --accent: #e3262f; --digits: Orbitron, ui-monospace, monospace; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 16px; color: var(--text); font: 600 17px Rajdhani, system-ui, sans-serif; letter-spacing: .02em;
+    background: radial-gradient(ellipse at 50% -10%, #3a0c10, transparent 55%), repeating-linear-gradient(45deg, #101012 0 3px, #0a0a0c 3px 6px); background-color: var(--bg); min-height: 100vh; }
+  main { max-width: 1000px; margin: 0 auto; }
+  header { display: flex; align-items: center; gap: 12px; margin: 4px 0 16px; font: italic 800 22px var(--digits); text-transform: uppercase; letter-spacing: .08em; }
+  header::before { content: ''; width: 46px; height: 18px; transform: skewX(-20deg); background: linear-gradient(90deg, var(--accent) 0 40%, transparent 40% 55%, #fff 55% 70%, transparent 70% 80%, var(--accent) 80%); }
+  .hero { position: relative; z-index: 5; display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; background: linear-gradient(180deg, #1b1b20, #0f0f12); border: 1px solid #2a2a30; border-radius: 16px; box-shadow: 0 20px 60px #000a, inset 0 1px #ffffff10; }
+  .stage { position: relative; padding: 24px 12px 0; border-radius: 16px; background: radial-gradient(ellipse at 50% 40%, #2a2d36, #15161a 70%); }
+  .stage .car-art { display: block; width: 100%; position: relative; overflow: visible; }  /* the backflip swings past the box */
+  /* A picture sits on the road in the same 400×160 box as a drawing; fx.js reads its offsets. */
+  #heroCar { position: relative; aspect-ratio: 400 / 160; display: flex; align-items: flex-end; justify-content: center; }
+  #heroCar .car-photo { display: block; width: 92%; max-height: 92%; object-fit: contain; margin-bottom: 4%; transform-origin: 50% 60%; }
+  .road { position: absolute; left: 0; right: 0; bottom: 6px; height: 4px; background: repeating-linear-gradient(90deg, #555 0 60px, transparent 60px 120px); }
+  #fx { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 10; }
+  /* Instrument cluster: shift lights over a tachometer with the speed and gear in its middle. */
+  .cluster { width: 300px; padding: 16px 16px 12px; text-align: center; }
+  #heroName { font: italic 700 15px var(--digits); text-transform: uppercase; letter-spacing: .1em; color: var(--dim); margin-bottom: 10px; }
+  .leds { display: flex; gap: 6px; justify-content: center; margin-bottom: 8px; }
+  .leds i { width: 18px; height: 10px; border-radius: 3px; background: #222; transition: background .05s; }
+  .leds i.on { background: var(--c); box-shadow: 0 0 10px var(--c); }
+  .limit .leds i { animation: blink .12s steps(1) infinite; --c: #3d8bff; background: var(--c); box-shadow: 0 0 12px var(--c); }
+  @keyframes blink { 50% { opacity: .15; } }
+  #dial { width: 100%; display: block; overflow: visible; }
+  #dial .face { fill: #0b0b0d; stroke: #2e2e34; stroke-width: 2; }
+  #dial .tick { stroke: #ddd; } #dial .tick.minor { stroke: #666; }
+  #dial .lbl { fill: #ddd; font: 700 12px var(--digits); text-anchor: middle; dominant-baseline: central; }
+  #dial .red { fill: none; stroke: var(--accent); stroke-width: 6; }
+  #needle { stroke: var(--accent); stroke-width: 3; stroke-linecap: round; filter: drop-shadow(0 0 4px var(--accent)); }
+  #dial .hub { fill: #222; stroke: var(--accent); stroke-width: 2; }
+  #spd { fill: #fff; font: 800 34px var(--digits); text-anchor: middle; }
+  #unitLabel { fill: var(--dim); font: 600 10px var(--digits); text-anchor: middle; letter-spacing: .1em; }
+  #gearBox { fill: #000; stroke: #444; } #gear { fill: #ffd400; font: 800 20px var(--digits); text-anchor: middle; }
+  .limit #dial .face { stroke: var(--accent); filter: drop-shadow(0 0 12px var(--accent)); }
+  .dim { color: var(--dim); font-size: 14px; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 16px 0; }
+  .row { align-items: center; }
+  button { font: inherit; text-transform: uppercase; letter-spacing: .08em; padding: 14px 22px; border-radius: 10px; border: 1px solid #333; background: linear-gradient(#2a2a30, #1a1a1e); color: var(--text); touch-action: none; user-select: none; }
+  button:active, button.held { background: #444; border-color: var(--accent); }
+  /* Push-to-start: a round red button like the one on the dash. */
+  button.primary { width: 112px; height: 112px; padding: 0; border-radius: 50%; font: 800 12px/1.5 var(--digits); color: #fff; border: 4px solid #555;
+    background: radial-gradient(circle at 50% 35%, #ff4b52, #a50f16 70%); box-shadow: 0 0 0 4px #111, 0 6px 20px #000c; }
+  .running button.primary { animation: pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 50% { box-shadow: 0 0 0 4px #111, 0 0 32px var(--accent); } }
+  .pedals { display: none; }
+  .test .pedals { display: contents; }
+  .wide { grid-column: 1 / -1; }
+  .sliders { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px 24px; margin: 8px 0 24px; }
+  label { font-size: 14px; color: var(--dim); }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  #cars { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+  #cars button { padding: 0 0 12px; text-align: left; overflow: hidden; background: var(--card); touch-action: auto; text-transform: none; letter-spacing: normal; }
+  #cars button.active { outline: 3px solid var(--accent); }
+  #cars .car-art, #cars .car-photo { display: block; width: 100%; padding: 14px 6px 2px; background: radial-gradient(ellipse at 50% 40%, #2a2d36, #1c1c20 75%); }
+  #cars .car-photo { aspect-ratio: 400 / 160; object-fit: contain; object-position: center 80%; padding: 14px 10px 8px; }
+  #cars b, #cars small { display: block; padding: 0 10px; }
+  #cars small { color: var(--dim); font-size: 13px; margin-top: 4px; }
+  #status { text-align: center; color: var(--dim); font-size: 14px; min-height: 1.4em; }
+  @media (max-width: 600px) { .hero { grid-template-columns: 1fr; } .cluster { width: 100%; max-width: 320px; margin: 0 auto; } }
+</style>
+</head>
+<body>
+<main>
+  <header>Engine Sound</header>
+  <div class="hero" id="hero">
+    <div class="stage"><div class="road" id="road"></div><div id="heroCar"></div></div>
+    <div class="cluster">
+      <div id="heroName"></div>
+      <div class="leds" id="leds"></div>
+      <svg id="dial" viewBox="0 0 200 200">
+        <circle class="face" cx="100" cy="100" r="96"/>
+        <g id="ticks"></g>
+        <text id="spd" x="100" y="146">0</text>
+        <text id="unitLabel" x="100" y="161">km/h</text>
+        <rect id="gearBox" x="85" y="168" width="30" height="28" rx="5"/>
+        <text id="gear" x="100" y="190">N</text>
+        <line id="needle" x1="100" y1="100" x2="182" y2="100"/>
+        <circle class="hub" cx="100" cy="100" r="6"/>
+      </svg>
+    </div>
+  </div>
+
+  <div class="row" id="controls">
+    <button class="primary" id="start">Engine<br>Start<br>Stop</button>
+    <button id="rev">REV</button>
+    <span class="pedals"><button id="gas">Gas</button><button id="brake">Brake</button></span>
+    <button id="testBtn">Test drive: off</button>
+    <button id="unitBtn">km/h</button>
+    <button id="reset">Reset</button>
+  </div>
+  <div id="status">Open while parked, press Start engine and allow location.</div>
+
+  <div class="sliders">
+    <label class="wide">Speed bar (overrides GPS): <span id="barLabel">off</span> <input type="range" id="speedBar" min="0" max="120" step="1" value="0"></label>
+    <label>Intensity <input type="range" id="intensity" min="0" max="1" step="0.01" value="0.5"></label>
+    <label>Character <input type="range" id="character" min="0" max="1" step="0.01" value="0.5"></label>
+    <label>Crackle <input type="range" id="crackle" min="0" max="1" step="0.01" value="0.5"></label>
+    <label>Volume <input type="range" id="volume" min="0" max="1" step="0.01" value="0.8"></label>
+  </div>
+
+  <div id="cars"></div>
+</main>
+<canvas id="fx"></canvas>
+
+<!-- ?v= ties each page to its own scripts: GitHub Pages lets browsers cache every file for 10 min
+     separately, and an old page with new scripts breaks. ponytail: bump v by hand on every deploy
+     that changes a script; add a build step that stamps it if that gets forgotten. -->
+<script src="dsp.js?v=6"></script>
+<script src="cars.js?v=6"></script>
+<script src="vehicle.js?v=6"></script>
+<script src="art.js?v=6"></script>
+<script src="fx.js?v=6"></script>
+<script>
+const $ = id => document.getElementById(id);
+const TICK = 0.02;  // control loop, seconds
+
+let car = CARS.find(c => c.id === 'camaro'), vehicle = new Vehicle(car);
+let ctx = null, chain = null, node = null, running = false, testMode = false, mph = false;
+const held = { gas: 0, brake: 0, rev: 0 };
+const gps = { speed: 0, accel: 0, shown: 0, last: null };
+let lastSpeed = 0, wakeLock = null;
+let barSpeed = null;   // m/s from the speed bar; null = GPS / pedals drive
+const stage = new Stage($('heroCar'), $('road'), $('fx'));
+const view = { speed: 0, rpm: 0, load: 0, rev: 0 };   // latest drivetrain state, for the animation
+
+// ---------- Audio ----------
+
+async function initAudio() {
+  ctx = new AudioContext({ latencyHint: 'interactive' });
+  // A data: URL, not a Blob or a file path: Chrome refuses both of those on a file:// page.
+  const src = `(${dspModule.toString()})(globalThis);`;
+  await ctx.audioWorklet.addModule(`data:application/javascript;charset=utf-8,${encodeURIComponent(src)}`);
+  // synth → compressor (tames peaks on small speakers) → volume → soft clipper → speakers
+  const comp = new DynamicsCompressorNode(ctx, { threshold: -14, ratio: 4, attack: 0.003, release: 0.2 });
+  const vol = new GainNode(ctx, { gain: 0 });
+  const curve = new Float32Array(1025).map((_, i) => Math.tanh(((i - 512) / 512) * 1.5) / Math.tanh(1.5));
+  const clip = new WaveShaperNode(ctx, { curve });
+  comp.connect(vol).connect(clip).connect(ctx.destination);
+  chain = { input: comp, vol };
+}
+
+function buildSynth() {
+  if (node) { const old = node; old.port.postMessage({ load: 0 }); setTimeout(() => old.disconnect(), 300); }
+  node = new AudioWorkletNode(ctx, 'engine', { numberOfInputs: 0, outputChannelCount: [2], processorOptions: { engine: car.engine } });
+  node.connect(chain.input);
+}
+
+// ---------- GPS ----------
+
+function haversine(a, b) {
+  const r = Math.PI / 180, dLat = (b.latitude - a.latitude) * r, dLon = (b.longitude - a.longitude) * r;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.latitude * r) * Math.cos(b.latitude * r) * Math.sin(dLon / 2) ** 2;
+  return 2 * 6371000 * Math.asin(Math.sqrt(h));
+}
+
+function onFix(pos) {
+  const prev = gps.last, t = pos.timestamp / 1000;
+  let speed = pos.coords.speed;
+  if (speed == null && prev) {
+    // Jitter inside the accuracy circle is not movement: a parked phone indoors drifts tens of metres.
+    const d = haversine(prev.coords, pos.coords);
+    speed = d > pos.coords.accuracy ? d / Math.max(0.2, t - prev.t) : 0;
+  }
+  if (speed == null) speed = 0;
+  if (prev) gps.accel = (speed - gps.speed) / Math.max(0.2, t - prev.t);
+  gps.speed = speed; gps.last = { coords: pos.coords, t };
+  $('status').textContent = `GPS ±${Math.round(pos.coords.accuracy)} m`;
+}
+
+function onGpsError(e) {
+  $('status').textContent = `Location blocked (${e.message}). Allow location for this site in the browser settings, or use Test drive.`;
+}
+
+// ---------- Control loop ----------
+
+function tick() {
+  // Fixes stopped (indoors, tunnel, backgrounded): don't hold the last speed forever.
+  if (gps.last && Date.now() / 1000 - gps.last.t > 3) { gps.speed = 0; gps.accel = 0; }
+  // Ease between 1 Hz GPS fixes so the revs glide instead of stepping.
+  const before = gps.shown;
+  gps.shown += ((barSpeed ?? gps.speed) - gps.shown) * 0.08;
+  const out = vehicle.step(TICK, {
+    source: testMode && barSpeed == null ? 'test' : 'gps', speed: gps.shown,
+    accel: barSpeed == null ? gps.accel : (gps.shown - before) / TICK,
+    gas: held.gas, brake: held.brake, rev: held.rev, intensity: +$('intensity').value,
+  });
+  if (car.engine.type === 'haunted' && lastSpeed > 5 && out.speed < 1) node.port.postMessage({ bell: 1 });
+  lastSpeed = out.speed;
+  if (out.click) node.port.postMessage({ click: out.click });
+  node.port.postMessage({
+    rpm: out.rpm, load: out.load, overrun: out.overrun, cut: out.cut, heat: out.heat, speed: out.speed,
+    rev: stage.flipping() ? 1 : out.rev,   // the backflip fires the jets, so they roar too
+    character: +$('character').value, crackle: +$('crackle').value,
+  });
+  Object.assign(view, { speed: out.speed, rpm: out.rpm, load: out.load, rev: out.rev });
+  chain.vol.gain.setTargetAtTime(+$('volume').value, ctx.currentTime, 0.05);
+
+  $('spd').textContent = Math.round(mph ? out.speed / 1.609 : out.speed);
+  $('gear').textContent = out.gear;
+}
+
+async function start() {
+  if (running) { stop(); return; }
+  try {
+    if (!ctx) {
+      await initAudio();
+      setInterval(() => running && tick(), TICK * 1000);
+      if ('geolocation' in navigator) navigator.geolocation.watchPosition(onFix, onGpsError, { enableHighAccuracy: true, maximumAge: 0 });
+      else $('status').textContent = 'No location in this browser — use Test drive.';
+    }
+    await ctx.resume();
+    buildSynth();
+    running = true;
+    document.body.classList.add('running');
+    try { wakeLock = await navigator.wakeLock?.request('screen'); } catch { /* optional */ }
+  } catch (err) {
+    if (!chain) { ctx?.close(); ctx = null; }   // setup never finished: let the next tap retry it
+    $('status').textContent = `Could not start audio: ${err.message}`;
+  }
+}
+
+function stop() {
+  running = false;
+  chain.vol.gain.setTargetAtTime(0, ctx.currentTime, 0.1);
+  setTimeout(() => !running && ctx.suspend(), 500);
+  document.body.classList.remove('running');
+  Object.assign(view, { rpm: 0, load: 0, rev: 0 });
+}
+
+// ---------- Dashboard ----------
+
+const LEDS = ['#3ddc5a', '#3ddc5a', '#3ddc5a', '#3ddc5a', '#ffd400', '#ffd400', '#ffd400', '#ff2a2a', '#ff2a2a', '#ff2a2a'];
+$('leds').innerHTML = LEDS.map(c => `<i style="--c:${c}"></i>`).join('');
+const dial = { max: 1, top: 1, shown: 0 };   // rpm at full sweep, rpm where the red zone starts
+
+// Dial angle in degrees: 0 rpm at bottom-left, full sweep 270° clockwise to bottom-right.
+const dialDeg = rpm => 135 + 270 * Math.min(1, rpm / dial.max);
+const onDial = (rpm, r) => { const a = dialDeg(rpm) * Math.PI / 180; return [100 + r * Math.cos(a), 100 + r * Math.sin(a)]; };
+
+function buildDial() {
+  const top = car.engine.redline || car.vehicle.rpmPerKmh * car.vehicle.vmax * 3.6;
+  const step = Math.ceil(top / 10000) * 1000;   // at most ~10 numbers round the dial
+  Object.assign(dial, { top, max: Math.ceil(top / step) * step });
+  const [rx, ry] = onDial(top * 0.88, 88), [ex, ey] = onDial(dial.max, 88);
+  let svg = `<path class="red" d="M${rx} ${ry}A88 88 0 0 1 ${ex} ${ey}"/>`;
+  for (let r = 0; r <= dial.max; r += step / 2) {
+    const major = r % step === 0, [x1, y1] = onDial(r, 92), [x2, y2] = onDial(r, major ? 78 : 84);
+    svg += `<line class="tick${major ? '' : ' minor'}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke-width="${major ? 3 : 1.5}"/>`;
+    if (major) { const [lx, ly] = onDial(r, 64); svg += `<text class="lbl" x="${lx}" y="${ly}">${r / 1000}</text>`; }
+  }
+  $('ticks').innerHTML = svg;
+}
+
+function drawDash(dt) {
+  dial.shown += (view.rpm - dial.shown) * Math.min(1, dt * 20);   // the needle swings, it doesn't jump
+  $('needle').setAttribute('transform', `rotate(${dialDeg(dial.shown)} 100 100)`);
+  const f = dial.shown / dial.top;
+  $('hero').classList.toggle('limit', f > 0.96);
+  $('leds').querySelectorAll('i').forEach((led, i) => led.classList.toggle('on', f > 0.6 + i * 0.035));
+}
+
+let lastFrame = performance.now();
+function animate(now) {
+  stage.frame(Math.min(0.05, (now - lastFrame) / 1000), { ...view, running });
+  drawDash(Math.min(0.05, (now - lastFrame) / 1000));
+  lastFrame = now;
+  requestAnimationFrame(animate);
+}
+
+// ---------- UI ----------
+
+function pickCar(c) {
+  car = c; vehicle = new Vehicle(car);
+  stage.setCar(c, 'hero'); $('heroName').textContent = c.name; buildDial();
+  document.querySelectorAll('#cars button').forEach(b => b.classList.toggle('active', b.dataset.id === c.id));
+  if (running) buildSynth();
+}
+
+for (const c of CARS) {
+  const b = document.createElement('button');
+  b.dataset.id = c.id;
+  const drawing = carSvg(c.art, c.id);
+  b.innerHTML = `${c.photo ? `<img class="car-photo" src="${c.photo}" alt="" loading="lazy">` : drawing}<b>${c.name}</b><small>${c.spec}</small>`;
+  if (c.photo) b.querySelector('img').onerror = e => { e.target.outerHTML = drawing; };  // no picture yet: the drawing
+  b.onclick = () => pickCar(c);
+  $('cars').appendChild(b);
+}
+
+function holdButton(id) {
+  const b = $(id), set = v => e => { e.preventDefault(); held[id] = v; b.classList.toggle('held', !!v); };
+  b.addEventListener('pointerdown', set(1));
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => b.addEventListener(ev, set(0)));
+}
+['gas', 'brake', 'rev'].forEach(holdButton);
+
+$('start').onclick = start;
+$('testBtn').onclick = () => {
+  testMode = !testMode; vehicle.speed = testMode ? 0 : gps.speed;
+  $('controls').classList.toggle('test', testMode);
+  $('testBtn').textContent = `Test drive: ${testMode ? 'on' : 'off'}`;
+};
+$('speedBar').oninput = e => {
+  barSpeed = e.target.value / 3.6;
+  $('barLabel').textContent = `${e.target.value} km/h`;
+};
+$('reset').onclick = () => {
+  barSpeed = null; $('speedBar').value = 0; $('barLabel').textContent = 'off';
+  Object.assign(gps, { speed: 0, accel: 0, shown: 0 });
+  vehicle = new Vehicle(car);
+};
+$('unitBtn').onclick = () => {
+  mph = !mph;
+  $('unitBtn').textContent = $('unitLabel').textContent = mph ? 'mph' : 'km/h';
+};
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState === 'visible' && running) {
+    await ctx.resume();
+    try { wakeLock = await navigator.wakeLock?.request('screen'); } catch { /* optional */ }
+  }
+});
+if (!window.AudioWorkletNode) $('status').textContent = 'This browser is too old for the engine synthesizer (needs AudioWorklet).';
+
+pickCar(car);
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>
