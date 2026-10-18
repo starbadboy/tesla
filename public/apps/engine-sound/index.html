@@ -70,7 +70,7 @@
 </head>
 <body>
 <main>
-  <header>Engine Sound</header>
+  <header data-t="title">Engine Sound</header>
   <div class="hero" id="hero">
     <div class="stage"><div class="road" id="road"></div><div id="heroCar"></div></div>
     <div class="cluster">
@@ -90,21 +90,21 @@
   </div>
 
   <div class="row" id="controls">
-    <button class="primary" id="start">Engine<br>Start<br>Stop</button>
-    <button id="rev">REV</button>
-    <span class="pedals"><button id="gas">Gas</button><button id="brake">Brake</button></span>
+    <button class="primary" id="start" data-t="start">Engine<br>Start<br>Stop</button>
+    <button id="rev" data-t="rev">REV</button>
+    <span class="pedals"><button id="gas" data-t="gas">Gas</button><button id="brake" data-t="brake">Brake</button></span>
     <button id="testBtn">Test drive: off</button>
     <button id="unitBtn">km/h</button>
-    <button id="reset">Reset</button>
+    <button id="reset" data-t="reset">Reset</button>
   </div>
-  <div id="status">Open while parked, press Start engine and allow location.</div>
+  <div id="status" data-t="hint">Open while parked, press Start engine and allow location.</div>
 
   <div class="sliders">
-    <label class="wide">Speed bar (overrides GPS): <span id="barLabel">off</span> <input type="range" id="speedBar" min="0" max="120" step="1" value="0"></label>
-    <label>Intensity <input type="range" id="intensity" min="0" max="1" step="0.01" value="0.5"></label>
-    <label>Character <input type="range" id="character" min="0" max="1" step="0.01" value="0.5"></label>
-    <label>Crackle <input type="range" id="crackle" min="0" max="1" step="0.01" value="0.5"></label>
-    <label>Volume <input type="range" id="volume" min="0" max="1" step="0.01" value="0.8"></label>
+    <label class="wide"><span data-t="bar">Speed bar (overrides GPS):</span> <span id="barLabel" data-t="off">off</span> <input type="range" id="speedBar" min="0" max="120" step="1" value="0"></label>
+    <label><span data-t="intensity">Intensity</span> <input type="range" id="intensity" min="0" max="1" step="0.01" value="0.5"></label>
+    <label><span data-t="character">Character</span> <input type="range" id="character" min="0" max="1" step="0.01" value="0.5"></label>
+    <label><span data-t="crackle">Crackle</span> <input type="range" id="crackle" min="0" max="1" step="0.01" value="0.5"></label>
+    <label><span data-t="volume">Volume</span> <input type="range" id="volume" min="0" max="1" step="0.01" value="0.8"></label>
   </div>
 
   <div id="cars"></div>
@@ -114,13 +114,41 @@
 <!-- ?v= ties each page to its own scripts: GitHub Pages lets browsers cache every file for 10 min
      separately, and an old page with new scripts breaks. ponytail: bump v by hand on every deploy
      that changes a script; add a build step that stamps it if that gets forgotten. -->
-<script src="dsp.js?v=6"></script>
-<script src="cars.js?v=6"></script>
-<script src="vehicle.js?v=6"></script>
-<script src="art.js?v=6"></script>
-<script src="fx.js?v=6"></script>
+<script src="dsp.js?v=7"></script>
+<script src="cars.js?v=7"></script>
+<script src="vehicle.js?v=7"></script>
+<script src="art.js?v=7"></script>
+<script src="fx.js?v=7"></script>
 <script>
 const $ = id => document.getElementById(id);
+
+// ---------- Language: ?lang=en|zh (Tesla Studio passes its own), else the browser's ----------
+
+const LANG = new URLSearchParams(location.search).get('lang') || (navigator.language.toLowerCase().startsWith('zh') ? 'zh' : 'en');
+const STR = {
+  en: {
+    title: 'Engine Sound', start: 'Engine<br>Start<br>Stop', rev: 'REV', gas: 'Gas', brake: 'Brake', reset: 'Reset',
+    hint: 'Open while parked, press Start engine and allow location.', bar: 'Speed bar (overrides GPS):', off: 'off',
+    intensity: 'Intensity', character: 'Character', crackle: 'Crackle', volume: 'Volume',
+    test: on => `Test drive: ${on ? 'on' : 'off'}`, gps: m => `GPS ±${m} m`,
+    blocked: msg => `Location blocked (${msg}). Allow location for this site in the browser settings, or use Test drive.`,
+    noGps: 'No location in this browser — use Test drive.', noAudio: msg => `Could not start audio: ${msg}`,
+    old: 'This browser is too old for the engine synthesizer (needs AudioWorklet).',
+  },
+  zh: {
+    title: '引擎声浪', start: '引擎<br>启动<br>熄火', rev: '轰油门', gas: '油门', brake: '刹车', reset: '重置',
+    hint: '停车时打开，按下引擎启动并允许获取位置。', bar: '速度条（覆盖 GPS）：', off: '关',
+    intensity: '激烈程度', character: '音色', crackle: '回火爆裂', volume: '音量',
+    test: on => `试驾模式：${on ? '开' : '关'}`, gps: m => `GPS 精度 ±${m} 米`,
+    blocked: msg => `无法获取位置（${msg}）。请在浏览器设置中允许本站获取位置，或使用试驾模式。`,
+    noGps: '此浏览器不支持定位，请使用试驾模式。', noAudio: msg => `无法启动音频：${msg}`,
+    old: '浏览器版本过旧，无法运行引擎合成器（需要 AudioWorklet）。',
+  },
+}[LANG === 'zh' ? 'zh' : 'en'];
+document.documentElement.lang = LANG === 'zh' ? 'zh-CN' : 'en';
+document.title = STR.title;
+document.querySelectorAll('[data-t]').forEach(el => { el.innerHTML = STR[el.dataset.t]; });
+$('testBtn').textContent = STR.test(false);
 const TICK = 0.02;  // control loop, seconds
 
 let car = CARS.find(c => c.id === 'camaro'), vehicle = new Vehicle(car);
@@ -173,11 +201,11 @@ function onFix(pos) {
   if (speed == null) speed = 0;
   if (prev) gps.accel = (speed - gps.speed) / Math.max(0.2, t - prev.t);
   gps.speed = speed; gps.last = { coords: pos.coords, t };
-  $('status').textContent = `GPS ±${Math.round(pos.coords.accuracy)} m`;
+  $('status').textContent = STR.gps(Math.round(pos.coords.accuracy));
 }
 
 function onGpsError(e) {
-  $('status').textContent = `Location blocked (${e.message}). Allow location for this site in the browser settings, or use Test drive.`;
+  $('status').textContent = STR.blocked(e.message);
 }
 
 // ---------- Control loop ----------
@@ -215,7 +243,7 @@ async function start() {
       await initAudio();
       setInterval(() => running && tick(), TICK * 1000);
       if ('geolocation' in navigator) navigator.geolocation.watchPosition(onFix, onGpsError, { enableHighAccuracy: true, maximumAge: 0 });
-      else $('status').textContent = 'No location in this browser — use Test drive.';
+      else $('status').textContent = STR.noGps;
     }
     await ctx.resume();
     buildSynth();
@@ -224,7 +252,7 @@ async function start() {
     try { wakeLock = await navigator.wakeLock?.request('screen'); } catch { /* optional */ }
   } catch (err) {
     if (!chain) { ctx?.close(); ctx = null; }   // setup never finished: let the next tap retry it
-    $('status').textContent = `Could not start audio: ${err.message}`;
+    $('status').textContent = STR.noAudio(err.message);
   }
 }
 
@@ -289,7 +317,7 @@ for (const c of CARS) {
   const b = document.createElement('button');
   b.dataset.id = c.id;
   const drawing = carSvg(c.art, c.id);
-  b.innerHTML = `${c.photo ? `<img class="car-photo" src="${c.photo}" alt="" loading="lazy">` : drawing}<b>${c.name}</b><small>${c.spec}</small>`;
+  b.innerHTML = `${c.photo ? `<img class="car-photo" src="${c.photo}" alt="" loading="lazy">` : drawing}<b>${c.name}</b><small>${LANG === 'zh' ? c.specZh : c.spec}</small>`;
   if (c.photo) b.querySelector('img').onerror = e => { e.target.outerHTML = drawing; };  // no picture yet: the drawing
   b.onclick = () => pickCar(c);
   $('cars').appendChild(b);
@@ -306,14 +334,14 @@ $('start').onclick = start;
 $('testBtn').onclick = () => {
   testMode = !testMode; vehicle.speed = testMode ? 0 : gps.speed;
   $('controls').classList.toggle('test', testMode);
-  $('testBtn').textContent = `Test drive: ${testMode ? 'on' : 'off'}`;
+  $('testBtn').textContent = STR.test(testMode);
 };
 $('speedBar').oninput = e => {
   barSpeed = e.target.value / 3.6;
   $('barLabel').textContent = `${e.target.value} km/h`;
 };
 $('reset').onclick = () => {
-  barSpeed = null; $('speedBar').value = 0; $('barLabel').textContent = 'off';
+  barSpeed = null; $('speedBar').value = 0; $('barLabel').textContent = STR.off;
   Object.assign(gps, { speed: 0, accel: 0, shown: 0 });
   vehicle = new Vehicle(car);
 };
@@ -327,7 +355,7 @@ document.addEventListener('visibilitychange', async () => {
     try { wakeLock = await navigator.wakeLock?.request('screen'); } catch { /* optional */ }
   }
 });
-if (!window.AudioWorkletNode) $('status').textContent = 'This browser is too old for the engine synthesizer (needs AudioWorklet).';
+if (!window.AudioWorkletNode) $('status').textContent = STR.old;
 
 pickCar(car);
 requestAnimationFrame(animate);

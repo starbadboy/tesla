@@ -7,6 +7,7 @@
 // tall: body height factor, from the real height:length ratio.
 // photo: optional side-view picture (transparent PNG, facing right); the drawing is the fallback
 // when it is missing. photoNozzle: where the thrusters leave that picture, as fractions [x, y].
+// specZh: the spec line in Chinese, shown when the page runs in Chinese.
 //
 // engine.firing: [crank angle °, bank] per cylinder over one 720° cycle, built from the real
 // firing order. Which bank each cylinder sits on is what gives a cross-plane V8 its burble.
@@ -16,7 +17,7 @@ const evenFiring = (order, bankOf) => order.map((cyl, i) => [i * 720 / order.len
 
 const CARS = [
   {
-    id: 'model3', name: 'Tesla Model 3', spec: 'Permanent-magnet motor · 1-speed · ElectricZen',
+    id: 'model3', name: 'Tesla Model 3', spec: 'Permanent-magnet motor · 1-speed · ElectricZen', specZh: '永磁电机 · 单速 · ElectricZen',
     photo: 'img/electric-zen.png',
     art: {
       tall: 1.34, color: '#9b1b24', wheels: { x: [95, 300], r: 26 }, head: [368, 104], tail: [36, 96],
@@ -27,7 +28,7 @@ const CARS = [
     vehicle: { type: 'ev', rpmPerKmh: 69, accel0: 7, vmax: 72 },
   },
   {
-    id: 'roadster2', name: 'Tesla Roadster', spec: '3 motors · cold-gas thrusters',
+    id: 'roadster2', name: 'Tesla Roadster', spec: '3 motors · cold-gas thrusters', specZh: '三电机 · 冷气推进器',
     photo: 'img/tesla-roadster-thrust.png', photoNozzle: [0.07, 0.58],
     art: {
       tall: 1.25, color: '#c8102e', wheels: { x: [100, 295], r: 26 }, head: [370, 106], tail: [34, 98], nozzle: [26, 108],
@@ -39,7 +40,7 @@ const CARS = [
     vehicle: { type: 'ev', rpmPerKmh: 50, accel0: 12, vmax: 112 },
   },
   {
-    id: 'typer', name: 'Honda Civic Type R', spec: '2.0 L turbo inline-4 · 7,000 rpm · 6-spd manual',
+    id: 'typer', name: 'Honda Civic Type R', spec: '2.0 L turbo inline-4 · 7,000 rpm · 6-spd manual', specZh: '2.0 L 涡轮直列四缸 · 7,000 转 · 6 速手动',
     photo: 'img/city-shifter.png',
     art: {
       tall: 1.3, color: '#1e88e5', wheels: { x: [100, 295], r: 25 }, head: [366, 104], tail: [36, 92],
@@ -54,7 +55,7 @@ const CARS = [
     vehicle: { type: 'manual', gears: [8.6, 14, 20, 26, 32, 39], shiftGentle: 3000, shiftFull: 6800, downRpm: 1300, shiftTime: 0.35, accel0: 6, vmax: 75 },
   },
   {
-    id: 'gt3', name: 'Porsche 911 GT3', spec: '4.0 L flat-6 · 9,000 rpm · 7-spd PDK',
+    id: 'gt3', name: 'Porsche 911 GT3', spec: '4.0 L flat-6 · 9,000 rpm · 7-spd PDK', specZh: '4.0 L 水平对置六缸 · 9,000 转 · 7 速 PDK',
     photo: 'img/gt3.png',
     art: {
       tall: 1.25, color: '#e6e6e6', wheels: { x: [100, 300], r: 26 }, head: [368, 104], tail: [36, 94],
@@ -69,7 +70,7 @@ const CARS = [
     vehicle: { type: 'dct', gears: [7.8, 12, 16.5, 21, 26, 31, 37], shiftGentle: 3500, shiftFull: 8800, downRpm: 1800, shiftTime: 0.08, accel0: 9, vmax: 88 },
   },
   {
-    id: 'camaro', name: 'Chevrolet Camaro SS', spec: '6.2 L pushrod V8 · 6,500 rpm · 6-spd manual',
+    id: 'camaro', name: 'Chevrolet Camaro SS', spec: '6.2 L pushrod V8 · 6,500 rpm · 6-spd manual', specZh: '6.2 L 推杆 V8 · 6,500 转 · 6 速手动',
     photo: 'img/v8-muscle.png',
     art: {
       tall: 1.3, color: '#f5c400', wheels: { x: [95, 300], r: 27 }, head: [374, 100], tail: [32, 92],
@@ -84,7 +85,7 @@ const CARS = [
     vehicle: { type: 'manual', gears: [12, 18, 26, 34, 42, 60], shiftGentle: 2500, shiftFull: 6300, downRpm: 1100, shiftTime: 0.4, accel0: 7, vmax: 80 },
   },
   {
-    id: 'hellcat', name: 'Dodge Challenger Hellcat', spec: '6.2 L supercharged V8 · 6,200 rpm · 8-spd auto',
+    id: 'hellcat', name: 'Dodge Challenger Hellcat', spec: '6.2 L supercharged V8 · 6,200 rpm · 8-spd auto', specZh: '6.2 L 机械增压 V8 · 6,200 转 · 8 速自动',
     photo: 'img/hellcat.png',
     art: {
       tall: 1.3, color: '#7ac70c', wheels: { x: [92, 302], r: 27 }, head: [374, 96], tail: [30, 88],
@@ -99,7 +100,7 @@ const CARS = [
     vehicle: { type: 'auto', gears: [11, 17, 23, 30, 38, 48, 58, 75], shiftGentle: 2200, shiftFull: 6000, downRpm: 1100, shiftTime: 0.15, accel0: 8, vmax: 89 },
   },
   {
-    id: 'urus', name: 'Lamborghini Urus', spec: '4.0 L twin-turbo V8 · 6,800 rpm · 8-spd auto',
+    id: 'urus', name: 'Lamborghini Urus', spec: '4.0 L twin-turbo V8 · 6,800 rpm · 8-spd auto', specZh: '4.0 L 双涡轮 V8 · 6,800 转 · 8 速自动',
     photo: 'img/lamborghini-urus.png',
     art: {
       tall: 1.3, color: '#4caf50', wheels: { x: [95, 300], r: 30 }, head: [374, 92], tail: [32, 80],
@@ -114,7 +115,7 @@ const CARS = [
     vehicle: { type: 'auto', gears: [8.8, 14, 20, 27, 34, 42, 52, 65], shiftGentle: 2300, shiftFull: 6600, downRpm: 1100, shiftTime: 0.12, accel0: 8, vmax: 85 },
   },
   {
-    id: 'f812', name: 'Ferrari 812 Superfast', spec: '6.5 L V12 · 8,900 rpm · 7-spd DCT',
+    id: 'f812', name: 'Ferrari 812 Superfast', spec: '6.5 L V12 · 8,900 rpm · 7-spd DCT', specZh: '6.5 L V12 · 8,900 转 · 7 速双离合',
     photo: 'img/ferrari-v12.png',
     art: {
       tall: 1.2, color: '#b8bcc4', wheels: { x: [95, 300], r: 27 }, head: [372, 102], tail: [32, 96],
@@ -128,7 +129,7 @@ const CARS = [
     vehicle: { type: 'dct', gears: [9, 13, 18, 23, 28, 34, 40], shiftGentle: 3000, shiftFull: 8700, downRpm: 1500, shiftTime: 0.08, accel0: 9, vmax: 94 },
   },
   {
-    id: 'enzo', name: 'Ferrari Enzo', spec: '6.0 L V12 · 8,200 rpm · 6-spd F1',
+    id: 'enzo', name: 'Ferrari Enzo', spec: '6.0 L V12 · 8,200 rpm · 6-spd F1', specZh: '6.0 L V12 · 8,200 转 · 6 速 F1 序列式',
     photo: 'img/ferrari-enzo.png',
     art: {
       tall: 1.2, color: '#e10600', wheels: { x: [95, 300], r: 27 }, head: [374, 112], tail: [30, 98],
@@ -142,7 +143,7 @@ const CARS = [
     vehicle: { type: 'dct', gears: [10, 15, 20, 26, 33, 42], shiftGentle: 3000, shiftFull: 8000, downRpm: 1600, shiftTime: 0.15, accel0: 9, vmax: 97 },
   },
   {
-    id: 'veneno', name: 'Lamborghini Veneno', spec: '6.5 L V12 · 8,400 rpm · 7-spd ISR',
+    id: 'veneno', name: 'Lamborghini Veneno', spec: '6.5 L V12 · 8,400 rpm · 7-spd ISR', specZh: '6.5 L V12 · 8,400 转 · 7 速 ISR',
     photo: 'img/lamborghini-veneno.png',
     art: {
       tall: 1.08, color: '#8e9196', sharp: true, wheels: { x: [95, 300], r: 27 }, head: [372, 110], tail: [28, 96],
@@ -161,7 +162,7 @@ const CARS = [
     vehicle: { type: 'dct', gears: [9, 14, 19, 25, 31, 37, 43], shiftGentle: 3000, shiftFull: 8200, downRpm: 1600, shiftTime: 0.12, accel0: 10, vmax: 98 },
   },
   {
-    id: 'f1', name: 'Mercedes F1 W11', spec: '1.6 L turbo V6 hybrid · 15,000 rpm · 8-spd',
+    id: 'f1', name: 'Mercedes F1 W11', spec: '1.6 L turbo V6 hybrid · 15,000 rpm · 8-spd', specZh: '1.6 L 涡轮 V6 混动 · 15,000 转 · 8 速',
     photo: 'img/slipstream.png',
     art: {
       tall: 1, color: '#1f1f22', sharp: true, open: true, wheels: { x: [85, 318], r: 30 },
@@ -183,7 +184,7 @@ const CARS = [
     vehicle: { type: 'dct', gears: [8.3, 11, 13.5, 16, 19, 22, 25, 28], shiftGentle: 10500, shiftFull: 12500, downRpm: 9000, shiftTime: 0.03, accel0: 14, vmax: 95 },
   },
   {
-    id: 'hearse', name: 'Haunted Hearse', spec: '1959 Cadillac · no engine, only ghosts',
+    id: 'hearse', name: 'Haunted Hearse', spec: '1959 Cadillac · no engine, only ghosts', specZh: '1959 凯迪拉克 · 没有引擎，只有幽灵',
     photo: 'img/haunted-hearse.png',
     art: {
       tall: 1.1, color: '#1b2a4a', wheels: { x: [92, 312], r: 25, whitewall: true }, head: [378, 100], tail: [28, 86],
