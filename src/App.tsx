@@ -14,8 +14,8 @@ import { WrapStudio } from './components/WrapStudio/WrapStudio';
 import { FACTORY_PAINT } from './constants';
 import { proxiedMediaUrl } from './utils/wrapApi';
 import { SiteHeader } from './components/ui/SiteHeader';
-import { navigate, navigateTo, PAGE_PATHS, useRoute } from './utils/navigation';
-import { PAGE_META, SITE_URL as SITE_ORIGIN, collectionMeta, collectionPath } from '../shared/seo';
+import { navigate, navigateTo, PAGE_PATHS, switchLanguage, useRoute } from './utils/navigation';
+import { PAGE_META, SITE_URL as SITE_ORIGIN, alternateUrls, collectionMeta, collectionPath, localizePath } from '../shared/seo';
 
 /**
  * A newly loaded sheet starts from a clean transform. DesignCanvas fits each image to
@@ -25,19 +25,12 @@ import { PAGE_META, SITE_URL as SITE_ORIGIN, collectionMeta, collectionPath } fr
 const FRESH_LAYER = { 'Full Wrap': { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1 } };
 
 function App() {
-  const { page, wrapId, model: collectionModel } = useRoute();
+  const { page, wrapId, model: collectionModel, lang: language } = useRoute();
   const isEditing = page === 'create' || page === 'edit';
   const [currentModelName, setCurrentModelName] = useState('Model 3 (2024 Base)');
 
   const [singleLayer, setSingleLayer] = useState<string | null>(null);
   const [loadedWrapName, setLoadedWrapName] = useState<string | null>(null);
-  const [language, setLanguage] = useState<'en' | 'zh'>(() => {
-    if (typeof navigator !== 'undefined') {
-      const browserLang = navigator.language || navigator.languages?.[0];
-      return browserLang?.toLowerCase().startsWith('zh') ? 'zh' : 'en';
-    }
-    return 'en';
-  });
 
   // Layer State
   const [layerTransforms, setLayerTransforms] = useState<Record<string, LayerTransform>>({});
@@ -71,8 +64,8 @@ function App() {
     document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
     // A wrap page arrives with its own tags from the server, and the gallery keeps its title current.
     if (wrapId) return;
-    const meta = collectionModel ? collectionMeta(collectionModel) : PAGE_META[language][page];
-    const canonicalPath = collectionModel ? collectionPath(collectionModel) : PAGE_PATHS[page];
+    const meta = collectionModel ? collectionMeta(collectionModel, undefined, language) : PAGE_META[language][page];
+    const pagePath = collectionModel ? collectionPath(collectionModel) : PAGE_PATHS[page];
     document.title = meta.title;
 
     const upsertMeta = (
@@ -114,11 +107,20 @@ function App() {
       meta.setAttribute('name', 'twitter:description');
       return meta;
     });
-    upsertMeta('link[rel="canonical"]', 'href', SITE_ORIGIN + canonicalPath, () => {
+    upsertMeta('link[rel="canonical"]', 'href', SITE_ORIGIN + localizePath(pagePath, language), () => {
       const link = document.createElement('link');
       link.setAttribute('rel', 'canonical');
       return link;
     });
+    const alternates = alternateUrls(pagePath);
+    for (const [hreflang, href] of [['en', alternates.en], ['zh', alternates.zh], ['x-default', alternates.en]]) {
+      upsertMeta(`link[rel="alternate"][hreflang="${hreflang}"]`, 'href', href, () => {
+        const link = document.createElement('link');
+        link.setAttribute('rel', 'alternate');
+        link.setAttribute('hreflang', hreflang);
+        return link;
+      });
+    }
 
     const faqJsonLd = {
       '@context': 'https://schema.org',
@@ -176,7 +178,7 @@ function App() {
   };
 
   const toggleLanguage = () => {
-    setLanguage(prev => (prev === 'en' ? 'zh' : 'en'));
+    switchLanguage(language === 'en' ? 'zh' : 'en');
   };
 
   const handleLoadCommunityWrap = async (

@@ -17,7 +17,7 @@ import type { Wrap } from '../Gallery';
 import { WrapDetailModal } from '../WrapDetailModal';
 import { ShareRow } from './ShareRow';
 import { navigate, navigateTo, PAGE_PATHS } from '../../utils/navigation';
-import { collectionMeta, collectionPath, wrapMeta, wrapPath } from '../../../shared/seo';
+import { collectionMeta, collectionPath, localizePath, wrapMeta, wrapPath } from '../../../shared/seo';
 import '../../styles/wrap-gallery.css';
 
 const ALL_MODELS = '__all__';
@@ -215,8 +215,8 @@ export function WrapGallery({
     const open = openId ? wraps.find(w => w._id === openId) ?? (direct?._id === openId ? direct : null) : null;
 
     useEffect(() => {
-        if (open) document.title = wrapMeta(open).title;
-    }, [open]);
+        if (open) document.title = wrapMeta(open, language).title;
+    }, [open, language]);
 
     const mediaOf = (wrap: Wrap) => (type === 'sound' ? wrap.audioUrl : wrap.imageUrl);
     const modelLabel = (wrap: Wrap) =>
@@ -325,7 +325,7 @@ export function WrapGallery({
                                         ? open.models.map((model, index) => (
                                             <span key={model}>
                                                 {index > 0 && ', '}
-                                                <a href={collectionPath(model)} title={`${t.moreWrapsFor} ${model}`}>{model}</a>
+                                                <a href={localizePath(collectionPath(model), language)} title={`${t.moreWrapsFor} ${model}`}>{model}</a>
                                             </span>
                                         ))
                                         : t.universal}
@@ -374,7 +374,7 @@ export function WrapGallery({
                         <div className="wg-titlebar">
                             <h1>{isGarage ? t.myGarage : type === 'sound' ? t.galleryTitleSound
                                 : type === 'plate' ? t.galleryTitlePlate
-                                : collectionModel ? collectionMeta(collectionModel).heading : t.exploreWraps}</h1>
+                                : collectionModel ? collectionMeta(collectionModel, undefined, language).heading : t.exploreWraps}</h1>
                             {!isGarage && type === 'car' && <GalleryViewSwitch view="grid" language={language} />}
                         </div>
                         {isGarage ? (
@@ -498,7 +498,7 @@ export function WrapGallery({
                                                 </div>
                                             )}
                                             <div className="wg-meta">
-                                                <div className="wg-nm"><a href={wrapPath(wrap)}>{wrap.name}</a></div>
+                                                <div className="wg-nm"><a href={localizePath(wrapPath(wrap), language)}>{wrap.name}</a></div>
                                                 <div className="wg-md">{modelLabel(wrap)}</div>
                                                 <div className="wg-by"><span className="wg-av">{initial(wrap.author)}</span>{wrap.author}</div>
                                                 <div className="wg-stats">

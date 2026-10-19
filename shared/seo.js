@@ -100,19 +100,40 @@ export const WRAP_MODELS = Object.freeze([
     'Model Y',
 ]);
 
+// Chinese pages live under /zh; every other path is the English page.
+const ZH_PREFIX = '/zh';
+const ZH_PATH = /^\/zh(?=[/?#]|$)/;
+
+/** Splits /zh/explore into { lang: 'zh', path: '/explore' }; unprefixed paths are English. */
+export function splitLang(pathname) {
+    if (!ZH_PATH.test(pathname)) return { lang: 'en', path: pathname };
+    const rest = pathname.slice(ZH_PREFIX.length);
+    return { lang: 'zh', path: rest.startsWith('/') ? rest : `/${rest}` };
+}
+
+/** The path of one page in the given language: /explore stays as it is in English and becomes /zh/explore in Chinese. */
+export function localizePath(path, lang) {
+    return lang === 'zh' ? ZH_PREFIX + path.replace(/^\/(?=[?#]|$)/, '') : path;
+}
+
+/** The hreflang targets for one page; English doubles as x-default. */
+export function alternateUrls(path) {
+    return { en: SITE_URL + path, zh: SITE_URL + localizePath(path, 'zh') };
+}
+
 const WRAP_ROUTE = /^\/wrap\/([0-9a-f]{24})(?:\/[^/]*)?$/i;
 const COLLECTION_ROUTE = /^\/wraps\/([a-z0-9-]+)$/;
 
 /** Which page a path shows; unknown paths land on the preview like the old hash routes did. */
 export function parseRoute(pathname) {
-    const normalized = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
-    const wrap = WRAP_ROUTE.exec(normalized);
-    if (wrap) return { page: 'explore', wrapId: wrap[1], model: null };
-    const collection = COLLECTION_ROUTE.exec(normalized);
+    const { lang, path } = splitLang(pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname);
+    const wrap = WRAP_ROUTE.exec(path);
+    if (wrap) return { page: 'explore', wrapId: wrap[1], model: null, lang };
+    const collection = COLLECTION_ROUTE.exec(path);
     const model = collection ? modelFromSlug(collection[1]) : null;
-    if (model) return { page: 'explore', wrapId: null, model };
-    const page = Object.keys(PAGE_PATHS).find(key => PAGE_PATHS[key] === normalized) ?? 'preview';
-    return { page, wrapId: null, model: null };
+    if (model) return { page: 'explore', wrapId: null, model, lang };
+    const page = Object.keys(PAGE_PATHS).find(key => PAGE_PATHS[key] === path) ?? 'preview';
+    return { page, wrapId: null, model: null, lang };
 }
 
 export function modelFromSlug(slug) {
@@ -125,8 +146,17 @@ export function collectionPath(model) {
 }
 
 /** Head tags and heading for one car's collection; the count is known only on the server. */
-export function collectionMeta(model, count) {
-    const many = typeof count === 'number' && count > 0 ? `${count} free` : 'Free';
+export function collectionMeta(model, count, lang = 'en') {
+    const counted = typeof count === 'number' && count > 0;
+    if (lang === 'zh') {
+        return {
+            title: `${model} 车衣 | 免费特斯拉车衣设计 | Tesla Studio`,
+            heading: `免费 ${model} 车衣设计`,
+            description: `${counted ? `${count} 款` : ''}来自 Tesla Studio 社区的免费 ${model} 车衣设计。可在 3D ${model} 车模上预览任意车衣，并下载用于特斯拉玩具盒车辆着色器的 PNG。`,
+            path: collectionPath(model),
+        };
+    }
+    const many = counted ? `${count} free` : 'Free';
     return {
         title: `${model} Wraps | Free Tesla Wrap Designs | Tesla Studio`,
         heading: `Free ${model} Wrap Designs`,
@@ -151,13 +181,22 @@ export function wrapPath(wrap) {
 }
 
 /** Head tags for one wrap's page; the render on the car beats the flat sheet as the preview image. */
-export function wrapMeta(wrap) {
+export function wrapMeta(wrap, lang = 'en') {
     const model = wrap.models?.[0];
+    const image = wrap.renderUrl || wrap.imageUrl || '';
+    if (lang === 'zh') {
+        return {
+            title: `${wrap.name} | ${model ? `${model} 车衣` : '特斯拉车衣'} | Tesla Studio`,
+            description: `${wrap.author || '匿名用户'} 设计的免费 ${model ?? '特斯拉'} 车衣「${wrap.name}」。在 Tesla Studio 上 3D 预览并下载 PNG，用于特斯拉玩具盒车辆着色器。`,
+            image,
+            path: wrapPath(wrap),
+        };
+    }
     const author = wrap.author || 'Anonymous';
     return {
         title: `${wrap.name} | ${model ? `${model} Wrap` : 'Tesla Wrap'} | Tesla Studio`,
         description: `Free ${model ?? 'Tesla'} wrap design "${wrap.name}" by ${author}. Preview it in 3D on Tesla Studio and download the PNG for the Tesla Toybox Colorizer.`,
-        image: wrap.renderUrl || wrap.imageUrl || '',
+        image,
         path: wrapPath(wrap),
     };
 }

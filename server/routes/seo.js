@@ -19,11 +19,11 @@ let sitemapCache = { xml: '', at: 0 };
 router.get('/sitemap.xml', async (req, res) => {
     try {
         if (Date.now() - sitemapCache.at > SITEMAP_TTL_MS) {
-            const { SITE_URL, PAGE_PATHS, WRAP_MODELS, collectionPath, wrapPath } = await shared;
+            const { SITE_URL, PAGE_PATHS, WRAP_MODELS, collectionPath, wrapPath, localizePath } = await shared;
             const wraps = await Wrap.find({ ...publicMatch(), type: { $ne: 'plate' } })
                 .select('name imageUrl renderUrl createdAt updatedAt').sort({ createdAt: -1 }).lean();
             const collectionPaths = WRAP_MODELS.map(collectionPath);
-            sitemapCache = { xml: buildSitemap({ siteUrl: SITE_URL, pagePaths: PAGE_PATHS, collectionPaths, wraps, wrapPath }), at: Date.now() };
+            sitemapCache = { xml: buildSitemap({ siteUrl: SITE_URL, pagePaths: PAGE_PATHS, collectionPaths, wraps, wrapPath, localizePath }), at: Date.now() };
         }
         res.type('application/xml').send(sitemapCache.xml);
     } catch (err) {
@@ -33,43 +33,48 @@ router.get('/sitemap.xml', async (req, res) => {
 });
 
 // The built page is read once; in development there is no dist and these routes step aside.
+// `path` is the English path of the page; the copy in `lang` is the canonical, and both are hreflang alternates.
 let template = null;
-function sendPage(res, meta, status = 200) {
+async function sendPage(res, { path: pagePath, lang, ...meta }, status = 200) {
     if (template === null) template = fs.existsSync(INDEX_HTML) ? fs.readFileSync(INDEX_HTML, 'utf8') : '';
     if (!template) return false;
-    res.status(status).type('html').send(injectMeta(template, meta));
+    const { SITE_URL, localizePath, alternateUrls } = await shared;
+    const url = SITE_URL + localizePath(pagePath, lang);
+    res.status(status).type('html').send(injectMeta(template, { ...meta, url, lang, alternates: alternateUrls(pagePath) }));
     return true;
 }
 
-router.get(['/wrap/:id', '/wrap/:id/:slug'], async (req, res, next) => {
+const langOf = (req) => (req.path.startsWith('/zh/') ? 'zh' : 'en');
+
+router.get(['/wrap/:id', '/wrap/:id/:slug', '/zh/wrap/:id', '/zh/wrap/:id/:slug'], async (req, res, next) => {
     try {
-        const { SITE_URL, PAGE_META, PAGE_PATHS, wrapMeta } = await shared;
+        const { PAGE_META, PAGE_PATHS, wrapMeta } = await shared;
+        const lang = langOf(req);
         const wrap = mongoose.isValidObjectId(req.params.id)
             ? await Wrap.findOne({ _id: req.params.id, ...publicMatch() }).lean()
             : null;
         if (!wrap) {
-            if (!sendPage(res, { ...PAGE_META.en.explore, url: SITE_URL + PAGE_PATHS.explore }, 404)) next();
+            if (!await sendPage(res, { ...PAGE_META[lang].explore, path: PAGE_PATHS.explore, lang }, 404)) next();
             return;
         }
-        const meta = wrapMeta(wrap);
-        if (!sendPage(res, { ...meta, url: SITE_URL + meta.path })) next();
+        if (!await sendPage(res, { ...wrapMeta(wrap, lang), lang })) next();
     } catch (err) {
         next(err);
     }
 });
 
 // One car's collection: the gallery filtered to that model, titled with the live count.
-router.get('/wraps/:slug', async (req, res, next) => {
+router.get(['/wraps/:slug', '/zh/wraps/:slug'], async (req, res, next) => {
     try {
-        const { SITE_URL, PAGE_META, PAGE_PATHS, modelFromSlug, collectionMeta } = await shared;
+        const { PAGE_META, PAGE_PATHS, modelFromSlug, collectionMeta } = await shared;
+        const lang = langOf(req);
         const model = modelFromSlug(req.params.slug);
         if (!model) {
-            if (!sendPage(res, { ...PAGE_META.en.explore, url: SITE_URL + PAGE_PATHS.explore }, 404)) next();
+            if (!await sendPage(res, { ...PAGE_META[lang].explore, path: PAGE_PATHS.explore, lang }, 404)) next();
             return;
         }
         const count = await Wrap.countDocuments({ ...publicMatch(), type: { $ne: 'plate' }, models: model });
-        const meta = collectionMeta(model, count);
-        if (!sendPage(res, { ...meta, url: SITE_URL + meta.path })) next();
+        if (!await sendPage(res, { ...collectionMeta(model, count, lang), lang })) next();
     } catch (err) {
         next(err);
     }
@@ -77,11 +82,11 @@ router.get('/wraps/:slug', async (req, res, next) => {
 
 router.get(/.*/, async (req, res, next) => {
     try {
-        const { SITE_URL, PAGE_META, PAGE_PATHS, parseRoute } = await shared;
+        const { PAGE_META, PAGE_PATHS, parseRoute, splitLang } = await shared;
         const normalized = req.path.length > 1 ? req.path.replace(/\/+$/, '') : req.path;
-        if (!Object.values(PAGE_PATHS).includes(normalized)) return next();
-        const { page } = parseRoute(normalized);
-        if (!sendPage(res, { ...PAGE_META.en[page], url: SITE_URL + PAGE_PATHS[page] })) next();
+        if (!Object.values(PAGE_PATHS).includes(splitLang(normalized).path)) return next();
+        const { page, lang } = parseRoute(normalized);
+        if (!await sendPage(res, { ...PAGE_META[lang][page], path: PAGE_PATHS[page], lang })) next();
     } catch (err) {
         next(err);
     }
