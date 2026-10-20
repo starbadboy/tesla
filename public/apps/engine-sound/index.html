@@ -122,6 +122,7 @@
 <script src="dsp.js?v=7"></script>
 <script src="cars.js?v=7"></script>
 <script src="vehicle.js?v=7"></script>
+<script src="gps.js?v=7"></script>
 <script src="art.js?v=7"></script>
 <script src="fx.js?v=7"></script>
 <script>
@@ -137,6 +138,7 @@ const STR = {
     intensity: 'Intensity', character: 'Character', crackle: 'Crackle', volume: 'Volume',
     test: on => `Test drive: ${on ? 'on' : 'off'}`, gps: m => `GPS ±${m} m`,
     blocked: msg => `Location blocked (${msg}). Allow location for this site in the browser settings, or use Test drive.`,
+    waitGps: 'Waiting for GPS…', noFix: 'No GPS fix yet — still trying. Park with a clear view of the sky, or use Test drive.',
     noGps: 'No location in this browser — use Test drive.', noAudio: msg => `Could not start audio: ${msg}`,
     old: 'This browser is too old for the engine synthesizer (needs AudioWorklet).',
     helpTitle: 'How to use',
@@ -155,6 +157,7 @@ const STR = {
     intensity: '激烈程度', character: '音色', crackle: '回火爆裂', volume: '音量',
     test: on => `试驾模式：${on ? '开' : '关'}`, gps: m => `GPS 精度 ±${m} 米`,
     blocked: msg => `无法获取位置（${msg}）。请在浏览器设置中允许本站获取位置，或使用试驾模式。`,
+    waitGps: '正在等待 GPS…', noFix: '暂未获得 GPS 定位，仍在重试。请停在开阔处，或使用试驾模式。',
     noGps: '此浏览器不支持定位，请使用试驾模式。', noAudio: msg => `无法启动音频：${msg}`,
     old: '浏览器版本过旧，无法运行引擎合成器（需要 AudioWorklet）。',
     helpTitle: '使用说明',
@@ -174,10 +177,10 @@ document.querySelectorAll('[data-t]').forEach(el => { el.innerHTML = STR[el.data
 $('testBtn').textContent = STR.test(false);
 const TICK = 0.02;  // control loop, seconds
 
-let car = CARS.find(c => c.id === 'camaro'), vehicle = new Vehicle(car);
+let car = CARS.find(c => c.id === 'gt3'), vehicle = new Vehicle(car);
 let ctx = null, chain = null, node = null, running = false, testMode = false, mph = false;
 const held = { gas: 0, brake: 0, rev: 0 };
-const gps = { speed: 0, accel: 0, shown: 0, last: null };
+let gps = new GpsSpeed(), gpsSeen = 0, gpsShown = 0, watchId = null;   // gpsSeen: ms when the last fix arrived
 let lastSpeed = 0, wakeLock = null;
 let barSpeed = null;   // m/s from the speed bar; null = GPS / pedals drive
 const stage = new Stage($('heroCar'), $('road'), $('fx'));
@@ -207,41 +210,35 @@ function buildSynth() {
 
 // ---------- GPS ----------
 
-function haversine(a, b) {
-  const r = Math.PI / 180, dLat = (b.latitude - a.latitude) * r, dLon = (b.longitude - a.longitude) * r;
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.latitude * r) * Math.cos(b.latitude * r) * Math.sin(dLon / 2) ** 2;
-  return 2 * 6371000 * Math.asin(Math.sqrt(h));
-}
-
 function onFix(pos) {
-  const prev = gps.last, t = pos.timestamp / 1000;
-  let speed = pos.coords.speed;
-  if (speed == null && prev) {
-    // Jitter inside the accuracy circle is not movement: a parked phone indoors drifts tens of metres.
-    const d = haversine(prev.coords, pos.coords);
-    speed = d > pos.coords.accuracy ? d / Math.max(0.2, t - prev.t) : 0;
-  }
-  if (speed == null) speed = 0;
-  if (prev) gps.accel = (speed - gps.speed) / Math.max(0.2, t - prev.t);
-  gps.speed = speed; gps.last = { coords: pos.coords, t };
+  gps.update(pos.coords, pos.timestamp / 1000);
+  gpsSeen = Date.now();   // receipt time, not pos.timestamp: some devices stamp fixes off the system clock
   $('status').textContent = STR.gps(Math.round(pos.coords.accuracy));
 }
 
 function onGpsError(e) {
-  $('status').textContent = STR.blocked(e.message);
+  // Denied stops the watch for good; no fix / timeout keeps it running, the next fix clears this.
+  $('status').textContent = e.code === 1 ? STR.blocked(e.message || 'denied') : STR.noFix;
+}
+
+function startGps() {
+  if (watchId != null) return;
+  if (!('geolocation' in navigator)) { $('status').textContent = STR.noGps; return; }
+  $('status').textContent = STR.waitGps;
+  watchId = navigator.geolocation.watchPosition(onFix, onGpsError, { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 });
 }
 
 // ---------- Control loop ----------
 
 function tick() {
   // Fixes stopped (indoors, tunnel, backgrounded): don't hold the last speed forever.
-  if (gps.last && Date.now() / 1000 - gps.last.t > 3) { gps.speed = 0; gps.accel = 0; }
+  if (gpsSeen && Date.now() - gpsSeen > 3000) { gps.speed = 0; gps.accel = 0; }
   // Ease between 1 Hz GPS fixes so the revs glide instead of stepping.
-  const before = gps.shown;
-  gps.shown += ((barSpeed ?? gps.speed) - gps.shown) * 0.08;
+  const before = gpsShown;
+  gpsShown += ((barSpeed ?? gps.speed) - gpsShown) * 0.08;
   const out = vehicle.step(TICK, {
-    source: testMode && barSpeed == null ? 'test' : 'gps', speed: gps.shown,
-    accel: barSpeed == null ? gps.accel : (gps.shown - before) / TICK,
+    source: testMode && barSpeed == null ? 'test' : 'gps', speed: gpsShown,
+    accel: barSpeed == null ? gps.accel : (gpsShown - before) / TICK,
     gas: held.gas, brake: held.brake, rev: held.rev, intensity: +$('intensity').value,
   });
   if (car.engine.type === 'haunted' && lastSpeed > 5 && out.speed < 1) node.port.postMessage({ bell: 1 });
@@ -261,12 +258,11 @@ function tick() {
 
 async function start() {
   if (running) { stop(); return; }
+  startGps();   // inside the tap, before any await, so the permission prompt counts as user-initiated
   try {
     if (!ctx) {
       await initAudio();
       setInterval(() => running && tick(), TICK * 1000);
-      if ('geolocation' in navigator) navigator.geolocation.watchPosition(onFix, onGpsError, { enableHighAccuracy: true, maximumAge: 0 });
-      else $('status').textContent = STR.noGps;
     }
     await ctx.resume();
     buildSynth();
@@ -360,12 +356,13 @@ $('testBtn').onclick = () => {
   $('testBtn').textContent = STR.test(testMode);
 };
 $('speedBar').oninput = e => {
-  barSpeed = e.target.value / 3.6;
-  $('barLabel').textContent = `${e.target.value} km/h`;
+  // Back at 0 the bar lets go, so GPS drives again instead of being pinned to 0 km/h.
+  barSpeed = +e.target.value ? e.target.value / 3.6 : null;
+  $('barLabel').textContent = barSpeed == null ? STR.off : `${e.target.value} km/h`;
 };
 $('reset').onclick = () => {
   barSpeed = null; $('speedBar').value = 0; $('barLabel').textContent = STR.off;
-  Object.assign(gps, { speed: 0, accel: 0, shown: 0 });
+  gps = new GpsSpeed(); gpsShown = 0;
   vehicle = new Vehicle(car);
 };
 $('unitBtn').onclick = () => {
