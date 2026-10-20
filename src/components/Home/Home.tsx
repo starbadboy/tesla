@@ -63,7 +63,9 @@ export function Home({
             .then(({ items, total: count }) => {
                 setTotal(count);
                 const usable = items.filter(wrap => wrap.imageUrl && wrap.models?.some(name => CAR_3D_MODELS[name]));
-                if (usable.length > 0) setHero(usable[Math.floor(Math.random() * usable.length)]);
+                if (usable.length === 0) return;
+                setHeroVisible(false);
+                setHero(usable[Math.floor(Math.random() * usable.length)]);
             })
             .catch(error => console.error('Failed to fetch wraps for the hero', error));
     }, [refreshTrigger]);
@@ -73,7 +75,6 @@ export function Home({
     // ponytail: workaround, not the root cause — see the same cycle in App.
     useEffect(() => {
         if (!hero) return;
-        setHeroVisible(false);
         const settle = window.setTimeout(() => setHeroVisible(true), 400);
         return () => window.clearTimeout(settle);
     }, [hero]);

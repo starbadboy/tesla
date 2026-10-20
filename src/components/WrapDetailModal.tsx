@@ -38,10 +38,11 @@ export function WrapDetailModal({ isOpen, onClose, wrap, onLoadWrap, onUpdate }:
     const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
-    useEffect(() => {
+    // Reset edit state when opening, clear comments when closing (during render, not in an effect)
+    const [shownFor, setShownFor] = useState<{ isOpen: boolean, wrap: typeof wrap } | null>(null);
+    if (shownFor?.isOpen !== isOpen || shownFor.wrap !== wrap) {
+        setShownFor({ isOpen, wrap });
         if (isOpen && wrap) {
-            fetchComments();
-            // Reset edit state when opening
             setIsEditing(false);
             setEditName(wrap.name);
             setEditModels(wrap.models || []);
@@ -50,6 +51,24 @@ export function WrapDetailModal({ isOpen, onClose, wrap, onLoadWrap, onUpdate }:
             setComments([]);
             setNewComment('');
         }
+    }
+
+    useEffect(() => {
+        if (!isOpen || !wrap) return;
+        let cancelled = false;
+        const fetchComments = async () => {
+            try {
+                const res = await fetch(`/api/wraps/${wrap._id}/comments`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (!cancelled) setComments(data);
+                }
+            } catch (error) {
+                console.error("Failed to fetch comments", error);
+            }
+        };
+        fetchComments();
+        return () => { cancelled = true; };
     }, [isOpen, wrap]);
 
     const handleSave = async () => {
@@ -86,19 +105,6 @@ export function WrapDetailModal({ isOpen, onClose, wrap, onLoadWrap, onUpdate }:
             alert('Failed to update wrap');
         } finally {
             setIsSaving(false);
-        }
-    };
-
-    const fetchComments = async () => {
-        if (!wrap) return;
-        try {
-            const res = await fetch(`/api/wraps/${wrap._id}/comments`);
-            if (res.ok) {
-                const data = await res.json();
-                setComments(data);
-            }
-        } catch (error) {
-            console.error("Failed to fetch comments", error);
         }
     };
 
@@ -278,7 +284,7 @@ export function WrapDetailModal({ isOpen, onClose, wrap, onLoadWrap, onUpdate }:
                                 <>
                                     <div className="flex items-center gap-2">
                                         <h2 className="font-bold text-lg leading-tight dark:text-white">{wrap.name}</h2>
-                                        {(user?.isAdmin || user?.id === wrap.user || user?.id === (wrap.user as any)?._id) && (
+                                        {(user?.isAdmin || user?.id === wrap.user || (typeof wrap.user === 'object' && user?.id === wrap.user._id)) && (
                                             <button
                                                 onClick={() => setIsEditing(true)}
                                                 className="text-gray-400 hover:text-black dark:hover:text-white transition-colors"

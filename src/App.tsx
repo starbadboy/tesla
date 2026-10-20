@@ -52,9 +52,13 @@ function App() {
   // and the editor each used to carry their own copy, and the 3D gallery had none, which
   // is why a wrap picked outside came in half applied.
   // ponytail: workaround, not the root cause — remove once ThreeDView rebinds on its own.
+  const [hiddenFor, setHiddenFor] = useState(singleLayer);
+  if (singleLayer !== hiddenFor) {
+    setHiddenFor(singleLayer);
+    if (singleLayer) setIsWrapVisible(false);
+  }
   useEffect(() => {
     if (!singleLayer) return;
-    setIsWrapVisible(false);
     const settle = window.setTimeout(() => setIsWrapVisible(true), 60);
     return () => window.clearTimeout(settle);
   }, [singleLayer]);

@@ -87,7 +87,7 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
 
                     // Client-side filter for Garage if mixed types returned (since backend garage doesn't filter by type yet)
                     if (viewMode === 'garage') {
-                        fetchedWraps = fetchedWraps.filter((w: any) => (w.type || 'car') === type);
+                        fetchedWraps = fetchedWraps.filter((w: Wrap & { type?: string }) => (w.type || 'car') === type);
                     }
 
                     setWraps(fetchedWraps);
@@ -178,26 +178,27 @@ export function Gallery({ onLoadWrap, selectedModel, refreshTrigger, language = 
         }
     }
 
+    // Fixed at mount: render must stay pure, and a day-long window doesn't need a ticking clock.
+    const [now] = useState(() => Date.now());
     const isRecent = (dateStr?: string) => {
         if (!dateStr) return false;
         const date = new Date(dateStr);
         if (isNaN(date.getTime())) return false;
-        return (Date.now() - date.getTime()) < 24 * 60 * 60 * 1000;
+        return (now - date.getTime()) < 24 * 60 * 60 * 1000;
     };
 
     const handleUpdateTags = async (e: React.MouseEvent, wrapId: string, field: 'forceNew' | 'forceHot', currentValue: boolean | null | undefined) => {
         e.stopPropagation();
 
         // Cycle: null (Auto) -> true (Force On) -> false (Force Off) -> null (Auto)
-        let nextValue: boolean | null = null;
+        let nextValue: boolean | null;
         if (currentValue === null || currentValue === undefined) nextValue = true;
         else if (currentValue === true) nextValue = false;
         else nextValue = null;
 
         try {
             const token = localStorage.getItem('token');
-            const body: any = {};
-            body[field] = nextValue;
+            const body = { [field]: nextValue };
 
             const res = await fetch(`/api/wraps/${wrapId}/tags`, {
                 method: 'PUT',

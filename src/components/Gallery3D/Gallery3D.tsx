@@ -64,9 +64,15 @@ export function Gallery3D({
     const [activeId, setActiveId] = useState<string | null>(null);
     const sentinelRef = useRef<HTMLDivElement>(null);
 
+    // A new model or refresh starts loading during render, so the effect only fetches.
+    const request = `${currentModelName}|${refreshTrigger}`;
+    const [requested, setRequested] = useState<string | null>(null);
+    if (request !== requested) {
+        setRequested(request);
+        setLoading(true);
+    }
     useEffect(() => {
         let cancelled = false;
-        setLoading(true);
         fetchWraps('car', 'popular', { limit: PAGE_SIZE, model: currentModelName })
             .then(({ items, total: count }) => {
                 if (cancelled) return;

@@ -4,7 +4,6 @@ import { Button } from './ui/Button';
 import { CAR_MODELS } from '../constants';
 import { TRANSLATIONS } from '../translations';
 import { useAuth } from '../contexts/AuthContext';
-import { useEffect } from 'react';
 
 interface ShareModalProps {
     isOpen: boolean;
@@ -23,11 +22,13 @@ export function ShareModal({ isOpen, onClose, onShareSuccess, imageUrl, language
     const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
     const { user, token } = useAuth();
 
-    useEffect(() => {
-        if (user && isOpen) {
-            setAuthor(user.username);
-        }
-    }, [user, isOpen]);
+    // Prefill the author each time the modal opens for a signed-in user (during render, not in an effect).
+    const prefill = isOpen && user ? user.username : null;
+    const [prefilled, setPrefilled] = useState<string | null>(null);
+    if (prefill !== prefilled) {
+        setPrefilled(prefill);
+        if (prefill) setAuthor(prefill);
+    }
 
     const t = TRANSLATIONS[language];
 

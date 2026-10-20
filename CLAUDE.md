@@ -5,7 +5,7 @@ React + Vite client in `src/`, Express + Mongoose API in `server/` (one process 
 ## Commands
 
 - `npm run build` — type-check and bundle the client (`tsc -b && vite build`). The syntax gate for any client change.
-- `npm run lint` — ESLint over `src/`. Baseline on main: 27 pre-existing problems; a change must not add to it.
+- `npm run lint` — ESLint over `src/`. Runs clean; a change must keep it at 0 problems.
 - `npm test` — Vitest over `server/**/*.test.js` (pure server logic: packs, settlement, visibility).
 - `node --check server/index.js` — syntax gate for server changes; the server has no bundler.
 - `npm run dev` + `node server/index.js` — Vite on 5173 proxying `/api` to the API on 5001.

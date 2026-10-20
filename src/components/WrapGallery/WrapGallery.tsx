@@ -112,11 +112,17 @@ export function WrapGallery({
 
     const serverModel = type === 'car' && modelFilter !== ALL_MODELS ? modelFilter : undefined;
 
-    // First page. Any change to the query starts the list over.
-    useEffect(() => {
-        let cancelled = false;
+    // First page. Any change to the query starts the list over — marked loading during
+    // render, so the effect below only fetches.
+    const request = JSON.stringify([type, sortBy, query, serverModel, refreshTrigger, isGarage, garageTab]);
+    const [requested, setRequested] = useState<string | null>(null);
+    if (request !== requested) {
+        setRequested(request);
         setLoading(true);
         setGarageError(false);
+    }
+    useEffect(() => {
+        let cancelled = false;
 
         // The garage is one user's own list, so it arrives whole rather than paged.
         if (isGarage) {

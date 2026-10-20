@@ -5,7 +5,7 @@ import { CAR_MODELS, CAR_3D_MODELS } from '../../constants';
 import type { DesignCanvasHandle, LayerTransform } from '../DesignCanvas';
 import { DesignCanvas } from '../DesignCanvas';
 import { ThreeDView } from '../ThreeDView';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useTheme } from '../../contexts/useTheme';
 import { useAuth } from '../../contexts/AuthContext';
 import { TRANSLATIONS } from '../../translations';
 
@@ -931,14 +931,14 @@ export function TeslaStudio(props: TeslaStudioProps) {
     return () => window.clearInterval(iv);
   }, []);
 
-  // Auto-fallback to 2D when 3D unavailable
-  useEffect(() => {
-    if (!currentModel?.has3D || appMode !== 'car') {
-      setView('2d');
-    } else if (appMode === 'car' && currentModel.has3D) {
-      setView('3d');
-    }
-  }, [currentModel, appMode]);
+  // Auto-fallback to 2D when 3D unavailable; re-picked during render whenever the model or mode changes.
+  const can3D = appMode === 'car' && !!currentModel?.has3D;
+  const viewKey = `${appMode}|${currentModel?.id}|${can3D}`;
+  const [viewFor, setViewFor] = useState<string | null>(null);
+  if (viewKey !== viewFor) {
+    setViewFor(viewKey);
+    setView(can3D ? '3d' : '2d');
+  }
 
   // Picking a preset injects a gradient PNG as the single wrap layer
   const handlePickPreset = (preset: WrapPreset) => {

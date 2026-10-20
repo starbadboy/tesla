@@ -156,9 +156,13 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true,
 
     const [textureActive, setTextureActive] = useState(showTexture);
 
-    useEffect(() => {
-        setTextureActive(showTexture);
-    }, [showTexture]);
+    // Follows showTexture, and drops for one beat per scene (see the cycle below). Both
+    // are worked out during render; the effect below only schedules the switch back on.
+    const [syncedFor, setSyncedFor] = useState<{ showTexture: boolean, scene: typeof scene } | null>(null);
+    if (syncedFor?.showTexture !== showTexture || syncedFor.scene !== scene) {
+        setSyncedFor({ showTexture, scene });
+        setTextureActive(syncedFor?.scene !== scene ? false : showTexture);
+    }
 
     // Materials bind the wrap only as this flips, so a view that mounts with a wrap
     // already loaded — the 3D gallery entered from the studio — otherwise shows the car
@@ -167,12 +171,12 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true,
     // on a texture change of its own accord.
     useEffect(() => {
         if (!showTexture) return;
-        setTextureActive(false);
         const settle = window.setTimeout(() => setTextureActive(true), 60);
         return () => window.clearTimeout(settle);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [scene]);
 
+    // eslint-disable-next-line react-hooks/immutability -- three.js textures are updated in place by design
     const updateTexture = useCallback(() => {
         if (stageRef.current && textureActive) {
             try {
@@ -488,7 +492,7 @@ const TexturedCar = ({ stageRef, modelPath, showTexture = true, isActive = true,
             }
         });
         // console.log("Wrapped parts:", wrappedParts);
-    }, [scene, textureActive, texture, paintColor]);
+    }, [scene, modelFile, textureActive, texture, paintColor]);
 
     useFrame((state) => {
         // Only update loop when active to save perf
@@ -533,6 +537,7 @@ function FitFraming({ override, modelPath }: { override?: number; modelPath: str
         if (!(camera instanceof THREE.PerspectiveCamera)) return;
         const wanted = override ?? (size.height > size.width ? 62 : 45);
         if (camera.fov === wanted) return;
+        // eslint-disable-next-line react-hooks/immutability -- R3F's camera is a three.js object, configured in place
         camera.fov = wanted;
         camera.updateProjectionMatrix();
     }, [camera, size, override]);
@@ -555,10 +560,12 @@ export const ThreeDView = ({ stageRef, modelPath, showTexture = true, isActive =
     // State for toggling wrap on/off
     const [isWrapApplied, setIsWrapApplied] = useState(showTexture);
 
-    // Sync with parent's showTexture prop when it changes
-    useEffect(() => {
+    // Sync with parent's showTexture prop when it changes (during render, not in an effect)
+    const [appliedFor, setAppliedFor] = useState(showTexture);
+    if (showTexture !== appliedFor) {
+        setAppliedFor(showTexture);
         setIsWrapApplied(showTexture);
-    }, [showTexture]);
+    }
 
     // A GLB is tens of megabytes; without this the stage is just black while it
     // downloads and there is no way to tell loading from broken. useProgress reads

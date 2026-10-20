@@ -281,7 +281,8 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
     // Kept out of state: the map is megabytes and the canvas is mutated in place.
     const fillMapRef = useRef<FillMap | null>(null);
     const fillsRef = useRef<HTMLCanvasElement | null>(null);
-    const [fillVersion, setFillVersion] = useState(0);
+    // What the render shows: the fill canvas (mutated in place) and a counter bumped per repaint.
+    const [fillLayer, setFillLayer] = useState<{ canvas: HTMLCanvasElement, version: number } | null>(null);
     const [ownFills, setOwnFills] = useState<FillOp[]>([]);
     const fillOps = fills ?? ownFills;
     const [maskImage] = useImage(overlays.mask || '', 'anonymous');
@@ -297,7 +298,7 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
     // Internal ref to the Stage
     const stageRef = useRef<Konva.Stage>(null);
 
-    const [dimensions, setDimensions] = useState({ width: 2048, height: 2048 }); // Default high-res
+    const [dimensions, setDimensions] = useState(() => canvasType === 'plate' ? { width: 420, height: 200 } : { width: 2048, height: 2048 }); // Default high-res
     const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
     // Derived, not stored: a stored scale lagged a render behind a dimensions change, and
     // the 3D view sampled that frame as a crop of the wrong size.
@@ -568,12 +569,17 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
     }));
 
     // Process the car mask whenever the model changes
-    useEffect(() => {
+    // Switching to the plate resets the canvas during render, not in an effect.
+    const [shapeFor, setShapeFor] = useState(canvasType);
+    if (canvasType !== shapeFor) {
+        setShapeFor(canvasType);
         if (canvasType === 'plate') {
             setDimensions({ width: 420, height: 200 });
             setOverlays({ mask: null, lines: null, trim: null });
-            return;
         }
+    }
+    useEffect(() => {
+        if (canvasType === 'plate') return;
 
         let isMounted = true;
         const loadAndProcess = async () => {
@@ -583,6 +589,7 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
                 if (!isMounted) return;
                 fillMapRef.current = result.fillable;
                 fillsRef.current = null;
+                setFillLayer(null);
                 setOverlays({ mask: result.mask, lines: result.lines, trim: result.trim });
             } catch (e) {
                 console.error("Failed to process mask", e);
@@ -619,7 +626,8 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
             }
             ctx.putImageData(frame, 0, 0);
         }
-        setFillVersion(v => v + 1);
+        const canvas = fillsRef.current;
+        setFillLayer(f => ({ canvas, version: (f?.version ?? 0) + 1 }));
     }, [fillOps, overlays.mask]);
 
     // Update dimensions when overlay loads
@@ -627,7 +635,6 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
         if (canvasType === 'plate') return; // Handled above
 
         if (maskImage) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
             setDimensions(prev => {
                 if (prev.width === maskImage.width && prev.height === maskImage.height) return prev;
                 return {
@@ -798,16 +805,16 @@ export const DesignCanvas = forwardRef<DesignCanvasHandle, DesignCanvasProps>(({
 
                     {/* Panel fills sit over the wrap art so a click always shows its
                         colour, and under the outlines so the panel edges stay visible. */}
-                    {fillsRef.current && canvasType !== 'plate' && (
+                    {fillLayer && canvasType !== 'plate' && (
                         <KonvaImage
                             name="fillsImage"
-                            image={fillsRef.current}
+                            image={fillLayer.canvas}
                             width={dimensions.width}
                             height={dimensions.height}
                             listening={false}
                             // Konva caches the drawn frame; the counter forces a redraw
                             // after the canvas is mutated in place.
-                            key={`fills-${fillVersion}`}
+                            key={`fills-${fillLayer.version}`}
                         />
                     )}
 
