@@ -103,7 +103,7 @@ async function importItem(item, counts, dryRun) {
 
 // `limit` caps the number of gallery pages walked (24 wraps per page).
 async function scrapeTeslaWrapIo({ dryRun = false, limit = 0 } = {}) {
-    const counts = { added: 0, skipped: 0, premium: 0, unmapped: 0, failed: 0 };
+    const counts = { added: 0, skipped: 0, premium: 0, unmapped: 0, blocked: 0, failed: 0 };
     let page = 1;
     let totalPages = 1;
 
@@ -123,6 +123,8 @@ async function scrapeTeslaWrapIo({ dryRun = false, limit = 0 } = {}) {
         for (let i = 0; i < parsed.items.length; i += CONCURRENCY) {
             await Promise.all(parsed.items.slice(i, i + CONCURRENCY).map(item =>
                 importItem(item, counts, dryRun).catch(err => {
+                    // 451 = Cloudflare region block on a few wraps; permanent, so count it quietly.
+                    if (err.response?.status === 451) { counts.blocked++; return; }
                     counts.failed++;
                     console.error(`TeslaWrapIo: Failed ${item.canonicalPath}: ${err.message}`);
                 })

@@ -61,7 +61,7 @@ function extractStringArray(source, constName) {
 
 function extractOfficialSkins(source, folder) {
     const starterSkins = extractStringArray(source, 'SX_STARTER_SKINS');
-    const folderMatch = source.match(new RegExp(`'${folder}'\\s*:\\s*\\[([^\\]]*)\\]`));
+    const folderMatch = source.match(new RegExp(`['"]${folder}['"]\\s*:\\s*\\[([^\\]]*)\\]`));
 
     if (!folderMatch) {
         throw new Error(`Could not find official skins for ${folder}`);
